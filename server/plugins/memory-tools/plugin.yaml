@@ -1,0 +1,40 @@
+id: memory-tools
+version: 0.3.0
+requires_core: ">=0.1"
+summary: Skill for writing things down. Load it when the user shares something worth keeping, or wants memory organised, folders made or facts rated.
+needs:
+  network: []
+  secrets: []
+tools:
+  - name: remember
+    tags: [writes]
+    autonomy: auto
+  - name: list_folders
+    tags: [reads]
+    autonomy: auto
+  - name: list_confidence
+    tags: [reads]
+    autonomy: auto
+  - name: list_disputed
+    tags: [reads]
+    autonomy: auto
+  - name: make_folder
+    tags: [writes]
+    autonomy: auto
+  - name: write_entry
+    tags: [writes]
+    autonomy: auto
+  - name: move_entry
+    tags: [writes]
+    autonomy: auto
+  - name: move_folder
+    tags: [writes]
+    autonomy: auto
+  - name: set_confidence
+    tags: [writes]
+    autonomy: auto
+  - name: set_status
+    tags: [writes]
+    autonomy: ask
+runtime:
+  builtin: core

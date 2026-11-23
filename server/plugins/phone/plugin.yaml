@@ -1,0 +1,29 @@
+id: phone
+version: 0.1.0
+requires_core: ">=0.1"
+summary: Do things on the user's phone - open the dialer or a ready-to-send text, open an app, set a timer or a clock-app alarm, start directions.
+words: ["call", "dial", "sms", "timer", "directions", "navigate"]  # the user's own words that load this plugin at once (quick commands)
+needs:
+  network: []          # the phone fetches its actions from the core; nothing goes out
+  secrets: []
+tools:
+  - name: call
+    tags: [sends]      # opens the dialer only; the user presses call
+    autonomy: ask
+  - name: text
+    tags: [sends]      # opens the messages app with the words filled in; the user presses send
+    autonomy: ask
+  - name: open_app
+    tags: [writes]
+    autonomy: auto
+  - name: set_timer
+    tags: [writes]
+    autonomy: auto
+  - name: set_phone_alarm
+    tags: [writes]
+    autonomy: auto
+  - name: navigate_to
+    tags: [writes]
+    autonomy: auto
+runtime:
+  builtin: core   # src/phone.rs; the phone app fetches each action and opens the screen for it

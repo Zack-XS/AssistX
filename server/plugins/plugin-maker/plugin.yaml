@@ -1,0 +1,13 @@
+id: plugin-maker
+version: 0.1.0
+requires_core: ">=0.1"
+summary: How to learn a new ability by building a plugin when nothing in the index fits.
+needs:
+  network: []
+  secrets: []
+tools:
+  - name: start_build
+    tags: [writes]
+    autonomy: auto   # only makes a draft; the draft itself needs the owner's approval
+runtime:
+  builtin: core

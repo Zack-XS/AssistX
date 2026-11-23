@@ -1,0 +1,7 @@
+/target
+/data
+.token
+.DS_Store
+docs-retired/
+node/
+.claude/

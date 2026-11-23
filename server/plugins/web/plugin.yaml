@@ -1,0 +1,16 @@
+id: web
+version: 0.2.0
+requires_core: ">=0.1"
+summary: Read public web pages as plain text and list their links.
+needs:
+  network: ["*public*"]   # any public host; the proxy refuses private, loopback and link-local
+  secrets: []
+tools:
+  - name: fetch
+    tags: [reads]
+    autonomy: auto
+  - name: links
+    tags: [reads]
+    autonomy: auto
+runtime:
+  builtin: rust   # src/plugins/web.rs; GET only, no redirects, 1 MB cap

@@ -1,0 +1,13 @@
+[package]
+name = "docs-site"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Few crates, exact pins, a reason beside each.
+[dependencies]
+pulldown-cmark = "0.12" # markdown -> HTML (the only markdown tool)
+serde_json = "1"         # safe JSON for search.json
+
+[profile.release]
+opt-level = 1

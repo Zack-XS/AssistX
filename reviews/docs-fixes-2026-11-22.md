@@ -1,0 +1,23 @@
+# Docs fixes (2026-11-22)
+
+Fixes for `reviews/docs-review-2026-11-22.md`. Paths are under `docs/` unless they say otherwise. Old `server/docs/` files were not changed.
+
+- **F1 fixed.** Doc 16 folded into new `design/screens.md` (tabs Today, Plan, Chat, You; screen map; You groups; states; add a screen; page tests; words), `design/components.md` (parts and class names), `design/icons.md` (meanings), `android/app-structure.md` (frozen bridge contract, stored keys, open names, one file, native colours). One table in `design/tokens.md`, with a "settled against doc 16" table; 16's darker `mute`/`ok`/`warn`/`bad` used. Doc 17 folded into `security/safety-rules.md` (rules → code → test table, Rust core, plugins, page, Android, tests by kind, before-done list, known gaps) and `quality/safety.md`. 16 and 17 added to `MIGRATION.md`. Also `design/README.md`, `README.md`, `roadmap/next.md`.
+- **F2 fixed.** `plans/docs-site.md` rewritten: small Rust site builder with `pulldown-cmark`; no Node. `plans/design-language-rollout.md`: the `tokens.json` generator is a Rust program. `design/tokens.md` says so too. Descriptions updated in `README.md`, `plans/README.md`.
+- **F3 fixed.** `server/AGENTS.md` (not committed): points at `../docs/README.md` as the tree that wins, says old `server/docs` lose where they differ; new rules 9 (logs), 10 (Android battery), 11 (agents checklist); rule 3 points at new pages. `quality/agents-checklist.md`: circular link removed, logs and battery added to the done list.
+- **F4 fixed.** `plans/full-activity-log.md`: edits stored as `ref` + changed fields; `ctx` has a place id only, no coordinates, cleared after 90 days; each `parts.*` switch defined; Forget reaches `activity` and `thinking` (build step 1, with a test). `architecture/memory.md`: Forget step 10, marked planned.
+- **F5 fixed.** `plans/full-activity-log.md`: off switch pushed over `NoticeStream` and `off_at` drop; phone `detail` is outside content, kinds and sizes capped; cloud-review truth on the explain screen and a redacted export; overheard speech and notification text not logged; threat model as build step 0. `security/threat-model.md`: new "Activity log (planned)" section.
+- **F6 fixed.** `design/color.md`: new values, a contrast table (WCAG math) per surface, and `ok` as text only on `card`, `raised`, `field` (4.45 on `page`, 4.37 on `bubble`). Every other text token passes 4.5:1 on every surface. `design/accessibility.md` gap updated.
+- **F7 fixed.** `plans/docs-site.md`: local only by default (this Mac on `127.0.0.1`, or the server over the tailnet); public only if the owner says so. The secret check runs without gitleaks.
+- **F8 partly.** `MIGRATION.md`: "Old doc numbers in code" table (`docs/00`-`docs/17` → new pages). Line-number links in `security/safety-rules.md` replaced by section links. Code comments not edited (per decision).
+- **F9 fixed.** `contributing/code-style.md` rule 3 uses the `AGENTS.md` wording. Also `android/talking-to-server.md` and `roadmap/open-questions.md`.
+- **F10 fixed.** `contributing/code-style.md` rule 2: project is AssistX; code carries no product name; screens use one display name (default "Assistant"). `design/principles.md` rule 11. `roadmap/open-questions.md` row marked decided.
+- **F11 fixed.** Test counts dropped in `getting-started/run-server.md`, `contributing/dev-setup.md`.
+- **F12 fixed.** `quality/android-battery.md`: Wi-Fi wait in `Updater.kt`, `NoticeStream` sleeps, `PlaceWatch`, `NotifyListener`, `Detect`, `WakeService` pause, `SLOW_MS` added (checked against the code).
+- **F13 fixed.** Full descriptions in `plugins/scheduler.md`, `plugins/spotify.md`, `README.md`.
+- **F14 fixed.** `design/principles.md` (four weights), `design/motion.md` (only `dur-slow` / `dur-base`), `design/typography.md` (tabs, `type-number` 44, weights), `design/components.md`, `design/smart-ui.md` (Today, You).
+- **F15 fixed.** No line over 400 characters is left (was 71). Long lines split into short paragraphs, lists or shorter table cells in 30 files. `architecture/multi-device.md` has one `Status: plan, not built` line.
+
+Checks run: all 98 pages have front matter and a matching title; every folder README lists its pages; every relative link and `#anchor` resolves (own script, 0 problems). No emails, keys or private IPs added.
+
+Not checked or left open: no site build (none exists). `server/AGENTS.md` rule 2 still says no product name in docs, and its "56 unit + 97 golden" count is stale; both are outside this task's edits. The F15 splits were made by a script, then spot-read; read them once more if wording matters.

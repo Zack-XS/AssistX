@@ -1,0 +1,101 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Server panel</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1a1a1a;--mut:#6b7280;--card:#f5f6f8;--bar:#3b82f6;--ok:#16a34a;--bad:#dc2626;--warn:#d97706}
+@media(prefers-color-scheme:dark){:root{--bg:#111318;--fg:#e8e8ea;--mut:#9aa0aa;--card:#1b1e26;--bar:#60a5fa;--ok:#4ade80;--bad:#f87171;--warn:#fbbf24}}
+body{margin:0;font:15px system-ui,sans-serif;background:var(--bg);color:var(--fg);padding:16px;max-width:1000px;margin:auto}
+h1{font-size:20px;margin:0 0 12px}h2{font-size:15px;margin:0 0 8px;color:var(--mut);font-weight:600}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:12px}
+.card{background:var(--card);border-radius:10px;padding:14px}.wide{grid-column:1/-1}
+.big{font-size:26px;font-weight:700}.mut{color:var(--mut);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{text-align:left;padding:5px 6px;border-bottom:1px solid #8883}th{color:var(--mut);font-weight:600}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.bars{display:flex;align-items:flex-end;gap:2px;height:90px}.bars div{flex:1;background:var(--bar);min-height:1px;border-radius:2px 2px 0 0}
+.lab{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:3px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+input,select,button{font:inherit;padding:6px 8px;border-radius:6px;border:1px solid #8886;background:var(--bg);color:var(--fg)}
+#top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}#err{color:var(--bad);margin:8px 0}
+</style>
+<h1>Server panel</h1>
+<div id="top">
+  <input id="base" size="26" placeholder="http://127.0.0.1:8790">
+  <input id="tok" size="22" type="password" placeholder="owner token">
+  <select id="days"><option>7</option><option selected>30</option><option>90</option><option>365</option></select> days
+  <button id="go">Refresh</button>
+</div>
+<div id="err"></div>
+<div id="out"></div>
+<script>
+const $ = id => document.getElementById(id);
+$("base").value = localStorage.getItem("panel.base") || "http://127.0.0.1:8790";
+$("tok").value = localStorage.getItem("panel.tok") || "";
+const el = (t, p = {}, ...kids) => { const e = document.createElement(t); Object.assign(e, p); for (const k of kids.flat()) e.append(k); return e; };
+const num = (x, d = 0) => (x ?? 0).toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d });
+async function api(path) {
+  const r = await fetch($("base").value.replace(/\/$/, "") + path, { headers: { Authorization: "Bearer " + $("tok").value } });
+  if (!r.ok) throw new Error(path + ": " + r.status + " " + (await r.text()).slice(0, 120));
+  return r.json();
+}
+function card(title, ...kids) { return el("div", { className: "card" }, el("h2", { textContent: title }), kids); }
+function stat(title, big, sub) { return card(title, el("div", { className: "big", textContent: big }), el("div", { className: "mut", textContent: sub || "" })); }
+function bars(vals, labels, fmt) {
+  const max = Math.max(1, ...vals);
+  const b = el("div", { className: "bars" });
+  vals.forEach((v, i) => b.append(el("div", { title: labels[i] + ": " + fmt(v), style: "height:" + (v / max * 100) + "%" })));
+  return el("div", {}, b, el("div", { className: "lab" }, el("span", { textContent: labels[0] || "" }), el("span", { textContent: labels[labels.length - 1] || "" })));
+}
+function table(head, rows) {
+  const t = el("table"); t.append(el("tr", {}, head.map((h, i) => el("th", { className: i ? "n" : "", textContent: h }))));
+  rows.forEach(r => t.append(el("tr", {}, r.map((c, i) => el("td", { className: i ? "n" : "", textContent: c })))));
+  return t;
+}
+async function load() {
+  $("err").textContent = "";
+  localStorage.setItem("panel.base", $("base").value); localStorage.setItem("panel.tok", $("tok").value);
+  try {
+    const [u, s, st] = await Promise.all([api("/v1/usage?days=" + $("days").value), api("/v1/security"), api("/v1/status").catch(() => null)]);
+    const cur = u.currency, money = x => cur + num(x, 2), t = u.totals, p = u.power;
+    const out = $("out"); out.replaceChildren();
+    out.append(el("div", { className: "row" },
+      stat("Estimated total", money(t.all), "last " + u.days + " days"),
+      stat("Cloud models", money(t.cloud_cost), "tokens x price (estimate)"),
+      stat("Electricity", money(t.power_cost), num(t.power_kwh, 2) + " kWh at " + cur + u.assumptions.kwh_price + "/kWh"),
+      stat("Power now", p.now_watts == null ? "no data" : num(p.now_watts) + " W", "average " + (p.avg_watts == null ? "-" : num(p.avg_watts) + " W") + " · source: " + p.source)));
+    out.append(el("div", { className: "row" },
+      card("Models used", table(["Model", "Where", "Calls", "Tokens", "Cost"], u.models.map(m => [m.model || m.profile, m.local ? "your server" : "cloud", num(m.calls), num(m.tokens), m.local ? "free" : money(m.cost)]))),
+      card("Busiest days (by tokens)", table(["Day", "Calls", "Tokens"], u.busiest_days.map(d => [d.day, num(d.calls), num(d.tokens)])))));
+    const wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    out.append(el("div", { className: "row" },
+      card("Tokens per day", bars(u.per_day.map(d => d.tokens), u.per_day.map(d => d.day), v => num(v) + " tokens")),
+      card("Calls by weekday", bars(u.weekday_calls, wd, v => num(v) + " calls")),
+      card("Power, last 24 hours (watts)", p.hourly.length ? bars(p.hourly.map(h => h.watts), p.hourly.map(h => new Date(h.ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })), v => num(v) + " W") : el("div", { className: "mut", textContent: "No samples yet. The server samples once a minute." })),
+      card("Electricity per day", bars(u.per_day.map(d => d.power_cost), u.per_day.map(d => d.day), v => money(v)))));
+    const sec = card("Encryption and safety", el("div", { className: "mut", textContent: s.ok ? "All checks pass." : "Some checks need your attention." }),
+      table(["Check", "Result"], s.checks.map(c => [c.name + " — " + c.note, c.ok === true ? "✔ yes" : c.ok === false ? "✘ no" : "? unknown"])));
+    sec.classList.add("wide");
+    [...sec.querySelectorAll("tr")].slice(1).forEach((tr, i) => tr.lastChild.className = "n " + (s.checks[i].ok === true ? "ok" : s.checks[i].ok === false ? "bad" : "warn"));
+    out.append(el("div", { className: "row" }, sec));
+    if (st) out.append(el("div", { className: "row" }, card("Parts", table(["Part", "State"], st.parts.map(x => [x.label, x.ok ? "ok" : x.problem])))));
+    const ev = await api("/v1/evals").catch(() => null);
+    if (ev) {
+      const last = ev.items[0];
+      const runBtn = el("button", { textContent: ev.running ? "Running " + ev.running.done + "/" + ev.running.total : "Run model tests (local)", disabled: !!ev.running });
+      runBtn.onclick = async () => { runBtn.disabled = true; await fetch($("base").value.replace(/\/$/, "") + "/v1/evals/run", { method: "POST", headers: { Authorization: "Bearer " + $("tok").value, "Content-Type": "application/json" }, body: "{}" }); load(); };
+      const frac = (a, b) => a + "/" + b;
+      const kids = [runBtn, el("div", { className: "mut", textContent: last ? "Last run " + last.finished : "No runs yet." })];
+      if (last) {
+        kids.push(table(["Model", "Pass", "Right tool", "No fail", "Replied", "Steps", "Secs", "Tokens"], last.models.map(m => [m.profile, frac(m.pass, m.cases), frac(m.right_tool, m.scored), frac(m.no_failed, m.cases), frac(m.replied, m.cases), m.avg_steps, m.avg_secs, num(m.tokens)])));
+        kids.push(table(["Model / skill", "Pass", "Right tool", "Secs"], last.skills.map(m => [m.profile + " / " + m.skill, frac(m.pass, m.cases), frac(m.right_tool, m.scored), m.avg_secs])));
+      }
+      const c = card("Model tests", ...kids); c.classList.add("wide");
+      out.append(el("div", { className: "row" }, c));
+    }
+    out.append(el("div", { className: "mut", textContent: u.assumptions.note }));
+  } catch (e) { $("err").textContent = String(e.message || e); }
+}
+$("go").onclick = load; $("days").onchange = load;
+if ($("tok").value) load();
+setInterval(() => { if ($("tok").value) load(); }, 60000);
+</script>

@@ -1,0 +1,38 @@
+id: email
+version: 0.1.0
+requires_core: ">=0.1"
+summary: Your Gmail - recent and unread mail, search, read one mail, a short inbox summary, drafts and replies; sending always asks first.
+words: [email, emails, e-mail, gmail, inbox, unread mail, my mail]
+needs:
+  network: [gmail.googleapis.com]
+  secrets: []
+  oauth: gmail                      # sign-in kept by the core; Settings, Integrations has the Connect button
+tools:
+  - name: inbox
+    tags: [reads]
+    autonomy: auto
+  - name: search
+    tags: [reads]
+    autonomy: auto
+  - name: read
+    tags: [reads]
+    autonomy: auto
+  - name: summarize_inbox
+    tags: [reads]
+    autonomy: auto
+  - name: draft
+    tags: [writes]                  # stays in your Drafts; nothing leaves the mailbox
+    autonomy: auto
+    undo: delete_draft
+  - name: reply_draft
+    tags: [writes]
+    autonomy: auto
+    undo: delete_draft
+  - name: send
+    tags: [sends, always_ask]       # every send is a card showing the exact mail; no setting makes it auto
+    autonomy: ask
+  - name: delete_draft              # the undo of draft and reply_draft; called by the model it asks first
+    tags: [deletes]
+    autonomy: ask
+runtime:
+  builtin: core   # src/email.rs; the core makes the calls and keeps the token

@@ -1,0 +1,18 @@
+{
+  "about": "Model tests (docs/12). Each case is one request. expect: the tools a good answer uses (plugin.tool, a plugin name for any of its tools, or a core tool); [] = no tool should run; left out = not scored. may_fail: a failed tool only warns (needs a sign-in or the network). chat: cases with the same chat name share one chat, in order. The smoke test's ten requests are built in (src/eval.rs). Keep cases free of lasting changes: no memory writes, no calendar edits, no music playing; reminders and alarms are cancelled after the run.",
+  "cases": [
+    { "id": "weather-tomorrow", "skill": "weather", "text": "Will it rain in Vancouver tomorrow?", "expect": ["weather.now"] },
+    { "id": "files-list", "skill": "files", "text": "What files do I have in my files folder?", "expect": ["files.list", "files.search"] },
+    { "id": "web-fetch", "skill": "web", "text": "Fetch https://example.com and tell me the title of the page.", "expect": ["web.fetch", "web.links"], "may_fail": true },
+    { "id": "alarm-set", "skill": "reminders", "text": "Wake me up at 6:30 tomorrow morning with an alarm.", "expect": ["scheduler.create_alarm", "scheduler.create_alarms"], "chat": "alarm" },
+    { "id": "alarm-cancel", "skill": "reminders", "text": "Actually, cancel that alarm.", "expect": ["scheduler.cancel_job"], "chat": "alarm" },
+    { "id": "alarms-list", "skill": "reminders", "text": "What alarms do I have set?", "expect": ["scheduler.list_jobs"] },
+    { "id": "calendar-find", "skill": "calendar", "text": "When is my next dentist appointment?", "expect": ["calendar.find_events", "calendar.list_events"] },
+    { "id": "location-now", "skill": "location", "text": "Where am I right now?", "expect": ["location.where_now"] },
+    { "id": "health-sleep", "skill": "health", "text": "How did I sleep last night?", "expect": ["health.summary", "google-health.data"], "may_fail": true },
+    { "id": "music-search", "skill": "music", "text": "Find the song Espresso by Sabrina Carpenter on Spotify, but do not play it.", "expect": ["spotify.search"], "may_fail": true },
+    { "id": "workouts-count", "skill": "fitness", "text": "How many workouts have I logged in Hevy?", "expect": ["hevy.workout_count", "hevy.workouts"], "may_fail": true },
+    { "id": "computers-list", "skill": "computers", "text": "Which of my computers are connected right now?", "expect": ["computers.list_devices"], "may_fail": true },
+    { "id": "chat-joke", "skill": "chat", "text": "Tell me a short joke.", "expect": [] }
+  ]
+}

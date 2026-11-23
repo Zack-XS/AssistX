@@ -1,0 +1,14 @@
+id: weather
+version: 0.2.0
+requires_core: ">=0.1"
+summary: Current weather and a three day outlook for a named place.
+words: ["weather", "rain", "raining", "temperature", "forecast", "sunny", "snow", "umbrella", "cold outside", "hot outside"]  # the user's own words that load this plugin at once (quick commands)
+needs:
+  network: [geocoding-api.open-meteo.com, api.open-meteo.com]
+  secrets: []
+tools:
+  - name: now
+    tags: [reads]
+    autonomy: auto
+runtime:
+  builtin: rust   # src/plugins/weather.rs

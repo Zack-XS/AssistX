@@ -1,0 +1,28 @@
+id: hevy
+version: 0.1.0
+requires_core: ">=0.1"
+summary: Your Hevy workout log - recent workouts, routines, exercises; log a finished workout.
+needs:
+  network: [api.hevyapp.com]
+  secrets: [HEVY_API_KEY]           # your Hevy API key (needs Hevy Pro); kept by the core, never shown to the model
+tools:
+  - name: workouts
+    tags: [reads]
+    autonomy: auto
+  - name: workout
+    tags: [reads]
+    autonomy: auto
+  - name: workout_count
+    tags: [reads]
+    autonomy: auto
+  - name: routines
+    tags: [reads]
+    autonomy: auto
+  - name: exercise_templates
+    tags: [reads]
+    autonomy: auto
+  - name: log_workout
+    tags: [writes]
+    autonomy: ask                   # Hevy's API has no delete, so this cannot be undone
+runtime:
+  builtin: core   # src/hevy.rs; the core makes the calls and keeps the key

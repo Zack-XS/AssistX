@@ -1,0 +1,43 @@
+id: files
+version: 0.2.0
+requires_core: ">=0.1"
+summary: Browse, read, write, move and find files inside one allowed folder.
+needs:
+  network: []
+  secrets: []
+  paths: [$AGENT_FILES_ROOT]   # the only folder the sandbox lets this plugin touch
+tools:
+  - name: list
+    tags: [reads]
+    autonomy: auto
+  - name: read
+    tags: [reads]
+    autonomy: auto
+  - name: search
+    tags: [reads]
+    autonomy: auto
+  - name: write
+    tags: [writes]
+    autonomy: ask
+    undo: restore
+  - name: mkdir
+    tags: [writes]
+    autonomy: ask
+    undo: rmdir_empty
+  - name: move
+    tags: [writes]
+    autonomy: ask
+    undo: move_back
+  # Undo tools. Called by the core with {args, result} of the action being undone.
+  - name: restore
+    tags: [writes]
+    autonomy: ask
+  - name: rmdir_empty
+    tags: [writes]
+    autonomy: ask
+  - name: move_back
+    tags: [writes]
+    autonomy: ask
+# No delete tool on purpose.
+runtime:
+  builtin: rust   # src/plugins/files.rs

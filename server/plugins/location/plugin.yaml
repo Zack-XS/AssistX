@@ -1,0 +1,30 @@
+id: location
+version: 0.1.0
+requires_core: ">=0.1"
+summary: Where the user is and has been - places they stay or visit often, named by them or by OpenStreetMap.
+words: ["travel time", "how far", "how long to get", "how long will it take", "when should i leave", "drive to", "walk to"]  # quick commands
+needs:
+  network: []          # the core itself asks nominatim.openstreetmap.org for place names and router.project-osrm.org for travel times; this plugin has no network
+  secrets: []
+tools:
+  - name: where_now
+    tags: [reads]
+    autonomy: auto
+  - name: history
+    tags: [reads]
+    autonomy: auto
+  - name: places
+    tags: [reads]
+    autonomy: auto
+  - name: name_place
+    tags: [writes]
+    autonomy: auto
+    undo: restore_place_name
+  - name: restore_place_name
+    tags: [writes]
+    autonomy: auto
+  - name: travel_time
+    tags: [reads]
+    autonomy: auto
+runtime:
+  builtin: core   # src/location.rs; the phone sends points, the core finds stays and places

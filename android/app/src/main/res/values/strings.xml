@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Long-press the app icon: jump straight to the Plan tab. -->
+    <string name="sc_calendar">Calendar</string>
+    <string name="sc_alarms">Alarms</string>
+    <string name="sc_new_event">New event</string>
+    <string name="sc_new_alarm">New alarm</string>
+    <!-- Quick settings tiles. -->
+    <string name="tile_talk">Talk</string>
+    <string name="tile_chat">New chat</string>
+</resources>

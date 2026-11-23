@@ -1,0 +1,45 @@
+id: calendar
+version: 0.1.0
+requires_core: ">=0.1"
+summary: The user's calendar - see, add, move and delete events, repeats, and reminders that can ring.
+words: ["calendar", "meeting", "meetings", "appointment", "appointments", "event", "events", "schedule"]  # the user's own words that load this plugin at once (quick commands)
+needs:
+  network: []
+  secrets: []
+tools:
+  - name: list_events
+    tags: [reads]
+    autonomy: auto
+  - name: find_events
+    tags: [reads]
+    autonomy: auto
+  - name: get_event
+    tags: [reads]
+    autonomy: auto
+  - name: add_event
+    tags: [writes]
+    autonomy: auto
+    undo: undo_add_event
+  - name: undo_add_event
+    tags: [writes]
+    autonomy: auto
+  - name: update_event
+    tags: [writes]
+    autonomy: auto
+    undo: restore_event
+  - name: skip_occurrence
+    tags: [writes]
+    autonomy: auto
+    undo: unskip_occurrence
+  - name: unskip_occurrence
+    tags: [writes]
+    autonomy: auto
+  - name: delete_event
+    tags: [writes, deletes]
+    autonomy: ask
+    undo: restore_event
+  - name: restore_event
+    tags: [writes]
+    autonomy: auto
+runtime:
+  builtin: core   # src/calendar.rs; events live in the database, reminders are scheduler jobs

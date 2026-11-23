@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The one folder the camera app may write a photo into (read on the phone, then deleted). -->
+<paths>
+    <cache-path name="photos" path="photos/" />
+</paths>

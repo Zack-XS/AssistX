@@ -1,0 +1,95 @@
+id: scheduler
+version: 0.6.0
+requires_core: ">=0.1"
+summary: Reminders (by time or when you arrive at or leave a place), repeating jobs, alarms that ring, and tasks that start the assistant later to work on its own and report.
+words: ["remind", "reminder", "reminders", "alarm", "alarms", "timer", "wake me", "snooze", "when i get home", "when i arrive", "when i leave", "when i get to"]  # the user's own words that load this plugin at once (quick commands)
+needs:
+  network: []
+  secrets: []
+tools:
+  - name: create_reminder
+    tags: [writes]
+    autonomy: auto
+    undo: cancel_job_undo
+  - name: create_recurring
+    tags: [writes]
+    autonomy: ask
+  - name: schedule_task
+    tags: [writes]
+    autonomy: auto
+    undo: cancel_job_undo
+  - name: schedule_recurring_task
+    tags: [writes]
+    autonomy: ask
+    undo: cancel_job_undo
+  - name: run_task_on_notification
+    tags: [writes]
+    autonomy: ask
+    undo: cancel_job_undo
+  - name: remind_at_place
+    tags: [writes]
+    autonomy: auto
+    undo: cancel_job_undo
+  - name: run_task_at_place
+    tags: [writes]
+    autonomy: ask
+    undo: cancel_job_undo
+  - name: skip_day
+    tags: [writes]
+    autonomy: auto
+    undo: unskip_day
+  - name: unskip_day
+    tags: [writes]
+    autonomy: auto
+  - name: known_apps
+    tags: [reads]
+    autonomy: auto
+  - name: pause_task
+    tags: [writes]
+    autonomy: auto
+    undo: resume_task
+  - name: resume_task
+    tags: [writes]
+    autonomy: auto
+  - name: run_task_now
+    tags: [writes]
+    autonomy: auto
+  - name: create_alarm
+    tags: [writes]
+    autonomy: auto
+    undo: cancel_job_undo
+  - name: create_alarms
+    tags: [writes]
+    autonomy: auto
+    undo: cancel_job_undo
+  - name: cancel_job_undo
+    tags: [writes]
+    autonomy: auto
+  - name: update_job
+    tags: [writes]
+    autonomy: auto
+    undo: restore_job
+  - name: restore_job
+    tags: [writes]
+    autonomy: auto
+  - name: list_jobs
+    tags: [reads]
+    autonomy: auto
+  - name: list_sounds
+    tags: [reads]
+    autonomy: auto
+  - name: snooze_alarm
+    tags: [writes]
+    autonomy: auto
+  - name: dismiss_alarm
+    tags: [writes]
+    autonomy: auto
+  - name: cancel_job
+    tags: [writes]
+    autonomy: auto
+    undo: uncancel_job
+  - name: uncancel_job
+    tags: [writes]
+    autonomy: auto
+runtime:
+  builtin: core   # the core timer runs jobs; these tools write them (docs/00, Scheduler)

@@ -1,0 +1,80 @@
+id: spotify
+version: 0.6.0
+requires_core: ">=0.1"
+summary: Music. Any music word (play, pause, resume, skip, louder, shuffle, like this song, what is playing) means this. Plays songs, artists, albums, playlists and liked songs on the user's Spotify devices.
+words: ["music", "song", "songs", "spotify", "play", "playing", "pause", "unpause", "resume", "skip", "next song", "previous song", "louder", "quieter", "volume", "shuffle", "playlist", "album"]  # the user's own words that load this plugin at once (quick commands)
+needs:
+  network: [api.spotify.com]
+  secrets: []
+  oauth: spotify                    # sign-in kept by the core; Settings, Integrations has the Connect button
+tools:
+  - name: now
+    tags: [reads]
+    autonomy: auto
+  - name: devices
+    tags: [reads]
+    autonomy: auto
+  - name: search
+    tags: [reads]
+    autonomy: auto
+  - name: info
+    tags: [reads]
+    autonomy: auto
+  - name: play_liked
+    tags: [writes]
+    autonomy: auto
+    undo: restore_playback
+  - name: play
+    tags: [writes]
+    autonomy: ask
+    undo: pause
+  - name: pause
+    tags: [writes]
+    autonomy: ask
+    undo: play
+  - name: next
+    tags: [writes]
+    autonomy: ask
+    undo: previous
+  - name: previous
+    tags: [writes]
+    autonomy: ask
+  - name: volume
+    tags: [writes]
+    autonomy: ask
+    undo: restore_volume
+  - name: restore_volume
+    tags: [writes]
+    autonomy: ask
+  - name: play_uri
+    tags: [writes]
+    autonomy: ask
+  - name: play_song
+    tags: [writes]
+    autonomy: ask
+    undo: restore_playback
+  - name: restore_playback
+    tags: [writes]
+    autonomy: ask
+  - name: transfer
+    tags: [writes]
+    autonomy: ask
+  - name: shuffle
+    tags: [writes]
+    autonomy: auto
+  - name: repeat
+    tags: [writes]
+    autonomy: auto
+  - name: queue
+    tags: [writes]
+    autonomy: auto
+  - name: like
+    tags: [writes]
+    autonomy: auto
+    undo: unlike
+  - name: unlike
+    tags: [writes]
+    autonomy: auto
+# Reads run on their own; anything that changes playback asks first. The owner may loosen that with PATCH /v1/config.
+runtime:
+  builtin: core   # src/spotify.rs; the core makes the calls and keeps the token

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="calendar" android:enabled="true" android:icon="@drawable/ic_sc_calendar"
+        android:shortcutShortLabel="@string/sc_calendar" android:shortcutLongLabel="@string/sc_calendar">
+        <intent android:action="app.assistant.OPEN" android:targetPackage="app.assistant" android:targetClass="app.assistant.MainActivity">
+            <extra android:name="open" android:value="calendar" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="alarms" android:enabled="true" android:icon="@drawable/ic_sc_alarm"
+        android:shortcutShortLabel="@string/sc_alarms" android:shortcutLongLabel="@string/sc_alarms">
+        <intent android:action="app.assistant.OPEN" android:targetPackage="app.assistant" android:targetClass="app.assistant.MainActivity">
+            <extra android:name="open" android:value="alarms" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="new-event" android:enabled="true" android:icon="@drawable/ic_sc_add_event"
+        android:shortcutShortLabel="@string/sc_new_event" android:shortcutLongLabel="@string/sc_new_event">
+        <intent android:action="app.assistant.OPEN" android:targetPackage="app.assistant" android:targetClass="app.assistant.MainActivity">
+            <extra android:name="open" android:value="new-event" />
+        </intent>
+    </shortcut>
+    <shortcut android:shortcutId="new-alarm" android:enabled="true" android:icon="@drawable/ic_sc_add_alarm"
+        android:shortcutShortLabel="@string/sc_new_alarm" android:shortcutLongLabel="@string/sc_new_alarm">
+        <intent android:action="app.assistant.OPEN" android:targetPackage="app.assistant" android:targetClass="app.assistant.MainActivity">
+            <extra android:name="open" android:value="new-alarm" />
+        </intent>
+    </shortcut>
+</shortcuts>

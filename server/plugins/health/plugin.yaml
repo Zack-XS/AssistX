@@ -1,0 +1,13 @@
+id: health
+version: 0.1.0
+requires_core: ">=0.1"
+summary: The user's body numbers per day from their phone - steps, sleep, heart rate, weight, workouts.
+needs:
+  network: []          # the phone sends the numbers to the core; this plugin has no network
+  secrets: []
+tools:
+  - name: summary
+    tags: [reads]
+    autonomy: auto
+runtime:
+  builtin: core   # src/health.rs; the Android app sends daily totals, the core keeps them

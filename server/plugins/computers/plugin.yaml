@@ -1,0 +1,43 @@
+id: computers
+version: 0.1.0
+requires_core: ">=0.1"
+summary: The user's own computers (Mac, Windows, Linux) running agent-node - list, read, search, copy and move their files.
+needs:
+  network: []          # computers dial in to the server; nothing goes out
+  secrets: []
+tools:
+  - name: list_devices
+    tags: [reads]
+    autonomy: auto
+  - name: info
+    tags: [reads]
+    autonomy: auto
+  - name: list
+    tags: [reads]
+    autonomy: auto
+  - name: stat
+    tags: [reads]
+    autonomy: auto
+  - name: read
+    tags: [reads]
+    autonomy: auto
+  - name: search
+    tags: [reads]
+    autonomy: auto
+  - name: write
+    tags: [writes]
+    autonomy: ask
+  - name: mkdir
+    tags: [writes]
+    autonomy: ask
+  - name: copy
+    tags: [writes]
+    autonomy: ask
+  - name: move
+    tags: [writes]
+    autonomy: ask
+  - name: delete
+    tags: [writes, deletes]
+    autonomy: ask
+runtime:
+  builtin: core   # src/nodes.rs; the computer runs the tool itself, inside its own allowed folders

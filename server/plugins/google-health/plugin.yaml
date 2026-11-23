@@ -1,0 +1,18 @@
+id: google-health
+version: 0.1.0
+requires_core: ">=0.1"
+summary: Your Fitbit and Pixel Watch data via Google - steps, heart rate, sleep, exercise, weight and more. Read only.
+needs:
+  network: [health.googleapis.com]
+  secrets: []
+  oauth: google-health              # sign-in kept by the core; Settings, Integrations has the Connect button
+tools:
+  - name: data
+    tags: [reads]
+    autonomy: auto
+  - name: daily_summary
+    tags: [reads]
+    autonomy: auto
+# Read only. Nothing here writes to Google Health.
+runtime:
+  builtin: core   # src/google_health.rs; the core makes the calls and keeps the token

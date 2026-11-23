@@ -1,0 +1,54 @@
+id: lists
+version: 0.1.0
+requires_core: ">=0.1"
+summary: The user's lists - shopping, to-do or any name; add, tick off, remove and share items.
+words: ["shopping list", "to-do", "todo", "to do list", "to-do list", "grocery", "groceries", "my list", "add to my list", "on my list", "checklist", "lists"]  # the user's own words that load this plugin at once (quick commands)
+needs:
+  network: []
+  secrets: []
+tools:
+  - name: list_lists
+    tags: [reads]
+    autonomy: auto
+  - name: show_list
+    tags: [reads]
+    autonomy: auto
+  - name: add_items
+    tags: [writes]
+    autonomy: auto
+    undo: undo_add_items
+  - name: undo_add_items
+    tags: [writes]
+    autonomy: auto
+  - name: check_items
+    tags: [writes]
+    autonomy: auto
+    undo: uncheck_items
+  - name: uncheck_items
+    tags: [writes]
+    autonomy: auto
+    undo: check_items
+  - name: remove_items
+    tags: [writes]
+    autonomy: auto
+    undo: restore_items
+  - name: clear_checked
+    tags: [writes]
+    autonomy: auto
+    undo: restore_items
+  - name: restore_items
+    tags: [writes]
+    autonomy: auto
+  - name: rename_list
+    tags: [writes]
+    autonomy: auto
+    undo: restore_list
+  - name: delete_list
+    tags: [writes, deletes]
+    autonomy: ask
+    undo: restore_list
+  - name: restore_list
+    tags: [writes]
+    autonomy: auto
+runtime:
+  builtin: core   # src/lists.rs; lists and items live in the database

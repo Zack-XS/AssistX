@@ -382,7 +382,7 @@ class MainActivity : Activity() {
 
     /** Window colour behind the page and dark or light system bar icons (for when the bars show). */
     private fun setBars(dark: Boolean) {
-        window.decorView.setBackgroundColor(if (dark) Color.BLACK else Color.parseColor("#E9E9ED"))
+        window.decorView.setBackgroundColor(if (dark) Color.BLACK else Color.parseColor("#FAFAFA"))
         val mask = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
         window.insetsController?.setSystemBarsAppearance(if (dark) 0 else mask, mask)
     }

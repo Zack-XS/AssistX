@@ -1,0 +1,10 @@
+#!/bin/sh
+# Blocks a commit that holds private data. Turn on once per clone:
+#   git config core.hooksPath .githooks
+# Rules: docs/security/private-data.md
+root=$(git rev-parse --show-toplevel) || exit 1
+export PATH="$HOME/.cargo/bin:$PATH"
+if ! cargo run -q -j1 --manifest-path "$root/tools/private-data-check/Cargo.toml"; then
+  echo "Commit blocked: private data found. See docs/security/private-data.md" >&2
+  exit 1
+fi

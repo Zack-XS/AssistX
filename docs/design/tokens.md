@@ -1,7 +1,7 @@
 ---
 title: Tokens
 description: One table of design values for the app page, Android and the docs site.
-order: 10
+order: 11
 ---
 
 # Tokens
@@ -24,21 +24,21 @@ Colour cells are light / dark. Sizes are px on the web (rem for type: px ÷ 16),
 
 | Group | Token | Value | Use |
 |---|---|---|---|
-| Surface | `page` | `#E9E9ED` / `#000000` | Back of every screen |
-| Surface | `card` | `#FFFFFF` / `#141417` | Cards, rows, tab bar |
-| Surface | `raised` | `#FFFFFF` / `#1C1C21` | Sheets and menus above cards |
-| Surface | `field` | `#F2F2F5` / `#1C1C21` | Inputs, segments, chips, tracks |
-| Surface | `bubble` | `#E7E7EB` / `#1F1F24` | The assistant's chat bubble |
-| Surface | `code` | `#F0F0F4` / `#0B0B0E` | Code blocks |
-| Surface | `line` | `#E3E3E8` / `#26262B` | Dividers and outlines |
-| Surface | `scrim` | `rgba(12,12,16,.32)` / `rgba(0,0,0,.56)` | Behind a sheet |
-| Text | `text` | `#0C0C10` / `#F3F3F6` | Main text |
-| Text | `mute` | `#5E5E68` / `#9B9BA5` | Labels, times, hints |
-| Text | `ink` | `#17171C` / `#F3F3F6` | Main buttons, your bubble |
-| Text | `on-ink` | `#FFFFFF` / `#0C0C10` | Text on `ink` |
-| Accent | `accent` | `#4B57D6` / `#9AA3FF` | The assistant is alive |
-| Accent | `on-accent` | `#FFFFFF` / `#0C0C10` | Text on `accent` |
-| Accent | `accent-soft` | `#4B57D61F` / `#9AA3FF2E` | Quiet fills |
+| Surface | `page` | `#FAFAFA` / `#000000` | Back of every screen |
+| Surface | `card` | `#FFFFFF` / `#111111` | Cards, rows, tab bar |
+| Surface | `raised` | `#FFFFFF` / `#1A1A1A` | Sheets and menus above cards |
+| Surface | `field` | `#F1F1F1` / `#1A1A1A` | Inputs, segments, chips, tracks |
+| Surface | `bubble` | `#EDEDED` / `#1C1C1C` | The assistant's chat bubble |
+| Surface | `code` | `#F4F4F4` / `#0A0A0A` | Code blocks |
+| Surface | `line` | `#E4E4E4` / `#262626` | Dividers and outlines |
+| Surface | `scrim` | `rgba(10,10,10,.32)` / `rgba(0,0,0,.56)` | Behind a sheet |
+| Text | `text` | `#0A0A0A` / `#EDEDED` | Main text |
+| Text | `mute` | `#666666` / `#8F8F8F` | Labels, times, hints |
+| Text | `ink` | `#0A0A0A` / `#EDEDED` | Main buttons, your bubble |
+| Text | `on-ink` | `#FFFFFF` / `#0A0A0A` | Text on `ink` |
+| Accent | `accent` | `#0A0A0A` / `#EDEDED` | Same as `ink`; no coloured accent |
+| Accent | `on-accent` | `#FFFFFF` / `#0A0A0A` | Text on `accent` |
+| Accent | `accent-soft` | `#0A0A0A0F` / `#EDEDED1A` | Quiet fills |
 | State | `ok` | `#157A42` / `#43C076` | Done, good, connected |
 | State | `warn` | `#8A5D00` / `#E2A826` | Needs a look soon |
 | State | `bad` | `#B8291F` / `#FF6B63` | Error, danger, live, badge dot |
@@ -56,6 +56,7 @@ Colour cells are light / dark. Sizes are px on the web (rem for type: px ÷ 16),
 | Type | `type-body` | 16/23 400 | Normal text |
 | Type | `type-small` | 14/20 400 | Second lines, tight buttons |
 | Type | `type-caption` | 12/16 500 | Tab labels, times |
+| Haptic | `haptic-tick`, `-click`, `-confirm`, `-reject`, `-heavy`, `-attention` | Android constants, see [Haptics](haptics.md#the-haptic-set) | One meaning each; page calls `hap(name)` |
 | Type | `type-mono` | 13/19 400 | Code, tool steps |
 | Type | `type-number` | 44/48 500 | Big numbers: timers, clock face |
 | Font | `font-sans`, `font-mono` | Inter + system; ui-monospace, Menlo | |
@@ -73,7 +74,7 @@ Weights: 400, 500, 600, 700. Four, no more.
 | Thing | Doc 16 | Now |
 |---|---|---|
 | `mute`, `ok`, `warn`, `bad` (light) | `#5e5e68`, `#157a42`, `#8a5d00`, `#b8291f` | Same: 16's darker values (they fix contrast) |
-| Accent | none | `accent` (above) |
+| Accent | none | none: `accent` equals `ink` (monochrome) |
 | Space | 4 8 12 16 20 24 32 | `space-*` (adds 2, 6, 48) |
 | Radius | 8 12 16 22 999 | `radius-*` (6 10 14 20 22 30 999) |
 | Type | adds 18 and 44 | 17 for headlines; 44 is `type-number` |

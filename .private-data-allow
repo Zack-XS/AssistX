@@ -1,0 +1,19 @@
+# Allow list for tools/private-data-check.
+# One entry per line: `path` (whole file), `dir/` (whole folder), or `path: text` (one value).
+# Every entry needs a reason line above it. Keep this list short.
+# Rules: docs/security/private-data.md
+
+# The checker's own tests use fake IPs, emails, tokens and keys on purpose.
+tools/private-data-check/src/main.rs
+
+# Secret-scrubber tests: fake keys that the scrubber must catch.
+server/src/util.rs: sk-abcd
+docs-site/src/check.rs: sk-abcd
+
+# Host-header test: a made-up Tailscale address.
+server/src/config.rs: 100.64.0.7
+
+# Email parser tests: made-up addresses on x.com / y.com / z.com / me.com.
+# New tests should use example.com instead.
+server/src/email.rs
+server/tests/golden.rs

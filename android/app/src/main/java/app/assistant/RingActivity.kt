@@ -28,8 +28,13 @@ class RingActivity : Activity() {
             text = label
             textSize = 20f
             isAllCaps = false
-            setTextColor(if (solid) Color.BLACK else Color.WHITE)
-            background = GradientDrawable().apply { cornerRadius = 40 * dp; setColor(if (solid) Color.WHITE else Color.parseColor("#2A2A30")) }
+            setTextColor(if (solid) Color.parseColor("#0A0A0A") else Color.parseColor("#EDEDED"))
+            background = GradientDrawable().apply {
+                cornerRadius = 40 * dp
+                // Design tokens (dark): ink #EDEDED, raised #1A1A1A, line #262626.
+                setColor(if (solid) Color.parseColor("#EDEDED") else Color.parseColor("#1A1A1A"))
+                if (!solid) setStroke((1 * dp).toInt().coerceAtLeast(1), Color.parseColor("#262626"))
+            }
             setPadding((24 * dp).toInt(), (18 * dp).toInt(), (24 * dp).toInt(), (18 * dp).toInt())
             contentDescription = label
             setOnClickListener { go() }
@@ -43,14 +48,14 @@ class RingActivity : Activity() {
         box.addView(TextView(this).apply {
             text = LocalTime.now().format(DateTimeFormatter.ofPattern("H:mm"))
             textSize = 84f
-            setTextColor(Color.WHITE)
+            setTextColor(Color.parseColor("#EDEDED"))
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
             gravity = Gravity.CENTER
         })
         box.addView(TextView(this).apply {
             text = now.optString("text", "Alarm")
             textSize = 24f
-            setTextColor(Color.parseColor("#C8C8D0"))
+            setTextColor(Color.parseColor("#8F8F8F"))
             gravity = Gravity.CENTER
             setPadding(0, (8 * dp).toInt(), 0, (56 * dp).toInt())
         })

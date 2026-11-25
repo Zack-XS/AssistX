@@ -1,0 +1,49 @@
+# Release: runs on each push to production.
+# Checks first, then a changelog from commit messages, a tag and a GitHub release.
+# The APK and server deploy still ship from the Mac (assistantx-app-release, assistantx-deploy).
+# See docs/contributing/branches.md.
+name: release
+
+on:
+  push:
+    branches: [production]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
+  release:
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Changelog since the last release
+        id: notes
+        run: |
+          last=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+          range=${last:+$last..HEAD}
+          {
+            echo "## Changes"
+            echo
+            git log --no-merges --pretty='- %s' $range
+          } > CHANGELOG-release.md
+          n=$(git tag --list "v$(date -u +%Y.%m.%d)-*" | wc -l | tr -d ' ')
+          echo "tag=v$(date -u +%Y.%m.%d)-$((n + 1))" >> "$GITHUB_OUTPUT"
+          cat CHANGELOG-release.md
+      - name: Tag and publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.notes.outputs.tag }}" \
+            --target "$GITHUB_SHA" \
+            --title "${{ steps.notes.outputs.tag }}" \
+            --notes-file CHANGELOG-release.md

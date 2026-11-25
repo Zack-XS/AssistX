@@ -1,0 +1,55 @@
+# Publishes the docs site (docs-site/out) to GitHub Pages.
+# Runs on every push to production, and by hand from the Actions tab.
+# One-time setup: repo Settings → Pages → Source: "GitHub Actions".
+name: pages
+
+on:
+  push:
+    branches: [production]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deploy at a time; a newer push replaces a waiting one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: docs-site
+      - name: Check docs
+        working-directory: docs-site
+        run: cargo run -j1 -- check
+      - name: Refresh GitHub activity for the home page
+        working-directory: docs-site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # If GitHub's API fails, the home page just shows its empty states.
+        run: cargo run -j1 -- fetch || echo "fetch failed; the home page will show empty GitHub sections"
+      - name: Build site
+        working-directory: docs-site
+        run: cargo run -j1 -- build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

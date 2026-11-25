@@ -1,10 +1,12 @@
 ---
 title: Roadmap
 description: What is done, what is next, and what is still open.
-order: 9
+order: 0
 ---
 
 # Roadmap
+
+One page: what is built, where we are, the road ahead, and the choices still to make. The site draws it as a road.
 
 - [Done](done.md): what is built.
 - [Next](next.md): known gaps and work not built yet.

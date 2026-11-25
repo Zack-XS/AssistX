@@ -11,3 +11,4 @@ The assistant can read mail, run your calendar, spend money and remember private
 - [Threat model](threat-model.md): what we protect, who attacks, and the defenses (T1 to T15).
 - [Safety rules](safety-rules.md): the rules code, plugins and front ends must keep.
 - [Reporting a problem](reporting.md): private contact, scope and safe harbor.
+- [Private data](private-data.md): what must never be committed, tests included, and the check that stops it.

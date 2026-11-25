@@ -1,7 +1,7 @@
 ---
 title: Icons
 description: One soft, round icon set, sizes, states and animated icons.
-order: 6
+order: 7
 ---
 
 # Icons
@@ -20,7 +20,7 @@ Do not mix sets. If Lucide lacks an icon, draw one on the same grid with the sam
 | Stroke | 1.9 (2.4 when active) |
 | Ends and joins | round |
 | Fill | none, `currentColor` stroke; small dots may be filled |
-| Colour | inherits text colour: `text`, `mute`, `ink` or `accent` |
+| Colour | inherits text colour: `text`, `mute` or `ink` |
 
 ## Sizes
 

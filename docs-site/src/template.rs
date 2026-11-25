@@ -8,6 +8,37 @@ fn esc(s: &str) -> String {
         .replace('>', "&gt;")
 }
 
+/// Runs in `<head>` before the CSS paints, so a saved light/dark choice shows
+/// at once with no flash. Shared by the home page and every docs page.
+/// For `file://`, where each page has its own storage, the choice also rides
+/// along in `?theme=` on links and in `window.name`.
+pub const THEME_BOOT: &str = r#"<script>(function(){var v,m=/[?&]theme=(light|dark)/.exec(location.search)||/ax-theme=(light|dark)/.exec(window.name||'');try{v=localStorage.getItem('assistx-theme')||localStorage.getItem('assistx-docs-theme');}catch(e){}if((location.protocol==='file:'&&m)||(v!=='light'&&v!=='dark'))v=m&&m[1];var r=document.documentElement;if(v==='light'||v==='dark')r.setAttribute('data-theme',v);r.classList.add('js');if(!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches))r.classList.add('motion');})();</script>"#;
+
+/// The one top bar used by the home page and every docs page, so the two feel
+/// like one site. `current` is "home" or "docs". `menu_svg` adds the phone
+/// menu button that opens the docs sidebar.
+pub fn site_nav(root: &str, current: &str, sun_svg: &str, moon_svg: &str, menu_svg: Option<&str>) -> String {
+    let home_cur = if current == "home" { r#" aria-current="page""# } else { "" };
+    let docs_cur = if current == "docs" { r#" aria-current="page""# } else { "" };
+    let menu = match menu_svg {
+        Some(svg) => format!(r#"<button class="iconbtn menu-btn" type="button" aria-label="Open navigation"><span class="icon">{svg}</span></button>"#),
+        None => String::new(),
+    };
+    format!(
+        r#"<header class="hm-nav">
+  {menu}<a class="hm-logo" href="{root}index.html"><span class="hm-mark" aria-hidden="true"></span>AssistX</a>
+  <nav aria-label="Main">
+    <a href="{root}index.html"{home_cur}>Home</a>
+    <a href="{root}docs.html"{docs_cur}>Docs</a>
+    <a class="gh" href="{repo}" target="_blank" rel="noopener noreferrer" aria-label="GitHub">{gh}<span>GitHub</span></a>
+  </nav>
+  <button class="iconbtn theme-btn" type="button" aria-label="Switch light or dark"><span class="icon sun">{sun_svg}</span><span class="icon moon">{moon_svg}</span></button>
+</header>"#,
+        repo = crate::github::REPO_URL,
+        gh = crate::home::GH_MARK,
+    )
+}
+
 /// A full HTML page. `root` is the path from this page to the site root
 /// (e.g. "" for index.html, "../" for a page one folder deep).
 pub fn page(
@@ -32,20 +63,12 @@ pub fn page(
 <title>{t} · AssistX docs</title>
 <link rel="stylesheet" href="{root}assets/tokens.css">
 <link rel="stylesheet" href="{root}assets/main.css">
+{boot}
 </head>
-<body>
+<body class="docs">
 <a class="skip" href="#main">Skip to content</a>
-<header class="topbar">
-  <button class="menu-btn" type="button" aria-label="Open navigation"><span class="icon">{menu_svg}</span> Menu</button>
-  <a class="brand" href="{root}index.html">AssistX docs</a>
-</header>
+{nav}
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-head">
-    <a class="brand" href="{root}index.html">AssistX docs</a>
-    <button class="iconbtn theme-btn" type="button" aria-label="Toggle theme">
-      <span class="icon sun">{sun_svg}</span><span class="icon moon">{moon_svg}</span>
-    </button>
-  </div>
   <div class="search">
     <label class="skip" for="q">Search</label>
     <input id="q" type="search" placeholder="Search docs…" autocomplete="off" aria-label="Search docs">
@@ -66,9 +89,8 @@ pub fn page(
         t = t,
         d = d,
         root = root,
-        menu_svg = menu_svg,
-        sun_svg = sun_svg,
-        moon_svg = moon_svg,
+        boot = THEME_BOOT,
+        nav = site_nav(root, "docs", sun_svg, moon_svg, Some(menu_svg)),
         sidebar = sidebar,
         body = body,
     )
@@ -87,7 +109,7 @@ pub fn render_sidebar(
     // Home link
     let cls = if home_active { "pl active" } else { "pl" };
     out.push_str(&format!(
-        r#"<div class="section"><a class="{cls}" href="{root}index.html">Home</a></div>"#
+        r#"<div class="section"><a class="pl" href="{root}index.html">← AssistX home</a><a class="{cls}" href="{root}docs.html">Docs home</a></div>"#
     ));
     for s in sections {
         let sec_cls = if active == s.index_rel { "stitle active" } else { "stitle" };

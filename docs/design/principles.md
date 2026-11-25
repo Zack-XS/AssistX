@@ -17,7 +17,7 @@ AssistX is a buddy who runs your life. The screen should feel calm, quick and pe
 5. **Motion explains.** Things move to show where they came from and where they went. Nothing moves just to look busy. Every move can be turned off. See [Motion](motion.md).
 6. **Fluid across sizes.** One design that flows from a small phone to a wide desktop. More room shows more panes, not bigger buttons.
 7. **Smart, but never surprising.** The screen may reorder or suggest based on context. It never moves what is under your finger, and it can always say why. See [Smart UI](smart-ui.md).
-8. **Feel, not just look.** Light haptics and short sounds confirm actions. They are always optional. See [App structure](../android/app-structure.md#sound-effects).
+8. **Feel, not just look.** Light haptics and short sounds confirm actions. They are always optional. See [Haptics](haptics.md) and [App structure](../android/app-structure.md#sound-effects).
 9. **Made by hand.** No stock gradients, no glowing purple, no emoji as icons, no generic card grids. Every value comes from [Tokens](tokens.md).
 10. **Everyone can use it.** Contrast, text size, screen readers and reduced motion are part of the design, not extras. See [Accessibility](accessibility.md).
 11. **One display name.** Screens never hard-code a name. They show one display name the user sets (default "Assistant"), read from one place. The project is AssistX; the app on screen is just "the assistant". See [Code style](../contributing/code-style.md) rule 2.
@@ -26,7 +26,7 @@ AssistX is a buddy who runs your life. The screen should feel calm, quick and pe
 
 | Not this | Do this |
 |---|---|
-| Bright gradients and neon accents | Flat greys with one quiet accent |
+| Bright gradients and neon accents | Black, white and flat greys; no accent hue |
 | Many font sizes and weights | Seven sizes (plus one for big numbers), four weights |
 | Spinners for everything | Show the part that is ready; a calm typing dot for the rest |
 | Pop-ups that block | Sheets and inline cards you can swipe away |

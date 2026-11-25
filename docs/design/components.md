@@ -1,7 +1,7 @@
 ---
 title: Components
 description: Buttons, cards, chat bubbles, lists, sheets, inputs and notices.
-order: 7
+order: 8
 ---
 
 # Components

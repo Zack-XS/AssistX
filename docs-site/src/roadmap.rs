@@ -193,7 +193,7 @@ fn done_visual(body: &str) -> Option<String> {
     let what_col = header_index(&table, "what");
     let state_col = header_index(&table, "state");
 
-    let mut s = open_section("Live: build timeline");
+    let mut s = open_section("Build timeline");
     s.push_str(r#"<div class="rm-timeline"><div class="rm-line"></div>"#);
     for row in &table.rows {
         let step = step_col.and_then(|i| row.get(i)).map(|x| x.as_str()).unwrap_or("");
@@ -240,7 +240,7 @@ fn next_visual(body: &str) -> Option<String> {
     if heads.is_empty() {
         return None;
     }
-    let mut s = open_section("Live: what's next");
+    let mut s = open_section("What's next");
     s.push_str(r#"<div class="rm-next">"#);
     for h in &heads {
         let (title, sub) = split_heading(h);
@@ -264,7 +264,7 @@ fn open_visual(body: &str) -> Option<String> {
     let st_col = header_index(&table, "status");
     let still_open = count_still_open(body);
 
-    let mut s = open_section("Live: decisions");
+    let mut s = open_section("Decisions");
     s.push_str(r#"<div class="rm-legend">"#);
     s.push_str(&legend_item("rm-decided", CHECK_SVG, "Decided"));
     s.push_str(&legend_item("rm-proposed", PENDING_SVG, "Proposed"));
@@ -303,7 +303,7 @@ fn readme_visual(body: &str) -> Option<String> {
     if links.is_empty() {
         return None;
     }
-    let mut s = open_section("Live: roadmap at a glance");
+    let mut s = open_section("Roadmap at a glance");
     s.push_str(r#"<div class="rm-overview">"#);
     for l in &links {
         let (cls, icon) = match l.url.as_str() {
@@ -323,6 +323,349 @@ fn readme_visual(body: &str) -> Option<String> {
     s.push_str(r#"<p class="demo-label">Done is built. Next is known gaps. Open is decisions still needed.</p>"#);
     s.push_str("</section>");
     Some(s)
+}
+
+
+// --- the roadmap board (the Roadmap home page) ---
+
+/// One `## ` section of next.md: its title, short note and bullet count.
+struct Milestone {
+    title: String,
+    items: usize,
+    first: String,
+}
+
+fn milestones(body: &str) -> Vec<Milestone> {
+    let mut out: Vec<Milestone> = Vec::new();
+    for line in body.lines() {
+        let t = line.trim();
+        if t.starts_with("###") {
+            continue;
+        }
+        if let Some(h) = t.strip_prefix("## ") {
+            let (title, _) = split_heading(h);
+            // Short road labels: drop "(...)" and "build order".
+            let title = match title.find(" (") { Some(i) => title[..i].to_string(), None => title };
+            let title = title.replace(" build order", "").trim().to_string();
+            out.push(Milestone { title, items: 0, first: String::new() });
+            continue;
+        }
+        let Some(m) = out.last_mut() else { continue };
+        let item = t.strip_prefix("- ").or_else(|| {
+            let d = t.find(". ")?;
+            t[..d].chars().all(|c| c.is_ascii_digit()).then(|| &t[d + 2..])
+        });
+        if let Some(it) = item {
+            m.items += 1;
+            if m.first.is_empty() {
+                m.first = plain_short(it, 90);
+            }
+        }
+    }
+    out
+}
+
+/// Markdown to short plain text: drop links, bold, code; cut at `max` chars.
+fn plain_short(s: &str, max: usize) -> String {
+    let mut out = String::new();
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '*' | '`' | '[' => {}
+            ']' => {
+                if chars.peek() == Some(&'(') {
+                    for c2 in chars.by_ref() {
+                        if c2 == ')' {
+                            break;
+                        }
+                    }
+                }
+            }
+            _ => out.push(c),
+        }
+    }
+    let out = out.trim().to_string();
+    if out.chars().count() <= max {
+        return out;
+    }
+    let cut: String = out.chars().take(max).collect();
+    let cut = cut.rsplit_once(' ').map(|(a, _)| a).unwrap_or(&cut);
+    format!("{}…", cut.trim_end_matches(|c: char| c == ',' || c == '.' || c == ':'))
+}
+
+struct Step {
+    num: String,
+    label: String,
+    done: bool,
+}
+
+fn steps(done_body: &str) -> Vec<Step> {
+    let Some(table) = tables(done_body)
+        .into_iter()
+        .find(|t| t.header.iter().any(|h| h.eq_ignore_ascii_case("state")))
+    else {
+        return Vec::new();
+    };
+    let sc = header_index(&table, "step");
+    let wc = header_index(&table, "what");
+    let st = header_index(&table, "state");
+    let cell = |row: &Vec<String>, c: Option<usize>| c.and_then(|i| row.get(i)).cloned().unwrap_or_default();
+    table
+        .rows
+        .iter()
+        .map(|r| Step {
+            num: cell(r, sc),
+            label: first_segment(&cell(r, wc)),
+            done: cell(r, st).to_lowercase().contains("done"),
+        })
+        .collect()
+}
+
+fn also_built(done_body: &str) -> Vec<String> {
+    let Some(line) = done_body.lines().find(|l| l.contains("Also built since")) else { return Vec::new() };
+    let Some(rest) = line.split(':').nth(1) else { return Vec::new() };
+    let rest = rest.split(". ").next().unwrap_or(rest);
+    rest.split(',')
+        .map(|x| x.trim().trim_end_matches('.').to_string())
+        .filter(|x| !x.is_empty() && !x.starts_with('['))
+        .map(|x| {
+            let mut c = x.chars();
+            c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
+        })
+        .collect()
+}
+
+struct Decision {
+    num: String,
+    question: String,
+    status: &'static str,
+}
+
+fn decisions(open_body: &str) -> (Vec<Decision>, usize) {
+    let mut out = Vec::new();
+    if let Some(table) = tables(open_body)
+        .into_iter()
+        .find(|t| t.header.iter().any(|h| h.eq_ignore_ascii_case("status")))
+    {
+        let qc = header_index(&table, "question");
+        let sc = header_index(&table, "status");
+        for r in &table.rows {
+            let st = sc.and_then(|i| r.get(i)).map(|x| x.trim().to_lowercase()).unwrap_or_default();
+            out.push(Decision {
+                num: r.first().cloned().unwrap_or_default(),
+                question: qc.and_then(|i| r.get(i)).cloned().unwrap_or_default(),
+                status: match st.as_str() {
+                    "decided" => "decided",
+                    "proposed" => "proposed",
+                    _ => "open",
+                },
+            });
+        }
+    }
+    (out, count_still_open(open_body))
+}
+
+/// Planned milestones from next.md's `| # | Milestone | What it means |` table.
+/// Falls back to the `## ` sections when there is no such table.
+fn planned(next_body: &str) -> Vec<(String, String)> {
+    if let Some(t) = tables(next_body)
+        .into_iter()
+        .find(|t| t.header.iter().any(|h| h.eq_ignore_ascii_case("milestone")))
+    {
+        let mc = header_index(&t, "milestone");
+        let wc = t.header.iter().position(|h| h.to_lowercase().starts_with("what"));
+        return t
+            .rows
+            .iter()
+            .map(|r| {
+                let m = mc.and_then(|i| r.get(i)).cloned().unwrap_or_default();
+                let w = wc.and_then(|i| r.get(i)).cloned().unwrap_or_default();
+                (plain_short(&m, 60), plain_short(&w, 90))
+            })
+            .collect();
+    }
+    milestones(next_body)
+        .into_iter()
+        .map(|m| (m.title, m.first))
+        .collect()
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum Kind {
+    Done,
+    Now,
+    Next,
+    Later,
+}
+
+struct Stop {
+    kind: Kind,
+    tag: String,
+    title: String,
+    desc: String,
+}
+
+/// Height of one stop on the road, in px. CSS uses the same number.
+const ROW: usize = 104;
+
+/// A winding path through `pts` (x in 0-100, y in px): one S-curve per hop.
+fn wind_path(pts: &[(f32, f32)]) -> String {
+    let mut d = String::new();
+    for (i, &(x, y)) in pts.iter().enumerate() {
+        if i == 0 {
+            d.push_str(&format!("M{x:.1} {y:.1}"));
+            continue;
+        }
+        let (px, py) = pts[i - 1];
+        let k = (y - py) * 0.62;
+        d.push_str(&format!(" C{px:.1} {:.1} {x:.1} {:.1} {x:.1} {y:.1}", py + k, y - k));
+    }
+    d
+}
+
+/// The road as an SVG: a wide soft surface, the travelled part solid, the rest dashed.
+fn road_svg(xs: &[f32], now: usize, h: usize, class: &str) -> String {
+    let pts: Vec<(f32, f32)> = xs
+        .iter()
+        .enumerate()
+        .map(|(i, &x)| (x, (i * ROW + ROW / 2) as f32))
+        .collect();
+    let all = wind_path(&pts);
+    let done = wind_path(&pts[..=now.min(pts.len() - 1)]);
+    let ahead = wind_path(&pts[now.min(pts.len() - 1)..]);
+    format!(
+        r#"<svg class="rm-svg {class}" viewBox="0 0 100 {h}" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path class="rm-surface" d="{all}" vector-effect="non-scaling-stroke"/><path class="rm-ahead" d="{ahead}" vector-effect="non-scaling-stroke"/><path class="rm-travelled" d="{done}" pathLength="1" vector-effect="non-scaling-stroke"/></svg>"#
+    )
+}
+
+/// The whole Roadmap page: done, next and open questions in one place.
+/// A hero with counts, a winding road (built -> you are here -> next -> later),
+/// the choices still to make, then the full notes folded away.
+/// `notes` is the rendered HTML of done.md, next.md and open-questions.md.
+pub fn board(done_body: &str, next_body: &str, open_body: &str, notes: [&str; 3]) -> String {
+    let steps = steps(done_body);
+    let extra = also_built(done_body);
+    let plan = planned(next_body);
+    let (decs, still_open) = decisions(open_body);
+
+    let built = steps.iter().filter(|s| s.done).count();
+    let total = steps.len().max(1);
+    let undecided = decs.iter().filter(|d| d.status != "decided").count() + still_open;
+    let pct = built * 100 / total;
+
+    // The stops, in road order.
+    let mut stops: Vec<Stop> = Vec::new();
+    for st in &steps {
+        stops.push(Stop {
+            kind: if st.done { Kind::Done } else { Kind::Next },
+            tag: format!("Built · step {}", st.num),
+            title: st.label.clone(),
+            desc: String::new(),
+        });
+    }
+    if !extra.is_empty() {
+        stops.push(Stop { kind: Kind::Done, tag: "Built since".into(), title: extra.join(" · "), desc: String::new() });
+    }
+    let now = stops.len();
+    stops.push(Stop {
+        kind: Kind::Now,
+        tag: "You are here".into(),
+        title: "Docs, design language, docs site".into(),
+        desc: "The ground work for everything ahead.".into(),
+    });
+    for (i, (t, d)) in plan.iter().enumerate() {
+        stops.push(Stop { kind: Kind::Next, tag: format!("Next · {}", i + 1), title: t.clone(), desc: d.clone() });
+    }
+    stops.push(Stop {
+        kind: Kind::Later,
+        tag: "Later".into(),
+        title: format!("{undecided} choices to make"),
+        desc: "Open questions below decide the road after this.".into(),
+    });
+
+    let n = stops.len();
+    let h = n * ROW;
+    // Desktop swings wide with cards on the outside; phone swings small with cards on the right.
+    let xs_wide: Vec<f32> = (0..n).map(|i| if i % 2 == 0 { 32.0 } else { 68.0 }).collect();
+    let xs_narrow: Vec<f32> = (0..n).map(|i| if i % 2 == 0 { 9.0 } else { 23.0 }).collect();
+
+    let mut s = String::new();
+    s.push_str(r#"<div class="rm-board">"#);
+
+    // Hero
+    s.push_str(&format!(
+        r##"<header class="rm-hero"><p class="rm-kicker">AssistX roadmap</p><h1 class="rm-h1">From a smart chat box to a buddy that runs your day.</h1>
+<div class="rm-stats">
+<a class="rm-stat rm-s-done" href="#rm-road"><span class="rm-num">{built}/{total}</span><span class="rm-cap">core steps built</span></a>
+<a class="rm-stat rm-s-next" href="#rm-now"><span class="rm-num">{}</span><span class="rm-cap">milestones ahead</span></a>
+<a class="rm-stat rm-s-open" href="#rm-decide"><span class="rm-num">{undecided}</span><span class="rm-cap">choices to make</span></a>
+</div>
+<div class="rm-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{pct}" aria-label="Core build progress"><span style="width:{pct}%"></span></div>
+</header>"##,
+        plan.len()
+    ));
+
+    // The winding road
+    s.push_str(&format!(
+        r#"<section class="rm-journey" id="rm-road" aria-label="Roadmap timeline" style="height:{h}px">"#
+    ));
+    s.push_str(&road_svg(&xs_wide, now, h, "rm-wide"));
+    s.push_str(&road_svg(&xs_narrow, now, h, "rm-narrow"));
+    s.push_str(r#"<ol class="rm-stops">"#);
+    for (i, st) in stops.iter().enumerate() {
+        let (cls, icon) = match st.kind {
+            Kind::Done => ("rm-k-done", CHECK_SVG.to_string()),
+            Kind::Now => ("rm-k-now", r#"<span class="rm-pulse"></span>"#.to_string()),
+            Kind::Next => ("rm-k-next", format!(r#"<span class="rm-n">{}</span>"#, i - now)),
+            Kind::Later => ("rm-k-later", QUESTION_SVG.to_string()),
+        };
+        let side = if i % 2 == 0 { "rm-left" } else { "rm-right" };
+        let id = if st.kind == Kind::Now { r#" id="rm-now""# } else { "" };
+        let desc = if st.desc.is_empty() { String::new() } else { format!(r#"<span class="rm-cd">{}</span>"#, esc(&st.desc)) };
+        s.push_str(&format!(
+            r#"<li class="rm-at {cls} {side}"{id} style="top:{}px;--xw:{}%;--xn:{}%;--d:{}"><span class="rm-pin">{icon}</span><span class="rm-card"><span class="rm-tag">{}</span><span class="rm-ct">{}</span>{desc}</span></li>"#,
+            i * ROW + ROW / 2,
+            xs_wide[i],
+            xs_narrow[i],
+            i,
+            esc(&st.tag),
+            esc(&st.title),
+        ));
+    }
+    s.push_str("</ol></section>");
+
+    // Choices to make
+    s.push_str(&format!(
+        r#"<section class="rm-decide" id="rm-decide"><h2>Choices to make <span class="rm-lc">{undecided}</span></h2><div class="rm-grid">"#
+    ));
+    for d in decs.iter().filter(|d| d.status != "decided") {
+        s.push_str(&format!(
+            r#"<div class="rm-q"><span class="rm-tagc rm-t-{}">{}</span><span class="rm-ct">{}</span><span class="rm-cm">#{}</span></div>"#,
+            d.status,
+            d.status,
+            esc(&d.question),
+            esc(&d.num)
+        ));
+    }
+    if still_open > 0 {
+        s.push_str(&format!(
+            r#"<div class="rm-q rm-more"><span class="rm-ct">+{still_open} more open questions</span><span class="rm-cm">in the notes below</span></div>"#
+        ));
+    }
+    s.push_str("</div></section>");
+
+    // Full notes, folded
+    s.push_str(r#"<section class="rm-notes"><h2>Full notes</h2>"#);
+    for (label, html) in [("What is built", notes[0]), ("Next and known gaps", notes[1]), ("Open questions", notes[2])] {
+        s.push_str(&format!(r#"<details class="rm-details"><summary>{label}</summary>{html}</details>"#));
+    }
+    s.push_str("</section></div>");
+    s
+}
+
+/// Wraps a page's plain doc text so the visual leads and the text folds away.
+pub fn details(body_html: &str) -> String {
+    format!(r#"<details class="rm-details"><summary>Read the full notes</summary>{body_html}</details>"#)
 }
 
 // --- helpers ---
@@ -393,6 +736,38 @@ mod tests {
         assert!(v.contains("done.html"));
         assert!(v.contains("rm-done"));
         assert!(v.contains("rm-open"));
+    }
+
+
+    #[test]
+    fn board_winds_and_combines_all_three() {
+        let done = "| Step | What | State |\n|---|---|---|\n| 1 | Turn engine, adapter | Done |\n| 2 | Memory DB | Done |\n\nAlso built since: phone capture, location. See x.\n";
+        let next = "# Next\n\n## Planned milestones\n\n| # | Milestone | What it means |\n|---|---|---|\n| 1 | Account system fixes | Close [gaps](a.md). |\n| 2 | Email bridges | More mail. |\n\n## Gaps\n\n- a\n";
+        let open = "| # | Question | Status |\n|---|---|---|\n| 1 | Language | **Decided** |\n| 5 | Name | Open |\n\n## Still open\n\n- a\n";
+        let b = board(done, next, open, ["<p>D</p>", "<p>N</p>", "<p>O</p>"]);
+        // stops: 2 built + built-since + now + 2 next + later = 7
+        assert_eq!(b.matches(r#"<li class="rm-at"#).count(), 7);
+        assert!(b.contains("rm-k-now") && b.contains("rm-k-later"));
+        assert!(b.contains("Account system fixes") && b.contains("Close gaps."));
+        assert!(b.contains("Phone capture · Location"));
+        assert!(b.contains(" C"), "road must curve");
+        assert!(b.contains("rm-wide") && b.contains("rm-narrow"));
+        assert!(b.contains("2/2") && b.contains(">2</span><span class=\"rm-cap\">choices"));
+        assert!(b.contains("<p>D</p>") && b.contains("<p>N</p>") && b.contains("<p>O</p>"));
+        assert!(!b.contains(">Language<"));
+    }
+
+    #[test]
+    fn wind_path_alternates_with_curves() {
+        let d = wind_path(&[(30.0, 50.0), (70.0, 150.0), (30.0, 250.0)]);
+        assert!(d.starts_with("M30.0 50.0"));
+        assert_eq!(d.matches(" C").count(), 2);
+    }
+
+    #[test]
+    fn plain_short_strips_markdown_and_cuts() {
+        assert_eq!(plain_short("See [Done](done.md) and **bold** `code`", 80), "See Done and bold code");
+        assert!(plain_short("one two three four five six", 12).ends_with('…'));
     }
 
     #[test]

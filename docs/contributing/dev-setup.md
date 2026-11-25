@@ -27,9 +27,10 @@ First run writes the owner token to `data/owner.token` (mode 0600); the DB keeps
 ## Working here
 
 - Rust lives at `~/.cargo/bin`. Build and test with `-j1` on this machine.
-- Never commit `data/`, `.token` or `target/`.
+- Never commit `data/`, `.token`, `target/` or any private data ([Private data](../security/private-data.md)).
+- Turn on the private-data hook once: `git config core.hooksPath .githooks`.
 - The dev Mac is low on memory: build and test with `-j1`, run targeted tests, and build the APK on the server.
 
 ## Android
 
-Open `android/` in Android Studio, or run `./gradlew assembleDebug`. Release APKs are built on the server ([Updates and release](../android/updates-and-release.md)). `android/` is not in git.
+Open `android/` in Android Studio, or run `./gradlew assembleDebug`. Release APKs are built on the server ([Updates and release](../android/updates-and-release.md)). `android/` is in the same git repo as the server.

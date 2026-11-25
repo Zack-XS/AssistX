@@ -53,10 +53,10 @@ dependencies {
     implementation("androidx.core:core:1.13.1")
 }
 
-// The screens are the web page in the AssistantX repo (examples/dummy-client/index.html).
-// When that folder sits next to this project, building copies the latest page in.
+// The screens are the web page in ../server/examples/dummy-client/index.html.
+// Building copies the latest page in.
 val copyWeb = tasks.register<Copy>("copyWeb") {
-    val src = rootProject.file("../AssistantX/examples/dummy-client/index.html")
+    val src = rootProject.file("../server/examples/dummy-client/index.html")
     onlyIf { src.exists() }
     from(src)
     into(layout.projectDirectory.dir("src/main/assets"))

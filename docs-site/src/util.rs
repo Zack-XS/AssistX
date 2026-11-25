@@ -75,7 +75,13 @@ pub fn rewrite_md_link(base: &str, url: &str) -> Option<String> {
     if !inside_docs(&target) {
         return None; // points outside docs/ (a runtime/source file): leave as-is
     }
-    let new_path = if path == "README.md" {
+    let new_path = if target.join("/") == "docs/README.md" {
+        // The docs index is docs.html at the site root.
+        match path.strip_suffix("README.md") {
+            Some(prefix) => format!("{prefix}docs.html"),
+            None => "docs.html".to_string(),
+        }
+    } else if path == "README.md" {
         "index.html".to_string()
     } else if let Some(stripped) = path.strip_suffix("/README.md") {
         format!("{stripped}/index.html")

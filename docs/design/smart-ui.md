@@ -1,7 +1,7 @@
 ---
 title: Smart UI
 description: How screens adapt to time, place and what you are doing.
-order: 8
+order: 9
 ---
 
 # Smart UI

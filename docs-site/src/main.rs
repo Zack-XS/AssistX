@@ -10,6 +10,8 @@ mod frontmatter;
 mod markdown;
 mod model;
 mod roadmap;
+mod github;
+mod home;
 mod serve;
 mod showcase;
 mod template;
@@ -32,6 +34,16 @@ fn main() {
         "check" => run_check(&docs_dir, &repo_root),
         "build" => run_build(&docs_dir, &repo_root, &out_dir),
         "serve" => run_serve(&out_dir, &args[2..]),
+        "fetch" => match github::fetch(&manifest.join("github.json")) {
+            Ok(msg) => {
+                println!("fetch: wrote docs-site/github.json ({msg})");
+                0
+            }
+            Err(e) => {
+                eprintln!("fetch: {e}");
+                1
+            }
+        },
         "help" | "-h" | "--help" => {
             print_help();
             0
@@ -128,4 +140,5 @@ fn print_help() {
     println!("  cargo run -j1 -- check          check docs/ (front matter, links, secrets)");
     println!("  cargo run -j1 -- build          render docs/ to docs-site/out/");
     println!("  cargo run -j1 -- serve [PORT]    serve docs-site/out/ on 127.0.0.1 (default 3000)");
+    println!("  cargo run -j1 -- fetch          save GitHub activity to docs-site/github.json (uses gh)");
 }

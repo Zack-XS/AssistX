@@ -108,6 +108,10 @@ pub fn run(docs_dir: &Path, repo_root: &Path, out_dir: &Path) -> Result<(), Stri
             })
             .collect();
         secs_pages.sort_by_key(|p| p.order);
+        if folder == "docs/roadmap" {
+            // The roadmap is one combined page; its parts stay reachable by link only.
+            secs_pages.clear();
+        }
         sections.push(Section {
             title,
             order,
@@ -146,13 +150,34 @@ pub fn run(docs_dir: &Path, repo_root: &Path, out_dir: &Path) -> Result<(), Stri
             }
         }
         if p.folder == "docs/roadmap" {
-            if let Some(vis) = roadmap::roadmap_visual(&p.stem, &p.body) {
-                html.push_str(&vis);
+            // The visual leads; the plain notes fold away under it.
+            let body_of = |stem: &str| {
+                pages
+                    .iter()
+                    .find(|q| q.folder == "docs/roadmap" && q.stem == stem)
+                    .map(|q| q.body.as_str())
+                    .unwrap_or("")
+            };
+            if p.is_readme {
+                // One combined page: done, next and open questions together.
+                let notes = ["done", "next", "open-questions"].map(|st| {
+                    let full = markdown::render_html(body_of(st), base);
+                    split_h1(&full).1.to_string()
+                });
+                html = roadmap::board(
+                    body_of("done"),
+                    body_of("next"),
+                    body_of("open-questions"),
+                    [&notes[0], &notes[1], &notes[2]],
+                );
+            } else if let Some(vis) = roadmap::roadmap_visual(&p.stem, &p.body) {
+                let (title, rest) = split_h1(&html);
+                html = format!("{title}{vis}{}", roadmap::details(rest));
             }
         }
         let depth = p.output_rel.matches('/').count();
         let root = "../".repeat(depth);
-        let home_active = p.output_rel == "index.html";
+        let home_active = p.output_rel == "docs.html";
         let sidebar = template::render_sidebar(&sections, &about, &p.output_rel, &root, home_active);
         let page = template::page(
             &p.fm.title,
@@ -187,6 +212,26 @@ pub fn run(docs_dir: &Path, repo_root: &Path, out_dir: &Path) -> Result<(), Stri
     let search_json = serde_json::to_string_pretty(&search).map_err(|e| e.to_string())?;
     fs::write(assets_dir.join("search.json"), search_json).map_err(|e| e.to_string())?;
 
+    // The home page at the site root, with GitHub activity from github.json
+    // (filled by `fetch`) and any real screenshots in assets/screens/.
+    let site_dir = out_dir.parent().unwrap_or(out_dir);
+    let gh = crate::github::load(&site_dir.join("github.json"));
+    let mut screens: Vec<String> = Vec::new();
+    if let Ok(entries) = fs::read_dir(site_dir.join("assets").join("screens")) {
+        fs::create_dir_all(assets_dir.join("screens")).map_err(|e| e.to_string())?;
+        for e in entries.flatten() {
+            let name = e.file_name().to_string_lossy().to_string();
+            let lower = name.to_lowercase();
+            if [".png", ".jpg", ".jpeg", ".webp"].iter().any(|x| lower.ends_with(x)) {
+                fs::copy(e.path(), assets_dir.join("screens").join(&name)).map_err(|e| e.to_string())?;
+                screens.push(name);
+            }
+        }
+    }
+    screens.sort();
+    let home = crate::home::page(&gh, &screens, &icons);
+    fs::write(out_dir.join("index.html"), home).map_err(|e| e.to_string())?;
+
     Ok(())
 }
 
@@ -202,7 +247,8 @@ fn prepare_out(out_dir: &Path) -> Result<(), String> {
 fn compute_output_rel(repo_rel: &str) -> String {
     let rel = repo_rel.strip_prefix("docs/").unwrap_or(repo_rel);
     if rel == "README.md" {
-        "index.html".to_string()
+        // The site root is the home page; the docs index lives at docs.html.
+        "docs.html".to_string()
     } else if let Some(stripped) = rel.strip_suffix("/README.md") {
         format!("{stripped}/index.html")
     } else if let Some(stripped) = rel.strip_suffix(".md") {
@@ -237,4 +283,16 @@ fn basename(repo_rel: &str) -> &str {
         Some(i) => &repo_rel[i + 1..],
         None => repo_rel,
     }
+}
+
+/// Splits rendered HTML into its leading `<h1>...</h1>` (if any) and the rest.
+fn split_h1(html: &str) -> (&str, &str) {
+    let t = html.trim_start();
+    if t.starts_with("<h1") {
+        if let Some(e) = t.find("</h1>") {
+            let cut = e + "</h1>".len();
+            return (&t[..cut], &t[cut..]);
+        }
+    }
+    ("", html)
 }

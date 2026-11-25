@@ -101,6 +101,7 @@ Threat model, safety rules, and how to report a problem.
 - [Threat model](security/threat-model.md): What we protect, who attacks, and what stops them.
 - [Safety rules](security/safety-rules.md): The rules every change must keep: core, plugins, page and app.
 - [Reporting a problem](security/reporting.md): How to report a security problem, scope and safe harbor.
+- [Private data](security/private-data.md): What must never be committed, tests included, and the check that stops it.
 
 ## [Contributing](contributing/README.md)
 
@@ -110,7 +111,8 @@ How to work on AssistX: setup, code rules, tests and the change flow.
 - [Code layout](contributing/code-layout.md): Where the code, prompts, plugins, tests and app live.
 - [Code style](contributing/code-style.md): The hard rules for code in this project.
 - [Testing](contributing/testing.md): Golden tests, model tests, the smoke test and the test sets we need.
-- [Change flow](contributing/pr-flow.md): How a change goes in: docs first, a test, review, deploy.
+- [Change flow](contributing/pr-flow.md): How a change goes in, and pull request etiquette.
+- [Branches](contributing/branches.md): main, beta and production: what each is for, what runs, and how a change moves up.
 
 ## [Roadmap](roadmap/README.md)
 
@@ -129,6 +131,7 @@ The AssistX design language: how the app and the docs site look, move and adapt.
 - [Typography](design/typography.md): The font, the type scale and how text is set.
 - [Spacing and layout](design/spacing-and-layout.md): Compact spacing, corner sizes, the grid and layouts from phone to desktop.
 - [Motion](design/motion.md): Durations, easing, springs, page moves and reduced motion.
+- [Haptics](design/haptics.md): The few vibrations we use, when, how to code them, and what never to do.
 - [Icons](design/icons.md): One soft, round icon set, sizes, states and animated icons.
 - [Components](design/components.md): Buttons, cards, chat bubbles, lists, sheets, inputs and notices.
 - [Smart UI](design/smart-ui.md): How screens adapt to time, place and what you are doing.
@@ -163,3 +166,7 @@ Specs for work that is not built yet.
 - [Migration](MIGRATION.md): where each old doc went.
 - Runtime files are not docs: `server/prompts/*.md`, `server/plugins/*/guide.md` and `server/data/**` are loaded by the engine. These pages link to them.
 - Each page has front matter (`title`, `description`, `order`) for the docs website.
+
+## Archive
+
+- [Retired docs](RETIRED.md): Where the old server docs went and what supersedes them.

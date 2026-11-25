@@ -10,7 +10,9 @@ order: 8
 - [Code layout](code-layout.md): where things live.
 - [Code style](code-style.md): the hard rules for code.
 - [Testing](testing.md): golden tests, model tests, smoke test.
-- [Change flow](pr-flow.md): how a change goes in.
+- [Change flow](pr-flow.md): how a change goes in, and pull request etiquette.
+- [Branches](branches.md): main, beta and production.
+- [Private data](../security/private-data.md): never commit it, tests included.
 - [Logging](../quality/logging.md): every change adds logs.
 
 What a good change looks like: [Quality](../quality/README.md).

@@ -6,6 +6,25 @@ order: 2
 
 # Next
 
+## Planned milestones
+
+In order. The roadmap page draws these as the road ahead.
+
+| # | Milestone | What it means |
+|---|---|---|
+| 1 | Account system fixes | Close the known gaps in [Accounts](../architecture/accounts.md): sign-in, keys, remembered phones. |
+| 2 | Improved skill data | Richer, better-sorted data behind each skill, so the assistant picks and uses skills well. |
+| 3 | Multi-computer support | One owner, many computers, per the [Multi-device plan](../architecture/multi-device.md). |
+| 4 | Skill rewrites and more skills | Rewrite older plugins to today's rules, and add new ones. |
+| 5 | Design language rework | Bring the app onto the [design language](../design/README.md), per the [rollout plan](../plans/design-language-rollout.md). |
+| 6 | AssistX website | A public home page: docs, downloads, recent pushes, contributors, info. See below. |
+| 7 | Phone screen data capture | Read what is on the phone screen into memory, only with a yes. |
+| 8 | Notification capture | Read phone notifications into memory, only with a yes. |
+| 9 | Email bridges | Mail beyond Gmail: other providers and plain IMAP. |
+| 10 | PC control support | Run commands and drive apps on your own computers, with approvals ([Computers](../architecture/computers.md)). |
+| 11 | Improved secret storage | Secrets in the OS keychain, not only inside the database. |
+| 12 | Better storage reading | Faster, smarter reading of files and stored data. |
+
 ## Gaps against the design
 
 - **Linux sandbox** is bubblewrap only: files, and network only through the socket proxy (untested on a real Linux box yet: run web and weather there once). CPU, memory and process-count limits are not set; only wall time and output size are.
@@ -26,6 +45,23 @@ order: 2
 - `AGENT_MAX_TOKENS_PER_DAY` (default 2000000, 0 = no cap) caps cloud model tokens per day (column `turns.cloud_tokens`). Local models never count and keep working when the cap is hit.
 - Live config: only per-tool autonomy can be changed with `PATCH /v1/config`; the rest is env vars.
 - `serde_yaml` is archived upstream.
+- **Android build in CI:** the APK still builds from the Mac with `assistantx-app-release`. Moving it to the `production` release needs the signing key as a CI secret ([Branches](../contributing/branches.md)).
+- **No license file** yet. Pick one before asking outside people to contribute.
+
+## Project home page: not built yet
+
+One public page for AssistX, for users and helpers. It is built by the Rust docs site tool (all-Rust rule) and shares the [design language](../design/README.md).
+
+- **About:** what AssistX is, why use it, why help. Short version of the repo `README.md`.
+- **Docs:** links into the docs site, with search.
+- **Downloads:** the newest Android APK and its changelog, from the `production` releases.
+- **Recent pushes:** the last commits and releases on `main`, `beta` and `production`.
+- **Contributors:** everyone who has helped, with their GitHub picture and name.
+- **Info:** the roadmap picture, the rules, and how to report a security problem.
+
+Status 2026-11-25: a first version is built into the docs site as its home page (`docs-site/src/home.rs`). It has the nav (Home, Docs, GitHub), a GitHub download button, app screens, a terminal, a contributor leaderboard, and release, pull request and push logs. Refresh GitHub data with `cargo run -j1 -- fetch` in `docs-site/`, then `build`. Real screenshots go in `docs-site/assets/screens/` (PNG, JPG or WebP); without them the page draws the screens. Still to do: hosting, and real screenshots.
+
+Open choices: where it is hosted (it is local only today, see [Docs site](../plans/docs-site.md)), and whether pushes and contributors are read at build time or live from GitHub. Build time is the safe default: no tokens on the page.
 
 ## Phone capture: not built yet
 

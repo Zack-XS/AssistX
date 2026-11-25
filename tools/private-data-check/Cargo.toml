@@ -1,0 +1,10 @@
+[package]
+name = "private-data-check"
+version = "0.1.0"
+edition = "2021"
+description = "Fails if a file git would commit holds private data: real IPs, emails, keys, tokens or private files."
+publish = false
+
+[dependencies]
+
+[workspace]

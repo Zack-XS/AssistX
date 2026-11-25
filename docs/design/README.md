@@ -17,6 +17,7 @@ Status: the language is written. The app follows most of it. Each page ends with
 - [Typography](typography.md): The font, the type scale and how text is set.
 - [Spacing and layout](spacing-and-layout.md): Compact spacing, corner sizes, the grid and layouts from phone to desktop.
 - [Motion](motion.md): Durations, easing, springs, page moves and reduced motion.
+- [Haptics](haptics.md): The few vibrations we use, when, how to code them, and what never to do.
 - [Icons](icons.md): One soft, round icon set, sizes, states and animated icons.
 - [Components](components.md): Buttons, cards, chat bubbles, lists, sheets, inputs and notices.
 - [Smart UI](smart-ui.md): How screens adapt to time, place and what you are doing.

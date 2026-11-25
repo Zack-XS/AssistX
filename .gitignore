@@ -23,3 +23,7 @@ target/
 
 # Node (if any)
 node_modules/
+
+# Home page GitHub cache (made by `docs-site fetch`)
+docs-site/github.json
+docs-site/out/

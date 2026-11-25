@@ -1,7 +1,7 @@
 ---
 title: Accessibility
 description: Contrast, touch size, text size, screen readers and motion.
-order: 9
+order: 10
 ---
 
 # Accessibility
@@ -20,7 +20,7 @@ Everyone should be able to use AssistX by touch, voice, keyboard or screen reade
 | Focus | Visible 2 px ring (`:focus-visible`). Order follows the screen. Sheets trap focus and give it back on close. |
 | Keyboard | On desktop: Tab moves, Enter sends, Esc closes, `/` jumps to the composer. |
 | Motion | Follow reduced motion. See [Motion](motion.md). |
-| Sound and haptics | Always optional, and never the only signal. |
+| Sound and haptics | Always optional, and never the only signal. See [Haptics](haptics.md#accessibility). |
 | Voice | Spoken answers are also shown as text. |
 | Language | Plain, short words, the same as these docs. |
 

@@ -1,0 +1,54 @@
+# Checks for every PR and every push to main, beta and production.
+# See docs/contributing/branches.md.
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main, beta, production]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  private-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Private data check
+        run: |
+          cargo test -j1 --manifest-path tools/private-data-check/Cargo.toml
+          cargo run -j1 --manifest-path tools/private-data-check/Cargo.toml
+
+  docs-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: docs-site
+      - name: Test and check docs
+        working-directory: docs-site
+        run: |
+          cargo test -j1
+          cargo run -j1 -- check
+
+  server:
+    # macOS matches the dev machine: SQLCipher uses CommonCrypto, and the sandbox tests use the macOS profile.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server
+      - name: Server tests
+        working-directory: server
+        run: cargo test -- --test-threads=2

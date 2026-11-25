@@ -15,8 +15,31 @@ pub fn showcase_for(stem: &str, icons: &HashMap<String, String>) -> Option<Strin
         "components" => Some(components_showcase(icons)),
         "screens" => Some(screens_showcase(icons)),
         "smart-ui" => Some(smart_ui_showcase()),
+        "haptics" => Some(haptics_showcase()),
         _ => None,
     }
+}
+
+/// Haptics: one button per token. On an Android phone each button buzzes
+/// (navigator.vibrate, an approximation of the native feel); the pad also
+/// pulses so the meaning shows without a motor.
+fn haptics_showcase() -> String {
+    let mut s = open("Try the haptic set");
+    s.push_str(r#"<p class="demo-label">Open this page on an Android phone to feel each one. Everywhere else the pad shows it.</p><div class="hap-grid">"#);
+    for (name, pattern, what) in [
+        ("tick", "5", "slider steps, snaps"),
+        ("click", "10", "toggle, tab, send"),
+        ("confirm", "10,45,14", "saved, answer done"),
+        ("reject", "25,55,25", "error, refused"),
+        ("heavy", "22", "long press, drag"),
+        ("attention", "6,30,12", "approval needed"),
+    ] {
+        s.push_str(&format!(
+            r#"<button type="button" class="hap-pad hap-{name}" data-demo="buzz" data-pattern="{pattern}" aria-label="Feel haptic-{name}"><span class="hap-dot"></span><span class="hap-name">haptic-{name}</span><span class="hap-use">{what}</span></button>"#
+        ));
+    }
+    s.push_str(r#"</div><p class="demo-label">Browser buzzes are rough copies. The app uses Android's tuned effects (CONFIRM, REJECT…).</p></section>"#);
+    s
 }
 
 fn open(title: &str) -> String {
@@ -29,25 +52,25 @@ fn color_showcase() -> String {
     // (name, light, dark)
     let groups: &[(&str, &[(&str, &str, &str)])] = &[
         ("Surfaces", &[
-            ("page", "#E9E9ED", "#000000"),
-            ("card", "#FFFFFF", "#141417"),
-            ("raised", "#FFFFFF", "#1C1C21"),
-            ("field", "#F2F2F5", "#1C1C21"),
-            ("bubble", "#E7E7EB", "#1F1F24"),
-            ("code", "#F0F0F4", "#0B0B0E"),
-            ("line", "#E3E3E8", "#26262B"),
-            ("scrim", "rgba(12,12,16,.32)", "rgba(0,0,0,.56)"),
+            ("page", "#FAFAFA", "#000000"),
+            ("card", "#FFFFFF", "#111111"),
+            ("raised", "#FFFFFF", "#1A1A1A"),
+            ("field", "#F1F1F1", "#1A1A1A"),
+            ("bubble", "#EDEDED", "#1C1C1C"),
+            ("code", "#F4F4F4", "#0A0A0A"),
+            ("line", "#E4E4E4", "#262626"),
+            ("scrim", "rgba(10,10,10,.32)", "rgba(0,0,0,.56)"),
         ]),
         ("Text & ink", &[
-            ("text", "#0C0C10", "#F3F3F6"),
-            ("mute", "#5E5E68", "#9B9BA5"),
-            ("ink", "#17171C", "#F3F3F6"),
-            ("on-ink", "#FFFFFF", "#0C0C10"),
+            ("text", "#0A0A0A", "#EDEDED"),
+            ("mute", "#666666", "#8F8F8F"),
+            ("ink", "#0A0A0A", "#EDEDED"),
+            ("on-ink", "#FFFFFF", "#0A0A0A"),
         ]),
         ("Accent", &[
-            ("accent", "#4B57D6", "#9AA3FF"),
-            ("on-accent", "#FFFFFF", "#0C0C10"),
-            ("accent-soft", "#4B57D61F", "#9AA3FF2E"),
+            ("accent", "#0A0A0A", "#EDEDED"),
+            ("on-accent", "#FFFFFF", "#0A0A0A"),
+            ("accent-soft", "#0A0A0A0F", "#EDEDED1A"),
         ]),
         ("State", &[
             ("ok", "#157A42", "#43C076"),

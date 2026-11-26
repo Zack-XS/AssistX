@@ -331,38 +331,6 @@ fn undo_add(app: &App, result: &Value) -> Result<Value, String> {
     delete(app, result["event"]["id"].as_str().ok_or("nothing to undo")?)
 }
 
-// ---------------- schedule import (src/schedule_import.rs) ----------------
-
-/// Check an event that came from outside this module without saving it. Gives the event as it would be stored
-/// and its first time from now.
-pub fn check(app: &App, a: &Value) -> Result<Value, String> {
-    let ev = apply(app, None, a, false)?;
-    let first = next_start_utc(&ev, util::unix_now() - 1).map(|u| scheduler::local_str(app, u));
-    Ok(json!({ "event": ev.json(), "first": first }))
-}
-
-/// Is there already an active event with this title, start and repeat?
-pub fn exists_like(app: &App, ev: &Value) -> bool {
-    let (t, s, r) = (ev["title"].as_str().unwrap_or("").trim().to_lowercase(), ev["start"].as_str().unwrap_or(""), ev["repeat"].as_str().unwrap_or("none"));
-    active(app).iter().any(|e| e.title.trim().to_lowercase() == t && e.start == s && e.repeat == r)
-}
-
-/// The title of an existing event that overlaps this one on its first day (all-day events never clash), if any.
-pub fn clash(app: &App, ev: &Value, first: &str) -> Option<String> {
-    if ev["all_day"] == true || first.len() < 16 {
-        return None;
-    }
-    let day = &first[..10];
-    let len = match (local_secs(ev["start"].as_str()?), ev["end"].as_str().and_then(local_secs)) { (Some(a), Some(b)) if b > a => b - a, _ => 3600 };
-    let (s0, e0) = (local_secs(first)?, local_secs(first)? + len);
-    let listed = list(app, Some(day), Some(day), None).ok()?;
-    listed["events"].as_array()?.iter().filter(|e| e["all_day"] != true).find_map(|e| {
-        let (s, f) = (local_secs(e["start"].as_str()?)?, local_secs(e["end"].as_str().unwrap_or(e["start"].as_str()?))?);
-        let f = if f > s { f } else { s + 3600 };
-        (s < e0 && f > s0).then(|| e["title"].as_str().unwrap_or("something").to_string())
-    })
-}
-
 /// Occurrences between two local times (default: now to 7 days), soonest first.
 pub fn list(app: &App, from: Option<&str>, to: Option<&str>, query: Option<&str>) -> Result<Value, String> {
     list_with(app, from, to, query, false)

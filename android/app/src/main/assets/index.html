@@ -30,7 +30,8 @@ html[data-resolved=dark] #chatMenu{border:1px solid var(--line)}
 #chatMenu .menuitem{background:none;border:0;text-align:left;font:inherit;padding:10px 6px;border-radius:10px;color:var(--text)}
 #chatMenu .menuitem:active{background:var(--field)}
 .iconbtn{background:none;border:0;border-radius:50%;width:42px;height:42px;display:grid;place-items:center;position:relative}
-.iconbtn:hover{background:var(--field)}
+@media (hover:hover){.iconbtn:hover{background:var(--field)}}
+.iconbtn:active{background:var(--field)}
 .badge{position:absolute;top:8px;right:9px;width:9px;height:9px;border-radius:50%;background:var(--bad);border:2px solid var(--page)}
 .scroll{flex:1;min-height:0;overflow:auto;padding:0 18px 18px}
 /* cards */
@@ -87,7 +88,8 @@ body.has-chat #hello{display:none}
 .bot pre{background:var(--code);border-radius:12px;padding:10px;overflow:auto;margin:0 0 8px}
 .bot pre code{background:none;padding:0}
 .acts{display:flex;gap:2px;margin-top:2px;opacity:0;transition:opacity .15s}
-.msgwrap:hover .acts,.acts:focus-within{opacity:1}
+@media (hover:hover){.msgwrap:hover .acts{opacity:1}}
+.acts:focus-within{opacity:1}
 .acts button{background:none;border:0;color:var(--mute);font-size:12px;padding:4px 8px;border-radius:8px}
 .sys{color:var(--mute);font-size:12px;font-family:ui-monospace,Menlo,monospace}
 .typing{display:inline-flex;gap:5px;padding:12px 16px;background:var(--bubble);border-radius:20px;align-self:flex-start}
@@ -172,7 +174,7 @@ html[data-resolved=dark] .setrow{border:1px solid var(--line)}
 .switch input:checked{background:var(--ink)}
 .switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--card);pointer-events:none;transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .switch:has(input:checked)::after{transform:translateX(20px)}
-.kv{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
+.kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-top:1px solid var(--line)}
 .kv:first-child{border-top:0}.kv span:first-child{color:var(--mute)}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .tag{background:var(--field);border-radius:999px;padding:5px 6px 5px 12px;font-size:14px;display:inline-flex;align-items:center;gap:4px}
@@ -278,6 +280,158 @@ select{background:var(--field);color:var(--text);border:1px solid var(--line);bo
 #tabs button svg{transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
 #tabs button[aria-current=page] svg{transform:translateY(-2px) scale(1.15)}
 }
+/* ---------- feel: one motion language, grouped lists, loading, toasts (matches the sign-in screens) ---------- */
+:root{--ease:cubic-bezier(.2,0,0,1);--ease-in:cubic-bezier(.4,0,1,1);--spring:cubic-bezier(.3,1.35,.5,1)}
+button,.setrow,.item,.start,.pill{transition:transform .32s var(--spring),background-color .18s,opacity .18s,box-shadow .18s}
+button:active,.setrow:active,.item:active,.start:active{transform:scale(.97);transition:transform .08s}
+button.loading:not(.pill){opacity:.55;pointer-events:none}
+.pill.loading{color:transparent!important;position:relative;pointer-events:none}
+.pill.loading::after{content:"";position:absolute;inset:0;margin:auto;width:16px;height:16px;border-radius:50%;border:2px solid var(--text);border-right-color:transparent;animation:cxspin .7s linear infinite}
+.pill.solid.loading::after{border-color:var(--on-ink);border-right-color:transparent}
+.switch input{transition:background .22s var(--ease)}
+.switch::after{transition:transform .34s var(--spring),width .2s var(--ease)}
+.switch:active::after{width:28px}
+.switch:has(input:checked):active::after{transform:translateX(16px)}
+.seg button{transition:background .2s var(--ease),box-shadow .2s var(--ease),color .2s}
+/* settings: grouped rows */
+#setBody .sect:first-of-type{margin-top:4px}
+.group{background:var(--card);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;margin:0 0 6px}
+html[data-resolved=dark] .group{border:1px solid var(--line)}
+.group .setrow{border-radius:0;box-shadow:none;margin:0;background:none;padding:13px 16px;position:relative}
+.group .setrow+.setrow::before{content:"";position:absolute;top:0;left:62px;right:0;height:1px;background:var(--line)}
+.group .setrow:active{transform:none}
+.setic{width:34px;height:34px;border-radius:10px;background:var(--field);display:grid;place-items:center;flex:none}
+.group .setrow small{font-size:13.5px}
+.group .setrow>svg:last-child{color:var(--mute)}
+/* checklists: one card, rows split by lines */
+.card.list{padding:2px 18px}
+.card.list .item:first-child{border-top:0}
+.card.list .item{padding:13px 0}
+.item.done .chip{background:color-mix(in srgb,var(--ok) 14%,transparent);color:var(--ok)}
+/* loading */
+.skel{display:flex;flex-direction:column;gap:12px;padding:18px}
+.skel i{display:block;height:14px;border-radius:7px;background:linear-gradient(90deg,var(--field) 0%,color-mix(in srgb,var(--field) 40%,var(--card)) 50%,var(--field) 100%);background-size:200% 100%;animation:skel 1.2s linear infinite}
+@keyframes skel{to{background-position:-200% 0}}
+/* toasts */
+#toasts{position:absolute;left:16px;right:16px;bottom:calc(96px + var(--sab,0px));display:flex;flex-direction:column;align-items:center;gap:8px;z-index:30;pointer-events:none}
+.toast{background:var(--ink);color:var(--on-ink);padding:10px 16px;border-radius:14px;font-size:14px;box-shadow:var(--shadow-raised);animation:toastin .32s var(--ease) both;max-width:100%}
+.toast.bad{background:var(--bad);color:#fff}
+.toast.out{animation:toastout .24s var(--ease-in) forwards}
+@keyframes toastin{from{opacity:0;transform:translateY(12px) scale(.96)}}
+@keyframes toastout{to{opacity:0;transform:translateY(6px)}}
+/* tabs: a soft pill slides behind the chosen icon */
+#tabs button{position:relative}
+#tabs button::before{content:"";position:absolute;top:3px;left:50%;width:58px;height:32px;margin-left:-29px;border-radius:16px;background:var(--field);opacity:0;transform:scaleX(.5);transition:opacity .25s var(--ease),transform .4s var(--spring);z-index:-1}
+#tabs button[aria-current=page]::before{opacity:1;transform:none}
+#tabs{isolation:isolate}
+@media (prefers-reduced-motion:no-preference){
+  #views.under{animation:under .3s var(--ease) both}
+  #views.back{animation:back .32s var(--ease) both}
+  @keyframes under{to{transform:translateX(-28px);opacity:.6}}
+  @keyframes back{from{transform:translateX(-28px);opacity:.6}}
+  #subpage:not([hidden]){animation:slide .34s var(--ease)}
+  #subpage.out{animation:slideout .22s var(--ease-in) forwards}
+  .view.on.fresh{animation:vin .34s var(--ease)}
+  .view.on.fresh :is(.card,.setrow,.item,.group,.sect){animation:rise .44s var(--ease) both}
+  #subpage.fresh #subBody>*{animation:rise .4s var(--ease) both}
+}
+/* ---------- motion, take two: Material 3 easing and durations ---------- */
+:root{--emph:cubic-bezier(.2,0,0,1);--emph-in:cubic-bezier(.05,.7,.1,1);--emph-out:cubic-bezier(.3,0,.8,.15)}
+.group .setrow,.pill,.linkrow,.tapkv{position:relative;overflow:hidden}
+.ripple{position:absolute;border-radius:50%;background:currentColor;opacity:.1;transform:scale(0);animation:ripple .55s var(--emph-in) forwards;pointer-events:none}
+.ripple.up{opacity:0;transition:opacity .4s var(--emph)}
+@keyframes ripple{to{transform:scale(1)}}
+#subhead,.top{transition:box-shadow .25s var(--emph),background-color .25s}
+#subhead.raised,.top.raised{box-shadow:0 1px 0 var(--line)}
+/* rows that are buttons inside a card */
+.linkrow{display:block;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:13px 0;font:inherit;font-weight:500;color:var(--text)}
+.linkrow.bad{color:var(--bad)}
+.linkrow:disabled{color:var(--mute)}
+.tapkv{width:100%;background:none;border-left:0;border-right:0;border-bottom:0;font:inherit;color:inherit;text-align:left}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:13px;overflow-wrap:anywhere;text-align:right}
+.gap{height:8px}
+/* settings rows: one line, roomier */
+.group .setrow{padding:12px 16px;min-height:56px}
+.group .setrow b{font-weight:500;width:fit-content}
+/* sub pages look like the settings list */
+#subBody .card{padding:4px 18px}
+#subBody .card>.tog,#subBody .card>.kv,#subBody .card>.item{padding:13px 0}
+#subBody .card>.cardhead{padding-top:12px}
+#subBody .tog .sub{font-size:13.5px;margin-top:2px}
+@media (prefers-reduced-motion:no-preference){
+  /* tabs: Material "fade through" */
+  .view.on.fresh{animation:fadethrough .3s .04s var(--emph-in) both}
+  @keyframes fadethrough{from{opacity:0;transform:scale(.97)}}
+  /* sub pages without view transitions: Material "shared axis X" */
+  #subpage:not([hidden]){animation:axisin .4s var(--emph-in) both}
+  #subpage.out{animation:axisout .2s var(--emph-out) forwards}
+  @keyframes axisin{from{opacity:0;transform:translateX(48px)}}
+  @keyframes axisout{to{opacity:0;transform:translateX(48px)}}
+  #views.under{animation:under .35s var(--emph) both}
+  #views.back{animation:back .4s var(--emph-in) both}
+  @keyframes under{to{transform:translateX(-48px);opacity:0}}
+  @keyframes back{from{transform:translateX(-48px);opacity:0}}
+  #subpage.vt,#subpage.vt.out{animation:none}
+  #subpage.fresh #subBody>*{animation:rise .45s var(--emph-in) both}
+  #subpage.fresh #subBody>:nth-child(2){animation-delay:.03s}#subpage.fresh #subBody>:nth-child(3){animation-delay:.06s}#subpage.fresh #subBody>:nth-child(4){animation-delay:.09s}#subpage.fresh #subBody>:nth-child(n+5){animation-delay:.12s}
+  @keyframes rise{from{opacity:0;transform:translateY(12px)}}
+  /* container transform: the row grows into the page */
+  ::view-transition-group(sub-card){animation-duration:.42s;animation-timing-function:var(--emph);overflow:hidden;border-radius:20px}
+  ::view-transition-old(sub-card){animation:vtout .12s linear both;height:100%;object-fit:cover;object-position:top}
+  ::view-transition-new(sub-card){animation:vtin .24s .08s linear both;height:100%;object-fit:cover;object-position:top}
+  ::view-transition-group(sub-title){animation-duration:.42s;animation-timing-function:var(--emph)}
+  ::view-transition-old(root),::view-transition-new(root){animation-duration:.3s}
+  @keyframes vtout{to{opacity:0}}
+  @keyframes vtin{from{opacity:0}}
+}
+/* ---------- polish: one press style, no double animations, a clean container transform ---------- */
+/* Press: only pills, round icon buttons and the send button shrink a little. Rows don't move; they ripple. */
+button,.setrow,.item,.start{transition:background-color .18s var(--emph),opacity .18s,box-shadow .2s var(--emph),color .18s}
+button:active,.setrow:active,.item:active,.start:active{transform:none}
+.pill,.iconbtn,#send,#tabs button svg{transition:transform .35s var(--spring),background-color .18s,box-shadow .2s,opacity .18s}
+.pill:active,.iconbtn:active,#send:active{transform:scale(.96);transition:transform .1s var(--emph)}
+#tabs button:active svg{transform:scale(.9)}
+#tabs button[aria-current=page]:active svg{transform:translateY(-2px) scale(1.05)}
+.seg button:active{transform:none}
+/* Ripple: softer, slower, and the same tint in light and dark. */
+.ripple{background:var(--text);opacity:.08;animation:ripple .6s var(--emph) forwards}
+.pill.solid .ripple{background:var(--on-ink);opacity:.18}
+.ripple.up{opacity:0;transition:opacity .45s var(--emph)}
+/* Focus rings only for keyboards, never after a tap. */
+:focus:not(:focus-visible){outline:none}
+@media (prefers-reduced-motion:no-preference){
+  /* Tabs: only the page fades through; its top-level blocks rise once, in order (not every nested row). */
+  .view.on.fresh :is(.card,.setrow,.item,.group,.sect){animation:none}
+  .view.on.fresh .scroll>*{animation:rise .42s var(--emph-in) both}
+  .view.on.fresh .scroll>:nth-child(2){animation-delay:.03s}.view.on.fresh .scroll>:nth-child(3){animation-delay:.06s}
+  .view.on.fresh .scroll>:nth-child(4){animation-delay:.09s}.view.on.fresh .scroll>:nth-child(5){animation-delay:.12s}.view.on.fresh .scroll>:nth-child(n+6){animation-delay:.15s}
+  #setBody>*{animation:none!important}
+  /* Container transform: no zooming. The row's picture fades out at its own size while the box grows;
+     the page shows at its real size inside the growing box. */
+  ::view-transition-group(sub-card){background:var(--card);border-radius:20px;overflow:hidden;animation-duration:.5s;animation-timing-function:cubic-bezier(.2,0,0,1)}
+  html.vt-back::view-transition-group(sub-card),html.vt-back::view-transition-group(sub-title){animation-duration:.38s}
+  ::view-transition-old(root),::view-transition-new(root){animation:none}
+  ::view-transition-image-pair(sub-card){isolation:auto}
+  ::view-transition-old(sub-card),::view-transition-new(sub-card){width:auto;height:auto;inset:0 auto auto 0;object-fit:none;mix-blend-mode:normal}
+  /* Fade through inside the card: the old content leaves in the first 30%, the new arrives after. */
+  ::view-transition-old(sub-card){animation:vtout .14s linear both}
+  ::view-transition-new(sub-card){animation:vtin .3s .13s linear both}
+  html.vt-back::view-transition-old(sub-card){animation:vtout .11s linear both}
+  html.vt-back::view-transition-new(sub-card){animation:vtin .22s .1s linear both}
+  ::view-transition-group(sub-title){animation-duration:.5s;animation-timing-function:cubic-bezier(.2,0,0,1)}
+  ::view-transition-old(sub-title),::view-transition-new(sub-title){height:100%;width:auto;object-fit:contain;object-position:left center}
+  ::view-transition-old(sub-title){animation:vtout .2s var(--emph-out) both}
+  ::view-transition-new(sub-title){animation:vtin .3s .12s var(--emph) both}
+  /* During the transform the page content doesn't also slide or stagger. */
+  /* Inside the growing card the rows rise one after another, just behind the card edge. */
+  #subpage.vt #subBody>*{animation:rise .5s .14s cubic-bezier(.05,.7,.1,1) both}
+  #subpage.vt #subBody>:nth-child(2){animation-delay:.17s}#subpage.vt #subBody>:nth-child(3){animation-delay:.2s}
+  #subpage.vt #subBody>:nth-child(4){animation-delay:.23s}#subpage.vt #subBody>:nth-child(n+5){animation-delay:.26s}
+  /* Opened by the transform: the page must not replay its own slide or stagger afterwards. */
+  #subpage.noanim,#subpage.noanim #subBody>*{animation:none!important}
+  #views.under,#views.back{animation-duration:.3s}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 #updbar{flex:none;background:var(--ink);color:var(--on-ink);padding:max(8px,env(safe-area-inset-top)) 14px 8px;font-size:14px;z-index:40}
 #updbar .ubrow{display:flex;align-items:center;gap:8px}
 #updbar .grow{flex:1;min-width:0}
@@ -349,12 +503,37 @@ function h(tag, a = {}, ...kids) {
   for (const [k, v] of Object.entries(a)) {
     if (v == null || v === false) continue;
     if (k === "class") e.className = v; else if (k === "text") e.textContent = v;
-    else if (k.startsWith("on")) e[k] = v; else if (k === "style") e.style.cssText = v;
+    else if (k.startsWith("on")) e[k] = tag === "button" && k === "onclick" ? busyWrap(e, v) : v; else if (k === "style") e.style.cssText = v;
     else e.setAttribute(k, v === true ? "" : v);
   }
   for (const c of kids.flat()) { if (c == null || c === false) continue; e.append(c.nodeType ? c : document.createTextNode(String(c))); }
   return e;
 }
+// A button whose handler returns a promise shows a spinner (after a short beat, so quick ones don't flicker),
+// can't be tapped twice, and buzzes plus says so if it fails.
+function busyWrap(btn, fn) {
+  return function (ev) {
+    const r = fn.call(this, ev);
+    if (r && typeof r.then === "function" && !btn.classList.contains("loading")) {
+      const t = setTimeout(() => { btn.classList.add("loading"); btn.disabled = true; }, 160);
+      r.catch(() => { hap("error"); toast("Couldn't reach the server. Try again.", true); })
+        .finally(() => { clearTimeout(t); btn.classList.remove("loading"); btn.disabled = false; });
+    }
+    return r;
+  };
+}
+// append / prepend / replaceChildren skip null and false (they would print "null").
+for (const P of [Element.prototype, DocumentFragment.prototype]) for (const m of ["append", "prepend", "replaceChildren"]) {
+  const f = P[m]; P[m] = function (...a) { return f.apply(this, a.filter(x => x != null && x !== false)); };
+}
+// A short note at the bottom, above the tabs.
+function toast(text, bad) {
+  let box = document.getElementById("toasts"); if (!box) { box = h("div", { id: "toasts", "aria-live": "polite" }); $("app").append(box); }
+  const t = h("div", { class: "toast" + (bad ? " bad" : "") }, h("span", { text }));
+  box.append(t); setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 260); }, 2800);
+}
+// While something loads: soft grey lines that shimmer, instead of the word "Loading".
+const skel = (n = 3) => h("div", { class: "card skel", "aria-busy": "true", "aria-label": "Loading" }, Array.from({ length: n }, (_, i) => h("i", { style: "width:" + [92, 74, 58, 80, 66][i % 5] + "%" })));
 const ICONS = {
   heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
   home: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
@@ -454,14 +633,38 @@ const sfx = n => { try { if (NA && NA.sfx && opt("sfx", true)) NA.sfx(n); } catc
 let lastTick = 0, lastTalk = 0;
 function hap(kind = "tick") {
   if (!opt("haptics", true)) return;
-  const n = Date.now(); if (kind === "tick" && n - lastTick < 40) return; lastTick = n;
+  const n = Date.now(); if ((kind === "tick" || kind === "select") && n - lastTick < 40) return; lastTick = n;
   try {
     if (NA && NA.haptic) NA.haptic(kind);
     else if (navigator.vibrate) navigator.vibrate(kind === "heavy" ? 20 : kind === "success" ? [10, 40, 10] : kind === "error" ? [30, 40, 30] : kind === "click" ? 10 : 5);
   } catch (e) { /* no vibration here */ }
 }
 const hapTalk = () => { const n = Date.now(); if (n - lastTalk > 140) { lastTalk = n; hap("tick"); } };
-document.addEventListener("click", e => { if (e.target.closest("button,summary,select,.setrow,.item,.start")) hap(e.target.closest("#tabs button") ? "click" : "tick"); }, true);
+// Every tap ticks; picking a tab or a choice gives a softer "select"; a switch gives its own "toggle".
+document.addEventListener("click", e => {
+  const t = e.target; if (t.closest(".switch")) return;
+  if (t.closest("#tabs button,.seg button,[role=tab]")) hap("select");
+  else if (t.closest("button.solid,.pill.solid")) hap("click");
+  else if (t.closest("button,summary,select,.setrow,.item,.start")) hap("tick");
+}, true);
+document.addEventListener("change", e => { if (e.target.closest(".switch")) hap("toggle"); }, true);
+// Material-style ripple: a soft circle grows from the finger and fades when you let go.
+const RIPPLE = ".group .setrow,.pill,.linkrow,.tapkv";
+document.addEventListener("pointerdown", e => {
+  const el = e.target.closest(RIPPLE); if (!el || el.disabled || calm()) return;
+  const r = el.getBoundingClientRect(), d = Math.hypot(r.width, r.height) * 2;
+  const s = document.createElement("span"); s.className = "ripple";
+  s.style.cssText = "width:" + d + "px;height:" + d + "px;left:" + (e.clientX - r.left - d / 2) + "px;top:" + (e.clientY - r.top - d / 2) + "px";
+  el.append(s);
+  const end = () => { s.classList.add("up"); setTimeout(() => s.remove(), 420); };
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, end, { once: true });
+}, { passive: true });
+// Headers lift a little (a thin line) once the page under them scrolls.
+document.addEventListener("scroll", e => {
+  const el = e.target; if (!(el instanceof Element)) return;
+  if (el.id === "subBody") $("subhead").classList.toggle("raised", el.scrollTop > 4);
+  else if (el.classList.contains("scroll")) { const top = el.closest(".view") && el.closest(".view").querySelector(".top"); if (top) top.classList.toggle("raised", el.scrollTop > 4); }
+}, true);
 
 /* ---------- theme ---------- */
 const mq = matchMedia("(prefers-color-scheme: dark)");
@@ -511,17 +714,65 @@ function show(v) {
   if (v === "home") renderHome(); if (v === "plan") renderPlan(); if (v === "settings") renderSettings();
 }
 let subRebuild = null;
-function openSub(title, build) {
-  $("subTitle").textContent = title; const sp = $("subpage"); sp.hidden = false;
+const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Opening a page from a row: the row grows into the page and its title flies up into the header (a "container
+// transform", done with the browser's View Transitions). Without that support it slides in instead.
+function openSub(title, build, from) {
+  const sp = $("subpage");
+  if (from && sp.hidden && document.startViewTransition && !calm()) {
+    const t = from.querySelector("b") || from;
+    from.style.viewTransitionName = "sub-card"; t.style.viewTransitionName = "sub-title"; sp.classList.add("vt");
+    const tr = document.startViewTransition(() => {
+      from.style.viewTransitionName = t.style.viewTransitionName = "";
+      openSubNow(title, build); sp.style.viewTransitionName = "sub-card"; $("subTitle").style.viewTransitionName = "sub-title";
+    });
+    tr.ready.then(() => vtShape(true)).catch(() => {});
+    // Done: the page keeps still (no second slide), and its rows have already risen inside the growing card.
+    tr.finished.finally(() => { sp.style.viewTransitionName = $("subTitle").style.viewTransitionName = ""; sp.classList.add("noanim"); sp.classList.remove("vt"); });
+    return;
+  }
+  openSubNow(title, build);
+}
+// The parts of the container transform CSS can't say: the corners go from a card's 20px to a page's square edges,
+// the card's colour turns into the page's, it lifts while it moves, and the list behind sinks back and fades.
+function vtShape(open) {
+  const d = document.documentElement, dur = open ? 500 : 380, easing = "cubic-bezier(.2,0,0,1)";
+  const card = getComputedStyle(d).getPropertyValue("--card").trim() || "#fff", page = getComputedStyle(d).getPropertyValue("--page").trim() || "#fafafa";
+  const lift = "0 0 0 1px rgba(0,0,0,.06), 0 18px 48px rgba(0,0,0,.14)", flat = "0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04)";
+  const k = (a, b) => open ? [a, b] : [b, a];
+  d.animate({ borderRadius: k("20px", "0px"), backgroundColor: k(card, page), boxShadow: open ? [flat, lift, "none"] : ["none", lift, flat] },
+    { duration: dur, easing, fill: "both", pseudoElement: "::view-transition-group(sub-card)" });
+  d.animate({ opacity: k(1, .25), transform: k("scale(1)", "scale(.94)") },
+    { duration: dur, easing, fill: "both", pseudoElement: open ? "::view-transition-old(root)" : "::view-transition-new(root)" });
+}
+function openSubNow(title, build) {
+  $("subTitle").textContent = title; const sp = $("subpage"); const was = sp.hidden; sp.hidden = false;
+  if (was) { const v = $("views"); v.classList.remove("back"); v.classList.add("under"); }
   sp.classList.add("fresh"); clearTimeout(sp._t); sp._t = setTimeout(() => sp.classList.remove("fresh"), 700);
   subRebuild = () => { const b = $("subBody"); b.replaceChildren(); build(b); };
   subRebuild(); $("subBody").scrollTop = 0;
 }
-function closeSub() { $("subpage").hidden = true; subRebuild = null; if (view === "home") renderHome(); if (view === "plan") renderPlan(); }
+function closeSub() { $("subpage").classList.remove("noanim"); const v = $("views"); if ($("subpage").classList.contains("vt")) v.classList.remove("under"); if (v.classList.contains("under")) { v.classList.remove("under"); v.classList.add("back"); setTimeout(() => v.classList.remove("back"), 400); } $("subpage").hidden = true; subRebuild = null; if (view === "home") renderHome(); if (view === "plan") renderPlan(); }
 $("subback").append(icon("back", 24)); $("subback").onclick = closeSubSoft;
 function closeSubSoft() {
   const sp = $("subpage");
-  if (sp.hidden || sp.classList.contains("out") || matchMedia("(prefers-reduced-motion:reduce)").matches) return closeSub();
+  if (sp.hidden || sp.classList.contains("out") || calm()) return closeSub();
+  // Back to the row it came from: the page shrinks into it.
+  const title = $("subTitle").textContent;
+  const row = [...document.querySelectorAll(".view.on .setrow")].find(r => { const b = r.querySelector("b"); return b && b.textContent === title; });
+  if (row && document.startViewTransition) {
+    const t = row.querySelector("b"); sp.classList.add("vt");
+    sp.style.viewTransitionName = "sub-card"; $("subTitle").style.viewTransitionName = "sub-title";
+    document.documentElement.classList.add("vt-back");
+    const tr = document.startViewTransition(() => {
+      sp.style.viewTransitionName = $("subTitle").style.viewTransitionName = ""; closeSub(); sp.classList.remove("vt");
+      row.style.viewTransitionName = "sub-card"; t.style.viewTransitionName = "sub-title";
+    });
+    tr.ready.then(() => vtShape(false)).catch(() => {});
+    tr.finished.finally(() => { row.style.viewTransitionName = t.style.viewTransitionName = ""; document.documentElement.classList.remove("vt-back"); });
+    return;
+  }
+  const v = $("views"); v.classList.remove("under"); v.classList.add("back"); setTimeout(() => v.classList.remove("back"), 420);
   sp.classList.add("out"); setTimeout(() => { sp.classList.remove("out"); closeSub(); }, 210);
 }
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("subpage").hidden) closeSubSoft(); });
@@ -616,10 +867,16 @@ $("bell").onclick = () => openSub("Needs your attention", subInsights);
 
 /* ---------- SETTINGS ---------- */
 const goPlan = what => Object.assign(() => window.__open(what), { go: true });
+// Settings, in groups. Each group is one card; rows are split by thin lines.
+const GROUPS = [["", ["Set up AssistX", "General", "Voice"]], ["Assistant", ["Intelligence", "Memory", "Mind map", "Automation", "Recipes", "Integrations"]],
+  ["Your day", ["Morning", "Noticing"]], ["Phone", ["Location", "Health", "Computers", "Privacy"]], ["", ["Developer"]]];
+// Developer settings stay hidden until turned on (tap Version 7 times in General, like Android).
+const devOn = () => localStorage.getItem("devMode") === "1";
+// Old shortcuts to Plan and the technical pages live elsewhere now; they stay searchable here.
+const HIDDEN = new Set(["Alarms", "Calendar", "Lists", "Status", "Devices"]);
 const SECTIONS = [
   ["check", "Set up AssistX", "A checklist: permissions, battery, Home", subSetup],
   ["sliders", "General", "Appearance, connection, and more", subGeneral],
-  ["calendar", "Import schedule", "Paste a schedule, check it, add it", subImport],
   ["bolt", "Status", "Is everything working?", subStatus],
   ["mic", "Voice", "Dictation and speech", subVoice],
   ["puzzle", "Integrations", "Plugins and what they may do", subIntegrations],
@@ -638,12 +895,13 @@ const SECTIONS = [
   ["clock", "Morning", "Morning brief and time-to-leave alerts", subMorning],
   ["folder", "Computers", "Your Mac, Windows or Linux computers", subComputers],
   ["phone", "Devices", "Phones and access tokens", subDevices],
+  ["sliders", "Developer", "Server, model, status and tokens", subDeveloper],
 ];
 // The master switch. Off means off: nothing runs, nothing is sent, and the phone keeps its uploads for later.
 async function powerCard() {
   let on = true; try { on = (await api("GET", "/v1/power")).on !== false; } catch (e) {}
   return h("div", { class: "card", id: "powercard" },
-    toggle("AssistX is " + (on ? "on" : "off"), on ? "Turn off to stop everything: no thinking, no reminders, no alarms from the server, nothing sent to your server." : "Everything is stopped. Turn on to start again. Alarms already on this phone still ring.", on, async v => {
+    toggle("AssistX is " + (on ? "on" : "off"), on ? "Off stops everything." : "Everything is stopped. Phone alarms still ring.", on, async v => {
       if (!v && !confirm("Turn AssistX off completely?\n\nNothing will think or run, and reminders and reports will not fire until you turn it on.")) { renderSettings(); return; }
       const r = await api("PUT", "/v1/power", { on: v });
       if (r.error) alert(r.error.message);
@@ -653,8 +911,15 @@ async function powerCard() {
 function renderSettings() {
   const q = $("q").value.toLowerCase();
   powerCard().then(c => { const old = $("powercard"); if (old) old.remove(); $("setBody").prepend(c); });
-  $("setBody").replaceChildren(...SECTIONS.filter(s => !q || (s[1] + " " + s[2]).toLowerCase().includes(q)).map(([ic, t, d, f]) =>
-    h("button", { class: "setrow", type: "button", onclick: () => f.go ? f() : openSub(t, f) }, icon(ic, 26), h("span", { class: "grow" }, h("b", { text: t }), h("small", { text: d })), icon("chev", 20))));
+  // Searching shows the one-line description too; the plain list is titles only.
+  const row = ([ic, t, d, f]) => h("button", { class: "setrow", type: "button", onclick: ev => f.go ? f() : openSub(t, f, ev.currentTarget) },
+    h("span", { class: "setic" }, icon(ic, 20)), h("span", { class: "grow" }, h("b", { text: t }), q ? h("small", { text: d }) : null), icon("chev", 18));
+  const hit = s => (s[1] !== "Developer" || devOn()) && (q ? (s[1] + " " + s[2]).toLowerCase().includes(q) : !HIDDEN.has(s[1]));
+  const groups = q ? [["Results", SECTIONS.map(s => s[1])]] : GROUPS;
+  $("setBody").replaceChildren(...groups.flatMap(([name, titles]) => {
+    const rows = titles.map(t => SECTIONS.find(s => s[1] === t)).filter(Boolean).filter(hit);
+    return rows.length ? [name ? h("div", { class: "sect", text: name }) : h("div", { class: "gap" }), h("div", { class: "group" }, rows.map(row))] : [];
+  }));
 }
 $("srch").onclick = () => { $("searchbar").hidden = !$("searchbar").hidden; if (!$("searchbar").hidden) $("q").focus(); };
 $("q").oninput = renderSettings;
@@ -699,14 +964,16 @@ function appUpdates(b) {
   const u = upd(); if (!u) return;
   const busy = ["checking", "downloading", "installing"].includes(u.state);
   const status = { idle: "Not checked yet", checking: "Checking\u2026", up_to_date: "Up to date", available: "Update available", downloading: "Downloading\u2026", ready: "Ready to install", installing: "Installing\u2026", error: "Problem" }[u.state] || u.state;
-  b.append(h("div", { class: "sect", text: "App updates" }), h("div", { class: "card" },
-    h("div", { class: "kv" }, h("span", { text: "Installed" }), h("span", { text: u.installed.name })),
-    h("div", { class: "kv" }, h("span", { text: "Status" }), h("span", { text: status + (u.latest.name && !["up_to_date", "idle"].includes(u.state) ? " \u00b7 " + u.latest.name : "") })),
-    u.message ? h("div", { class: "sub", style: "padding:6px 0", text: u.message }) : null,
-    toggle("Install updates automatically", "Checks when you open the app and installs new versions by itself", u.auto, v => NA.setAutoUpdate(v)),
-    h("div", { class: "row", style: "margin-top:8px" },
-      h("button", { class: "pill", type: "button", disabled: busy, onclick: () => NA.checkUpdate() }, "Check for updates"),
-      u.state === "ready" ? h("button", { class: "pill solid", type: "button", onclick: () => NA.installUpdate() }, "Install now") : null)));
+  let taps = 0;
+  const ver = h("button", { class: "kv tapkv", type: "button", onclick: () => {
+    if (devOn()) return toast("Developer settings are already on.");
+    if (++taps >= 7) { localStorage.setItem("devMode", "1"); hap("success"); toast("Developer settings are on."); renderSettings(); }
+    else if (taps >= 4) { hap("tick"); toast((7 - taps) + " more taps"); } } }, h("span", { text: "Version" }), h("span", { text: u.installed.name }));
+  b.append(h("div", { class: "sect", text: "Updates" }), h("div", { class: "card" },
+    toggle("Update automatically", null, u.auto, v => NA.setAutoUpdate(v)),
+    u.state === "ready" ? h("button", { class: "linkrow", type: "button", onclick: () => NA.installUpdate() }, "Install " + (u.latest.name || "update"))
+      : h("button", { class: "linkrow", type: "button", disabled: busy, onclick: () => NA.checkUpdate() }, busy ? status : "Check for updates"),
+    ver));
 }
 function toggle(label, hint, on, change) {
   const input = h("input", { type: "checkbox", "aria-label": label }); input.checked = on; input.onchange = () => change(input.checked);
@@ -720,17 +987,32 @@ function subGeneralMain(b) {
   const sv = localStorage.getItem("startView") || "home";
   b.append(h("div", { class: "sect", text: "Open the app on" }), h("div", { class: "seg", role: "group", "aria-label": "Open the app on" },
     [["home", "Home"], ["plan", "Plan"], ["chat", "Assistant"]].map(([v, t]) => h("button", { type: "button", "aria-pressed": String(sv === v), text: t, onclick: () => { localStorage.setItem("startView", v); subRebuild(); } }))));
-  b.append(h("div", { class: "sect", text: "Chat" }), h("div", { class: "card" },
-    toggle("Show process", "See each step the assistant takes", opt("showProcess", true), v => { setOpt("showProcess", v); applyOpts(); }),
-    toggle("Expand steps", "Open the step list by default", opt("expand", false), v => setOpt("expand", v)),
-    toggle("Vibration", "Small buzzes for taps and while the assistant answers", opt("haptics", true), v => { setOpt("haptics", v); hap("click"); }),
-    toggle("Sound effects", "Short sounds for sending, errors and approvals, and on the voice screen. Silent when the phone is on silent.", opt("sfx", true), v => { setOpt("sfx", v); try { NA && NA.setSfx && NA.setSfx(v); } catch (e) {} if (v) sfx("send"); })));
+  b.append(h("div", { class: "sect", text: "Feel" }), h("div", { class: "card" },
+    toggle("Vibration", null, opt("haptics", true), v => { setOpt("haptics", v); hap("click"); }),
+    toggle("Sounds", null, opt("sfx", true), v => { setOpt("sfx", v); try { NA && NA.setSfx && NA.setSfx(v); } catch (e) {} if (v) sfx("send"); })));
   b.append(h("div", { class: "sect", text: "Account" }), h("div", { class: "card" },
-    h("div", { class: "kv" }, h("span", { text: "Server" }), h("span", { text: cfg.base })),
-    h("div", { class: "kv" }, h("span", { text: "Signed in as" }), h("b", { text: localStorage.getItem("lastUser") || "(this server has no accounts)" })),
-    h("div", { class: "row", style: "margin-top:8px" },
-      h("button", { class: "pill bad", type: "button", onclick: () => { sessionStorage.clear(); try { NA && NA.forgetDevice && NA.forgetDevice(); NA && NA.clearConfig(); } catch (e) { /* not in the app */ } cfg.tok = ""; closeSub(); showConnect(); } }, "Sign out")),
-    health ? h("div", { class: "sub", style: "margin-top:10px", text: "Model: " + (health.model || "").replace("openai-compatible:", "") }) : null));
+    h("div", { class: "kv" }, h("span", { text: "Signed in as" }), h("b", { text: localStorage.getItem("lastUser") || "owner" })),
+    h("button", { class: "linkrow bad", type: "button", onclick: () => { sessionStorage.clear(); try { NA && NA.forgetDevice && NA.forgetDevice(); NA && NA.clearConfig(); } catch (e) { /* not in the app */ } cfg.tok = ""; closeSub(); showConnect(); } }, "Sign out")));
+}
+// For developers: the server, the model, versions, status and access tokens. Hidden until turned on.
+function subDeveloper(b) {
+  const u = upd();
+  b.append(h("div", { class: "sect", text: "Connection" }), h("div", { class: "card" },
+    h("div", { class: "kv" }, h("span", { text: "Server" }), h("span", { class: "mono", text: cfg.base })),
+    h("div", { class: "kv" }, h("span", { text: "Account" }), h("span", { class: "mono", text: localStorage.getItem("lastUser") || "owner" })),
+    health ? h("div", { class: "kv" }, h("span", { text: "Model" }), h("span", { class: "mono", text: String(health.model || "").replace("openai-compatible:", "") || "?" })) : null,
+    health && health.version ? h("div", { class: "kv" }, h("span", { text: "Server version" }), h("span", { class: "mono", text: health.version })) : null));
+  if (u) b.append(h("div", { class: "sect", text: "App" }), h("div", { class: "card" },
+    h("div", { class: "kv" }, h("span", { text: "Installed" }), h("span", { class: "mono", text: u.installed.name + " (" + u.installed.code + ")" })),
+    h("div", { class: "kv" }, h("span", { text: "Update state" }), h("span", { class: "mono", text: u.state + (u.latest && u.latest.name ? " \u00b7 " + u.latest.name : "") })),
+    u.message ? h("div", { class: "kv" }, h("span", { text: "Message" }), h("span", { text: u.message })) : null));
+  b.append(h("div", { class: "sect", text: "Chat" }), h("div", { class: "card" },
+    toggle("Show the steps", null, opt("showProcess", true), v => { setOpt("showProcess", v); applyOpts(); }),
+    toggle("Open steps by default", null, opt("expand", false), v => setOpt("expand", v))));
+  b.append(h("div", { class: "sect", text: "Tools" }), h("div", { class: "group" },
+    h("button", { class: "setrow", type: "button", onclick: ev => openSub("Status", subStatus, ev.currentTarget) }, h("span", { class: "setic" }, icon("bolt", 20)), h("span", { class: "grow" }, h("b", { text: "Status" })), icon("chev", 18)),
+    h("button", { class: "setrow", type: "button", onclick: ev => openSub("Devices and tokens", subDevices, ev.currentTarget) }, h("span", { class: "setic" }, icon("phone", 20)), h("span", { class: "grow" }, h("b", { text: "Devices and tokens" })), icon("chev", 18))));
+  b.append(h("div", { class: "card", style: "margin-top:18px" }, toggle("Developer settings", null, true, v => { if (!v) { localStorage.removeItem("devMode"); closeSubSoft(); toast("Developer settings are off."); renderSettings(); } })));
 }
 function subVoice(b) {
   // Phone assistant: hold the home/power button, or say "AssistX".
@@ -738,20 +1020,20 @@ function subVoice(b) {
   if (vs) {
     b.append(h("div", { class: "sect", text: "Phone assistant" }), h("div", { class: "card" },
       h("div", { class: "item" }, h("span", { class: "grow" }, h("div", { class: "t", text: vs.assistant ? "AssistX is your assistant" : "Make AssistX your assistant" }),
-        h("div", { class: "sub", text: vs.assistant ? "Hold the home or power button to talk." : "Then holding the home or power button opens AssistX. In the next screen choose Digital assistant app \u2192 AssistX." })),
+        h("div", { class: "sub", text: vs.assistant ? "Hold home or power to talk." : "Hold home or power to open AssistX." })),
         h("button", { class: "pill" + (vs.assistant ? "" : " solid"), type: "button", onclick: () => NA.openAssistantSettings() }, vs.assistant ? "Change" : "Set up")),
       h("div", { class: "item" }, h("span", { class: "grow" }, h("div", { class: "t", text: "Say \u201cAssistX\u201d" }),
-        h("div", { class: "sub", text: vs.wake ? "Listening for the wake word. Uses more battery." : "Off. When on, the phone listens for the word only and keeps nothing else." })),
+        h("div", { class: "sub", text: vs.wake ? "Listening. Uses more battery." : "Off. Listens for the word only." })),
         h("button", { class: "pill" + (vs.wake ? "" : " solid"), type: "button", onclick: () => NA.setWake(!vs.wake) }, vs.wake ? "Turn off" : "Turn on")),
       vs.wake && !vs.overlay ? h("div", { class: "item" }, h("span", { class: "grow" }, h("div", { class: "t", text: "Open right away" }),
-        h("div", { class: "sub", text: "Allow \u201cDisplay over other apps\u201d so the word opens AssistX at once, not as a notification." })),
+        h("div", { class: "sub", text: "Opens AssistX at once, not as a notification." })),
         h("button", { class: "pill solid", type: "button", onclick: () => NA.openOverlaySettings() }, "Allow")) : null,
       h("button", { class: "pill solid", type: "button", style: "margin-top:8px", onclick: () => NA.talk() }, "Try it now")));
   }
   b.append(h("div", { class: "card" },
-    toggle("Dictation button", nativeMic ? "Speak and the words appear in the message box. Speech is turned into text on this phone." : SR ? "Speak and the text appears in the message box. Your browser may send audio to its speech service." : "This browser has no speech input.", opt("dictation", true) && !!(SR || nativeMic), v => { setOpt("dictation", v); applyOpts(); }),
+    toggle("Dictation button", nativeMic ? "Speak instead of typing. Stays on this phone." : SR ? "Speak instead of typing." : "This browser has no speech input.", opt("dictation", true) && !!(SR || nativeMic), v => { setOpt("dictation", v); applyOpts(); }),
     h("label", { class: "field", style: "margin-top:8px" }, h("span", { text: "Language" }), h("input", { type: "text", value: localStorage.getItem("lang") || navigator.language || "en-US", onchange: e => localStorage.setItem("lang", e.target.value.trim()) }))));
-  b.append(h("p", { class: "sub", text: "To have the phone listen through the day, use Privacy \u2192 Listen on this phone." }));
+  b.append(h("p", { class: "sub", style: "margin:10px 4px", text: "All-day listening is in Privacy." }));
 }
 const OAUTH = { spotify: { name: "Spotify", site: "developer.spotify.com/dashboard", note: "Controlling playback needs Spotify Premium." },
   "google-health": { name: "Google Health", site: "console.cloud.google.com", note: "Turn on the Google Health API, make an OAuth client, and paste its Client ID and Client Secret." },
@@ -798,7 +1080,7 @@ async function oauthCheck() {
 }
 window.__oauthCheck = oauthCheck;
 async function subIntegrations(b) {
-  b.append(h("div", { class: "empty", text: "Loading\u2026" }));
+  b.append(skel());
   const [r, sec] = await Promise.all([api("GET", "/v1/plugins"), api("GET", "/v1/secrets")]); b.replaceChildren();
   const have = new Map((sec.items || []).map(x => [x.name, x.updated]));
   let any = false;
@@ -825,7 +1107,7 @@ async function subIntegrations(b) {
 }
 // What the assistant notices by itself (docs/10, Noticing). Each switch is kept on the server; the phone reads them.
 async function subNoticing(b) {
-  b.append(h("div", { class: "empty", text: "Loading…" }));
+  b.append(skel());
   const [s, seen] = await Promise.all([api("GET", "/v1/detected/settings"), api("GET", "/v1/detected")]); b.replaceChildren();
   if (s.error) { b.append(h("div", { class: "empty", text: s.error.message })); return; }
   const set = async o => { const r = await api("PATCH", "/v1/detected/settings", o); if (r.error) alert(r.error.message); subRebuild(); };
@@ -841,7 +1123,7 @@ async function subNoticing(b) {
     h("div", { class: "t", text: i.kind + ": " + i.title }), h("div", { class: "sub", text: [i.date, i.amount, i.app, (i.at || "").replace("T", " ").slice(0, 16)].filter(Boolean).join(" · ") })))) : h("div", { class: "empty", text: "Nothing yet." })));
 }
 async function subPrivacy(b) {
-  b.append(h("div", { class: "empty", text: "Loading\u2026" }));
+  b.append(skel());
   const st = await api("GET", "/v1/ambient/status"); const s = st.settings || {}; b.replaceChildren();
   const patch = async o => { const r = await api("PATCH", "/v1/ambient/settings", o); if (r.error) alert(r.error.message); subRebuild(); };
   if (capAvail()) b.append(h("div", { class: "card" }, toggle("Listen on this phone", "Turns speech into text here and sends only the text. A notification shows the whole time.", capOn(), v => NA.setCapture(v))));
@@ -868,7 +1150,7 @@ async function subPrivacy(b) {
   b.append(h("p", { class: "sub", style: "margin-top:14px", text: "The server never receives audio or voice data, only text. Whatever other people say is treated as outside text and is never obeyed. Nothing becomes memory until you keep it." }));
 }
 async function subIntelligence(b) {
-  b.append(h("div", { class: "empty", text: "Loading\u2026" }));
+  b.append(skel());
   const [c, runs, mdl] = await Promise.all([api("GET", "/v1/config"), api("GET", "/v1/dreaming/runs"), api("GET", "/v1/models")]); b.replaceChildren();
   if (mdl && mdl.profiles) {
     // Which model answers. Auto: the small local model for tiny messages, the 9B otherwise; it may ask for the cloud.
@@ -925,7 +1207,7 @@ async function subIntelligence(b) {
 
 /* ---------- MIND MAP: what memory connects ---------- */
 function subMind(b) {
-  const box = h("div", { class: "card" }, h("div", { class: "empty", text: "Loading…" }));
+  const box = h("div", { class: "card" }, skel());
   const info = h("div", { class: "card", style: "margin-top:10px" }, h("div", { class: "sub", text: "Tap a dot to see what it connects to." }));
   b.append(box, info);
   api("GET", "/v1/memory/graph").then(g => {
@@ -972,7 +1254,7 @@ function mindDraw(box, info, ns, ls) {
 function subMemory(b) { b.append(h("div", { id: "memBody" })); loadMem($("memBody")); }
 // Recipes: steps the assistant saved (after you said Save on its card). Delete any you do not want.
 async function subRecipes(b) {
-  b.append(h("div", { class: "empty", text: "Loading…" }));
+  b.append(skel());
   const r = await api("GET", "/v1/recipes"); b.replaceChildren();
   const items = r.items || [];
   b.append(h("div", { class: "sect", text: "Saved recipes" }), h("div", { class: "card" }, items.length ? items.map(x =>
@@ -986,7 +1268,7 @@ async function subRecipes(b) {
     h("p", { class: "sub", text: "Ask the assistant to run a recipe by name. Each step still asks you first when it would normally ask." }));
 }
 async function subAutomation(b) {
-  b.append(h("div", { class: "empty", text: "Loading\u2026" }));
+  b.append(skel());
   const [jobs, acts] = await Promise.all([api("GET", "/v1/jobs"), api("GET", "/v1/actions?limit=10")]); b.replaceChildren();
   const all = (jobs.items || []).filter(j => j.status !== "cancelled");
   const tasks = all.filter(j => j.kind === "task"), others = all.filter(j => j.kind !== "task" && j.kind !== "alarm" && !j.ring);
@@ -1075,53 +1357,9 @@ async function editAutomation(b, j) {
       hap("success"); try { NA && NA.syncNotify && NA.syncNotify(); } catch (e) {} closeSubSoft ? closeSubSoft() : null; openSub("Automation", subAutomation);
     } }, j ? "Save" : "Create")));
 }
-/* ---------- schedule import: paste, check, add on top of the calendar you have ---------- */
-const REPEAT_WORDS = { none: "", day: "every day", weekdays: "weekdays", week: "every week", month: "every month", year: "every year" };
-function subImport(b) {
-  const text = h("textarea", { rows: 9, "aria-label": "Your schedule", placeholder: "Paste your schedule, one event per line:\nGym Mon/Wed/Fri 6pm to 7pm\nWork Mon-Fri 9 to 5\nDentist 12 Dec 2:30pm at Main St\nSoccer every Saturday 10am until 20 Dec" });
-  const remind = h("select", { "aria-label": "Reminder" }, [["", "No reminders"], ["10", "10 minutes before"], ["30", "30 minutes before"], ["60", "1 hour before"]].map(([v, t]) => h("option", { value: v, text: t, selected: v === "10" })));
-  const out = h("div", {}), read = h("button", { class: "pill solid", type: "button", text: "Read it" });
-  read.onclick = async () => {
-    if (!text.value.trim()) { text.focus(); return; }
-    read.disabled = true; out.replaceChildren(h("div", { class: "empty", text: "Reading your schedule… this can take a minute." }));
-    const r = await api("POST", "/v1/calendar/import/preview", { text: text.value }); read.disabled = false;
-    if (r.error) return out.replaceChildren(h("div", { class: "card" }, h("div", { class: "empty", text: r.error.message })));
-    importPreview(out, r.events || [], () => remind.value ? +remind.value : null);
-  };
-  b.append(h("div", { class: "card" }, h("p", { class: "sub", style: "margin:0 0 8px", text: "Paste a schedule and I will show what I understood. Nothing is added until you tick what you want and tap Add. Your calendar is never changed or emptied: this adds on top of it." }),
-    fld("Schedule", text), fld("Reminder for each", remind), read), out);
-}
-function importPreview(out, events, remindMin) {
-  const on = events.map(e => e.ok && !e.duplicate);
-  const when = e => { const f = e.first || e.start || ""; const end = e.end && !e.all_day ? "–" + e.end.slice(11, 16) : ""; return (e.all_day ? f.slice(0, 10) : f.slice(0, 16) + end) + (REPEAT_WORDS[e.repeat] ? " · " + REPEAT_WORDS[e.repeat] : "") + (e.until ? " until " + e.until.slice(0, 10) : "") + (e.location ? " · " + e.location : ""); };
-  const add = h("button", { class: "pill solid", type: "button" });
-  const count = () => on.filter(Boolean).length;
-  const label = () => { add.textContent = count() ? "Add " + count() + (count() === 1 ? " event" : " events") : "Nothing ticked"; add.disabled = !count(); };
-  const rows = events.map((e, i) => {
-    const box = h("input", { type: "checkbox", "aria-label": "Add " + (e.title || "event"), disabled: !e.ok }); box.checked = on[i]; box.onchange = () => { on[i] = box.checked; label(); };
-    return h("div", { class: "item", style: e.ok ? "" : "opacity:.7" }, box, h("span", { class: "grow", style: "margin-left:10px" }, h("div", { class: "t", text: e.title || "(no title)" }),
-      e.ok ? h("div", { class: "sub", text: when(e) }) : h("div", { class: "sub", style: "color:var(--bad)", text: e.error || "I could not read this one." }),
-      e.duplicate ? h("div", { class: "sub", text: "Already on your calendar, so it is left unticked." }) : null,
-      e.clash ? h("div", { class: "sub", style: "color:var(--warn)", text: "Overlaps “" + e.clash + "” on your calendar." }) : null));
-  });
-  add.onclick = async () => {
-    add.disabled = true;
-    const r = await api("POST", "/v1/calendar/import", { events: events.filter((e, i) => on[i]), remind_minutes: remindMin() });
-    if (r.error) { alert(r.error.message); add.disabled = false; return; }
-    hap("success"); try { syncPhone(); } catch (e) {}
-    const undo = h("button", { class: "pill", type: "button", text: "Undo", onclick: async () => { await api("POST", "/v1/calendar/import/undo", { ids: r.ids }); hap("success"); try { syncPhone(); } catch (e) {} out.replaceChildren(h("div", { class: "card" }, h("div", { class: "empty", text: "Taken back: " + r.added + " removed. Your calendar is as it was." }))); } });
-    out.replaceChildren(h("div", { class: "card" }, h("h3", { text: "Added " + r.added + (r.added === 1 ? " event" : " events") }),
-      r.duplicates_skipped ? h("p", { class: "sub", text: r.duplicates_skipped + " already there, left alone." }) : null,
-      (r.failed || []).length ? h("p", { class: "sub", style: "color:var(--bad)", text: r.failed.length + " could not be added: " + r.failed.map(f => f.title + " (" + f.error + ")").join("; ") }) : null,
-      h("div", { class: "row" }, undo, h("button", { class: "pill solid", type: "button", text: "Open calendar", onclick: () => { closeSub(); window.__open && window.__open("calendar"); } }))));
-  };
-  label();
-  out.replaceChildren(h("div", { class: "card" }, h("b", { text: "Here is what I understood" }), ...rows), h("div", { class: "row", style: "margin-top:10px" }, add));
-}
-
 /* ---------- status ---------- */
 async function subStatus(b) {
-  b.append(h("div", { class: "empty", text: "Checking\u2026" }));
+  b.append(skel());
   let s; try { s = await api("GET", "/v1/status"); } catch (e) { s = null; }
   b.replaceChildren();
   if (!s || s.error) { b.append(h("div", { class: "empty", text: "Can\u2019t reach the server." })); return; }
@@ -1196,20 +1434,19 @@ async function setupCard() {
     h("button", { class: "pill solid", type: "button", onclick: () => openSub("Set up AssistX", subSetup) }, "Open checklist"));
 }
 async function subSetup(b) {
-  b.append(h("div", { class: "empty", text: "Checking\u2026" }));
+  b.append(skel());
   const L = await setupItems(false); b.replaceChildren();
   const done = L.filter(i => i.done).length, pct = Math.round(100 * done / L.length);
   b.append(h("div", { class: "card" }, h("div", { class: "cardhead" }, icon("check", 24), h("h3", { class: "grow", text: pct === 100 ? "All set. 100%" : pct + "% set up" }), h("span", { class: "sub", text: done + " of " + L.length })),
     h("div", { class: "setupbar" }, h("i", { style: "width:" + pct + "%" }))));
-  const row = i => h("div", { class: "card" }, h("div", { class: "item" }, h("span", { class: "chip" }, icon(i.done ? "check" : "clock", 18)),
+  const row = i => h("div", { class: "item" + (i.done ? " done" : "") }, h("span", { class: "chip" }, icon(i.done ? "check" : "clock", 18)),
     h("span", { class: "grow" }, h("div", { class: "t", text: i.label }), h("div", { class: "sub", text: i.skipped ? "Skipped" : i.hint })),
     i.done ? null : h("span", { class: "row", style: "gap:6px" },
       i.optional ? h("button", { class: "pill", type: "button", onclick: () => { const s = setupSkipped(); s.add(i.id); localStorage.setItem("setupSkipped", JSON.stringify([...s])); subRebuild(); } }, "Skip") : null,
-      h("button", { class: "pill solid", type: "button", onclick: async () => { await i.fix(); setTimeout(() => subRebuild(), 600); } }, i.fixText || "Fix"))));
+      h("button", { class: "pill solid", type: "button", onclick: async () => { await i.fix(); setTimeout(() => subRebuild(), 600); } }, i.fixText || "Fix")));
   const isPerm = i => PERMS.some(p => p.id === i.id);
-  b.append(h("div", { class: "sect", text: "Needed" }), ...L.filter(i => !i.optional && !isPerm(i)).map(row));
-  if (L.some(i => !i.optional && isPerm(i))) b.append(h("div", { class: "sect", text: "Allow permissions for AssistX to run" }), ...L.filter(i => !i.optional && isPerm(i)).map(row));
-  if (L.some(i => i.optional)) b.append(h("div", { class: "sect", text: "Optional" }), ...L.filter(i => i.optional).map(row));
+  const grp = (name, list) => list.length ? [h("div", { class: "sect", text: name }), h("div", { class: "card list" }, list.map(row))] : [];
+  b.append(...grp("Needed", L.filter(i => !i.optional && !isPerm(i))), ...grp("Allow permissions for AssistX to run", L.filter(i => !i.optional && isPerm(i))), ...grp("Optional", L.filter(i => i.optional)));
   b.append(h("div", { class: "row", style: "margin-top:12px" }, h("button", { class: "pill", type: "button", onclick: () => subRebuild() }, "Check again"),
     h("button", { class: "pill", type: "button", onclick: () => openSub("Status", subStatus) }, "Status")));
 }
@@ -1255,7 +1492,7 @@ async function renderPlan() {
   for (const bt of $("planSeg").children) bt.setAttribute("aria-pressed", String(bt.dataset.p === planTab));
   $("planAdd").setAttribute("aria-label", planTab === "cal" ? "New event" : planTab === "list" ? "New list" : "New alarm");
   const body = $("planBody"); if (!cfg.tok) return;
-  if (!body.children.length) body.append(h("div", { class: "empty", text: "Loading…" }));
+  if (!body.children.length) body.append(skel());
   const gen = ++planGen;
   try { await (planTab === "cal" ? planCalendar : planTab === "list" ? planLists : planAlarms)(body, gen); }
   catch (e) { if (gen === planGen) body.replaceChildren(h("div", { class: "card" }, h("div", { class: "empty", text: "Could not load. Check the connection." }), h("button", { class: "pill", type: "button", onclick: renderPlan }, "Try again"))); }
@@ -1328,8 +1565,7 @@ async function planCalendar(body, gen) {
       h("div", { class: "cardhead" }, h("h3", { class: "grow", text: dayName(calSel) }), h("button", { class: "link", type: "button", onclick: () => editEvent(null, calSel) }, icon("plus", 16), "Add")),
       rows.length ? rows : h("div", { class: "empty", text: "Nothing planned. Tap Add, or ask the assistant." }));
     const next = evs.filter(e => !e.skipped && e.start.slice(0, 10) > calSel).slice(0, 6);
-    body.replaceChildren(month, dayCard, next.length ? h("div", { class: "sect", text: "Coming up" }) : null, next.length ? h("div", { class: "card" }, next.map(e => evRow(e, true))) : null,
-      h("button", { class: "link", type: "button", style: "margin:6px 0 14px;color:var(--text);font-weight:600", onclick: () => openSub("Import schedule", subImport) }, icon("plus", 16), "Import a schedule"));
+    body.replaceChildren(month, dayCard, next.length ? h("div", { class: "sect", text: "Coming up" }) : null, next.length ? h("div", { class: "card" }, next.map(e => evRow(e, true))) : null);
   };
   draw();
 }
@@ -1344,7 +1580,7 @@ function switchEl(label, on) { const i = h("input", { type: "checkbox", "aria-la
 function editEvent(id, day) {
   openSub(id ? "Edit event" : "New event", async b => {
     let e = null;
-    if (id) { b.append(h("div", { class: "empty", text: "Loading…" })); const x = await api("GET", "/v1/calendar/events/" + id); b.replaceChildren();
+    if (id) { b.append(skel()); const x = await api("GET", "/v1/calendar/events/" + id); b.replaceChildren();
       if (x.error) return b.append(h("div", { class: "card" }, h("div", { class: "empty", text: "This event is gone." }))); e = x.event || x; }
     const sd = e ? e.start.slice(0, 10) : day || ymd(new Date());
     const title = h("input", { type: "text", placeholder: "What, like Dentist", "aria-label": "Title", value: e ? e.title : "" });
@@ -1545,7 +1781,7 @@ const locState = () => { try { return NA && NA.locationState ? JSON.parse(NA.loc
 window.__locationChanged = () => { if (!$("subpage").hidden && subRebuild) subRebuild(); };
 window.__voiceChanged = window.__locationChanged;
 async function subLocation(b) {
-  b.append(h("div", { class: "empty", text: "Loading\u2026" }));
+  b.append(skel());
   const [now, places, vis] = await Promise.all([api("GET", "/v1/location/now"), api("GET", "/v1/places"), api("GET", "/v1/location/visits")]); b.replaceChildren();
   const st = locState();
   if (st) b.append(h("div", { class: "card" }, h("div", { class: "item" },
@@ -1577,7 +1813,7 @@ async function subLocation(b) {
 const healthState = () => { try { return NA && NA.healthState ? JSON.parse(NA.healthState()) : null; } catch (e) { return null; } };
 window.__healthChanged = () => { if (!$("subpage").hidden && subRebuild) subRebuild(); };
 async function subMorning(b) {
-  b.append(h("div", { class: "empty", text: "Loading…" }));
+  b.append(skel());
   const [s, tr] = await Promise.all([api("GET", "/v1/brief"), api("GET", "/v1/travel")]); b.replaceChildren();
   const patch = async o => { const r = await api("PATCH", "/v1/brief", o); if (r.error) alert(r.error.message); subRebuild(); };
   const patchT = async o => { const r = await api("PATCH", "/v1/travel", o); if (r.error) alert(r.error.message); subRebuild(); };
@@ -1600,7 +1836,7 @@ async function subMorning(b) {
 }
 
 async function subHealth(b) {
-  b.append(h("div", { class: "empty", text: "Loading\u2026" }));
+  b.append(skel());
   const r = await api("GET", "/v1/health/days?limit=7"); b.replaceChildren();
   const st = healthState();
   if (st) b.append(h("div", { class: "card" }, h("div", { class: "item" },
@@ -1619,7 +1855,7 @@ async function subHealth(b) {
 
 /* ---------- computers ---------- */
 async function subComputers(b) {
-  b.append(h("div", { class: "empty", text: "Loading\u2026" }));
+  b.append(skel());
   const r = await api("GET", "/v1/nodes"); b.replaceChildren();
   const list = r.items || [];
   b.append(h("div", { class: "sect", text: list.length + " computers \u00b7 " + list.filter(n => n.online).length + " online" }), h("div", { class: "card" }, list.length ? list.map(n => h("div", { class: "item" },
@@ -1642,7 +1878,7 @@ async function subComputers(b) {
 }
 
 async function subDevices(b) {
-  b.append(h("div", { class: "empty", text: "Loading\u2026" }));
+  b.append(skel());
   const r = await api("GET", "/v1/tokens"); b.replaceChildren();
   const label = h("input", { type: "text", placeholder: "Name, like pixel", "aria-label": "Device name" });
   const scope = h("select", { "aria-label": "Access" }, h("option", { value: "device", text: "Recorder only (uploads text)" }), h("option", { value: "client", text: "Full app access" }));
@@ -1674,7 +1910,7 @@ async function subDevices(b) {
   b.append(h("div", { class: "card" }, list.length ? list.map(row) : h("div", { class: "empty", text: "No devices yet." })));
 }
 async function subInsights(b) {
-  b.append(h("div", { class: "empty", text: "Loading\u2026" }));
+  b.append(skel());
   const d = await gather(); b.replaceChildren(); const ins = insightsOf(d);
   if (!ins.length) b.append(h("div", { class: "empty", text: "Nothing needs your attention." }));
   for (const i of ins) {

@@ -141,9 +141,6 @@ pub fn router(app: AppState) -> Router {
         .route("/v1/calendar/events", get(list_events).post(add_event))
         .route("/v1/calendar/events/{id}", get(get_event).patch(update_event).delete(delete_event))
         .route("/v1/calendar/events/{id}/skip", post(skip_event_day))
-        .route("/v1/calendar/import/preview", post(import_preview))
-        .route("/v1/calendar/import", post(import_events))
-        .route("/v1/calendar/import/undo", post(import_undo))
         .route("/v1/jobs/{id}/skip", post(skip_job_day))
         .route("/v1/location/points", post(location_upload).get(location_points))
         .route("/v1/location/now", get(location_now))
@@ -1298,26 +1295,6 @@ async fn phone_action_answer(State(app): State<AppState>, Path(id): Path<String>
 }
 
 // ---------------- calendar ----------------
-
-/// Read a pasted schedule into events and show them: nothing is saved. `{text}`.
-async fn import_preview(State(app): State<AppState>, Json(b): Json<Value>) -> ApiResult {
-    let text = b["text"].as_str().unwrap_or_default().to_string();
-    let a = app.clone();
-    match tokio::task::spawn_blocking(move || crate::schedule_import::preview(&a, &text)).await {
-        Ok(r) => r.map(|v| Json(v).into_response()).map_err(ApiError::invalid),
-        Err(e) => Err(ApiError::invalid(e.to_string())),
-    }
-}
-
-/// Add the ticked events on top of the calendar: `{events: [...], remind_minutes?}`. Existing events are never touched.
-async fn import_events(State(app): State<AppState>, Json(b): Json<Value>) -> ApiResult {
-    crate::schedule_import::import(&app, &b["events"], b["remind_minutes"].as_i64()).map(|v| Json(v).into_response()).map_err(ApiError::invalid)
-}
-
-/// Take back an import: `{ids: [...]}` removes exactly those events.
-async fn import_undo(State(app): State<AppState>, Json(b): Json<Value>) -> ApiResult {
-    ok(crate::schedule_import::undo(&app, &b["ids"]))
-}
 
 /// Skip one day of a repeating event: `{date: "2026-11-20", undo?: true}`. The rest of the repeats are untouched.
 async fn skip_event_day(State(app): State<AppState>, Path(id): Path<String>, Json(b): Json<Value>) -> ApiResult {

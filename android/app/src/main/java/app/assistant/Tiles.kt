@@ -20,6 +20,8 @@ abstract class OpenTile : TileService() {
         qsTile?.apply { state = Tile.STATE_INACTIVE; updateTile() }
     }
 
+    // Android 14+ uses the PendingIntent form below; the Intent form is only for Android 12 and 13.
+    @android.annotation.SuppressLint("StartActivityAndCollapseDeprecated")
     override fun onClick() {
         super.onClick()
         val go = {

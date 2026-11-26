@@ -13,6 +13,18 @@ fn main() {
         Some("tool-run") if args.len() == 4 => std::process::exit(agent_core::plugins::tool_run_main(&args[2], &args[3])),
         Some("token") => std::process::exit(token_cli(&args[2..])),
         Some("eval") => std::process::exit(agent_core::eval::cli(&args[2..])),
+        Some("admin-password") => {
+            // Two lines on stdin: the admin username, then the password. Not in a command line or the shell history.
+            let mut user = String::new();
+            let mut pass = String::new();
+            let _ = std::io::stdin().read_line(&mut user);
+            let _ = std::io::stdin().read_line(&mut pass);
+            let dir = std::path::PathBuf::from(std::env::var("AGENT_DATA_DIR").unwrap_or_else(|_| "data".into()));
+            match agent_core::hub::Hub::set_admin_password(&dir, user.trim(), pass.trim_end_matches(['\n', '\r'])) {
+                Ok(()) => { println!("admin login set (signed-in admin pages end at the next restart)"); std::process::exit(0) }
+                Err(e) => { eprintln!("not set: {e}"); std::process::exit(1) }
+            }
+        }
         Some("server-password") => {
             // The new password comes from stdin, so it is not in a command line or the shell history.
             let mut line = String::new();
@@ -46,6 +58,9 @@ async fn serve_accounts(cfg: Config) {
             eprintln!("server token: {e}");
             std::process::exit(1);
         }
+    }
+    if let Some((code, path)) = hub.ensure_admin_setup() {
+        println!("no admin login yet: open /admin and use the setup code {code} (also in {}).", path.display());
     }
     let sandbox = agent_core::sandbox::probe().map(String::from);
     if hub.cfg.sandbox != "macos" && hub.cfg.sandbox != "linux" {

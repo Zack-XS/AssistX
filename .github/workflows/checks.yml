@@ -51,4 +51,9 @@ jobs:
           workspaces: server
       - name: Server tests
         working-directory: server
-        run: cargo test -- --test-threads=2
+        run: |
+          # server/node/ is kept out of git (see .gitignore), so test the server without it.
+          if [ ! -f node/Cargo.toml ]; then
+            sed -i '' 's/members = \[".", "node"\]/members = ["."]/' Cargo.toml
+          fi
+          cargo test -- --test-threads=2

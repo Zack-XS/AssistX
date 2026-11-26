@@ -8,6 +8,7 @@ android/dist/
 
 # Private data — never commit
 server/data/
+server/data-test/
 server/.token
 server/node/
 server/docs-retired/

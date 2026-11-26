@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>AssistX · Server admin</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><meta name="robots" content="noindex">
+<style>
+/* The server's admin dashboard (docs/architecture/accounts.md, Admin dashboard). Served by the server at /admin.
+   Two locks: the Server Access Code, then the admin login. Both are kept only in this page's memory. */
+:root{--page:#f6f6f5;--card:#fff;--raised:#fff;--line:#e7e7e5;--line2:#efefed;--text:#0b0b0b;--mute:#6b6b69;--faint:#9a9a97;--ink:#0b0b0b;--on-ink:#fff;--field:#f3f3f1;--hover:#f6f6f4;
+  --ok:#157a42;--ok-bg:#e8f4ec;--warn:#8a5d00;--warn-bg:#fbf1dc;--bad:#b8291f;--bad-bg:#fbe9e7;--shadow:0 1px 2px rgba(0,0,0,.04),0 0 0 1px var(--line);--pop:0 24px 64px rgba(0,0,0,.16),0 0 0 1px var(--line);
+  --ease:cubic-bezier(.2,0,0,1);color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--page:#0a0a0a;--card:#121212;--raised:#181818;--line:#262626;--line2:#1d1d1d;--text:#ededed;--mute:#9a9a9a;--faint:#6d6d6d;--ink:#ededed;--on-ink:#0a0a0a;--field:#1b1b1b;--hover:#171717;
+  --ok:#45c27a;--ok-bg:#12261a;--warn:#e2a826;--warn-bg:#2a210c;--bad:#ff6b63;--bad-bg:#2c1513;--shadow:0 0 0 1px var(--line);--pop:0 24px 64px rgba(0,0,0,.6),0 0 0 1px var(--line)}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--page);color:var(--text);font:15px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+input{font:inherit;color:var(--text)}
+h1,h2,h3{margin:0;letter-spacing:-.015em}
+.mute{color:var(--mute)}.faint{color:var(--faint)}.small{font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+
+/* buttons and fields */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:14px;font-weight:500;transition:background .15s,border-color .15s,transform .1s;position:relative;white-space:nowrap}
+.btn:hover{background:var(--hover)}.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}.btn.primary:hover{opacity:.9}
+.btn.danger{color:var(--bad)}.btn.danger.solid{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn.ghost{border-color:transparent;background:none}.btn.ghost:hover{background:var(--hover)}
+.btn.wide{width:100%;height:42px}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.loading{color:transparent!important;pointer-events:none}
+.btn.loading::after{content:"";position:absolute;inset:0;margin:auto;width:16px;height:16px;border-radius:50%;border:2px solid var(--text);border-right-color:transparent;animation:spin .7s linear infinite}
+.btn.primary.loading::after{border-color:var(--on-ink);border-right-color:transparent}
+@keyframes spin{to{transform:rotate(360deg)}}
+.field{display:block;margin:0 0 14px}
+.field>span{display:block;font-size:13px;font-weight:500;margin:0 0 6px}
+.field>small{display:block;color:var(--mute);font-size:12.5px;margin-top:6px}
+.input{width:100%;height:42px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--field);transition:border-color .15s,box-shadow .15s}
+.input:focus{outline:0;border-color:var(--ink);box-shadow:0 0 0 3px color-mix(in srgb,var(--ink) 12%,transparent);background:var(--card)}
+.input.mono{font-family:ui-monospace,Menlo,monospace;letter-spacing:.04em}
+.err{color:var(--bad);font-size:13.5px;min-height:1.4em;margin:8px 0 0}
+.shake{animation:shake .38s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+
+/* sign-in */
+.auth{min-height:100%;display:grid;place-items:center;padding:32px 20px}
+.auth-card{width:100%;max-width:400px;background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:32px 28px 26px;animation:rise .5s var(--ease) both}
+.brand{display:flex;align-items:center;gap:10px}
+.brand b{font-size:15px;letter-spacing:-.01em}.brand span{color:var(--mute);font-size:13px}
+.steps{display:flex;gap:6px;margin:26px 0 22px}
+.steps i{flex:1;height:3px;border-radius:2px;background:var(--line);position:relative;overflow:hidden}
+.steps i::after{content:"";position:absolute;inset:0;background:var(--ink);transform:scaleX(0);transform-origin:left;transition:transform .5s var(--ease)}
+.steps i.on::after{transform:scaleX(1)}
+.auth h1{font-size:24px;margin:0 0 6px}
+.auth p.lead{color:var(--mute);margin:0 0 22px;font-size:14px}
+.auth .back{margin-top:14px;font-size:13.5px;color:var(--mute)}
+.auth .back:hover{color:var(--text)}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.slide{animation:slide .4s var(--ease) both}
+@keyframes slide{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+
+/* shell */
+.shell{display:grid;grid-template-columns:240px 1fr;min-height:100%}
+.side{position:sticky;top:0;height:100vh;padding:20px 14px;border-right:1px solid var(--line);background:var(--card);display:flex;flex-direction:column;gap:4px}
+.side .brand{padding:4px 8px 18px}
+.nav{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border-radius:9px;color:var(--mute);font-weight:500;font-size:14px;text-align:left;width:100%;transition:background .15s,color .15s}
+.nav:hover{background:var(--hover);color:var(--text)}
+.nav[aria-current=page]{background:var(--field);color:var(--text)}
+.nav svg{flex:none}
+.nav .count{margin-left:auto;font-size:12px;color:var(--faint)}
+.side .me{margin-top:auto;padding:12px 10px 4px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.side .me .who{flex:1;min-width:0}.side .me .who b{display:block;font-size:13.5px}.side .me .who span{font-size:12px;color:var(--mute)}
+.main{min-width:0;padding:28px 36px 64px}
+.top{display:flex;align-items:center;gap:12px;margin:0 0 24px}
+.top h1{font-size:26px;flex:1}
+.view{animation:fade .35s var(--ease) both}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.mobilebar{display:none}
+
+/* cards, stats */
+.card{background:var(--card);border-radius:14px;box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;gap:10px;padding:16px 18px 10px}
+.card-h h2{font-size:15px;flex:1}
+.card-b{padding:4px 18px 16px}
+.grid{display:grid;gap:14px}
+.stats{grid-template-columns:repeat(4,minmax(0,1fr));margin:0 0 14px}
+.stat{padding:16px 18px}
+.stat .k{font-size:12.5px;color:var(--mute);display:flex;align-items:center;gap:6px}
+.stat .v{font-size:28px;font-weight:600;letter-spacing:-.02em;margin-top:6px}
+.stat .s{font-size:12.5px;color:var(--faint);margin-top:2px}
+.two{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
+.meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--mute);margin:0 2px 18px}
+.meta b{color:var(--text);font-weight:500}
+
+/* status pills, avatars */
+.pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:500;background:var(--field);color:var(--mute);white-space:nowrap}
+.pill i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.on{background:var(--ok-bg);color:var(--ok)}.pill.wait{background:var(--warn-bg);color:var(--warn)}.pill.off{background:var(--bad-bg);color:var(--bad)}
+.av{width:32px;height:32px;border-radius:9px;background:var(--field);display:grid;place-items:center;font-weight:600;font-size:13px;flex:none;color:var(--mute)}
+.av.big{width:44px;height:44px;border-radius:12px;font-size:17px}
+
+/* toolbar and table */
+.toolbar{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.search{position:relative;flex:1;max-width:320px}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--faint)}
+.search .input{height:36px;padding-left:34px}
+.seg{display:inline-flex;background:var(--field);border-radius:10px;padding:3px;gap:2px}
+.seg button{height:30px;padding:0 12px;border-radius:8px;font-size:13px;font-weight:500;color:var(--mute);transition:background .15s,color .15s}
+.seg button[aria-pressed=true]{background:var(--card);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06),0 0 0 1px var(--line)}
+.seg button .n{color:var(--faint);margin-left:4px;font-weight:400}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;font-weight:500;color:var(--faint);text-align:left;padding:10px 16px;border-bottom:1px solid var(--line)}
+td{padding:12px 16px;border-bottom:1px solid var(--line2);font-size:14px;vertical-align:middle}
+tr.row{cursor:pointer;transition:background .12s}
+tr.row:hover{background:var(--hover)}
+tr.row:last-child td{border-bottom:0}
+tr.row.fresh{animation:flash 1.6s var(--ease)}
+@keyframes flash{from{background:color-mix(in srgb,var(--ok) 14%,transparent)}}
+.user{display:flex;align-items:center;gap:10px}.user b{font-weight:500}
+.chev{color:var(--faint);text-align:right}
+.empty{padding:36px 16px;text-align:center;color:var(--mute);font-size:14px}
+.empty b{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
+
+/* activity */
+.act{display:flex;gap:12px;padding:10px 0;align-items:flex-start}
+.act+.act{border-top:1px solid var(--line2)}
+.act .dot{width:28px;height:28px;border-radius:8px;background:var(--field);display:grid;place-items:center;flex:none;color:var(--mute)}
+.act .txt{flex:1;min-width:0;font-size:14px}.act .txt b{font-weight:500}
+.act time{font-size:12.5px;color:var(--faint);white-space:nowrap}
+.day{font-size:12px;font-weight:500;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin:18px 0 4px}
+.day:first-child{margin-top:4px}
+
+/* attention list */
+.att{display:flex;align-items:center;gap:12px;padding:10px 0}
+.att+.att{border-top:1px solid var(--line2)}
+.att .txt{flex:1;min-width:0;font-size:14px}
+
+/* drawer, modal, toast */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.28);opacity:0;transition:opacity .25s;z-index:20}
+.scrim.on{opacity:1}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--raised);box-shadow:var(--pop);z-index:21;transform:translateX(100%);transition:transform .32s var(--ease);display:flex;flex-direction:column}
+.drawer.on{transform:none}
+.drawer .dh{display:flex;align-items:center;gap:12px;padding:20px 22px;border-bottom:1px solid var(--line)}
+.drawer .dh .t{flex:1;min-width:0}.drawer .dh h2{font-size:18px}
+.drawer .db{padding:18px 22px;overflow:auto;flex:1}
+.drawer .sec{margin:0 0 22px}
+.drawer .sec h3{font-size:12px;font-weight:500;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:8px 0;font-size:14px}
+.kv+.kv{border-top:1px solid var(--line2)}
+.kv span{color:var(--mute)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.phone{display:flex;align-items:center;gap:12px;padding:10px 0}
+.phone+.phone{border-top:1px solid var(--line2)}
+.phone .t{flex:1;min-width:0}.phone .t b{font-weight:500;display:block;font-size:14px}.phone .t span{font-size:12.5px;color:var(--mute)}
+.danger-zone{border:1px solid color-mix(in srgb,var(--bad) 30%,var(--line));border-radius:12px;padding:14px}
+.danger-zone p{margin:0 0 10px;font-size:13px;color:var(--mute)}
+.modal{position:fixed;inset:0;display:grid;place-items:center;z-index:30;padding:20px;pointer-events:none}
+.modal .box{pointer-events:auto;width:100%;max-width:420px;background:var(--raised);border-radius:18px;box-shadow:var(--pop);padding:24px;opacity:0;transform:translateY(10px) scale(.98);transition:opacity .22s,transform .28s var(--ease)}
+.modal.on .box{opacity:1;transform:none}
+.modal h2{font-size:18px;margin:0 0 6px}
+.modal p{color:var(--mute);font-size:14px;margin:0 0 18px}
+.modal .row{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.code{font:600 26px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-align:center;padding:18px;border-radius:12px;background:var(--field);user-select:all;margin:4px 0 6px;animation:rise .4s var(--ease) both}
+.toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:8px;z-index:40}
+.toast{background:var(--ink);color:var(--on-ink);padding:11px 14px;border-radius:11px;font-size:14px;box-shadow:var(--pop);display:flex;align-items:center;gap:10px;animation:toast .3s var(--ease) both;max-width:360px}
+.toast.bad{background:var(--bad);color:#fff}
+.toast.out{animation:toastout .25s var(--ease) forwards}
+@keyframes toast{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes toastout{to{opacity:0;transform:translateY(6px)}}
+
+/* loading */
+.sk{background:linear-gradient(90deg,var(--field) 0%,var(--hover) 50%,var(--field) 100%);background-size:200% 100%;animation:sk 1.2s linear infinite;border-radius:8px}
+@keyframes sk{to{background-position:-200% 0}}
+.bar{position:fixed;top:0;left:0;right:0;height:2px;overflow:hidden;z-index:50;opacity:0;transition:opacity .2s;pointer-events:none}
+.bar.on{opacity:1}
+.bar::before{content:"";position:absolute;top:0;bottom:0;background:var(--ink);animation:bar 1.2s cubic-bezier(.4,0,.2,1) infinite}
+@keyframes bar{0%{left:-35%;width:30%}60%{left:55%;width:45%}100%{left:105%;width:30%}}
+
+/* settings */
+.narrow{max-width:520px}
+
+@media (max-width:1100px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:1fr}}
+@media (max-width:760px){
+  .shell{grid-template-columns:1fr}
+  .side{display:none}
+  .mobilebar{display:flex;position:sticky;top:0;z-index:10;align-items:center;gap:10px;padding:12px 16px;background:color-mix(in srgb,var(--page) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .mobilebar .brand{flex:1}
+  .tabs{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:10;background:var(--card);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+  .tabs .nav{flex-direction:column;height:auto;gap:2px;padding:6px 0;font-size:11px;justify-content:center}
+  .tabs .nav .count{display:none}
+  .main{padding:20px 16px 96px}
+  .top h1{font-size:22px}
+  .hide-m{display:none}
+  td,th{padding:11px 12px}
+  .toolbar{flex-wrap:wrap}.search{max-width:none;flex-basis:100%}
+}
+@media (min-width:761px){.tabs{display:none}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style></head><body><div class="bar" id="bar"></div><div id="root"></div><div class="toasts" id="toasts" aria-live="polite"></div>
+<script>
+"use strict";
+// Both secrets live only in these variables: a reload, "Sign out" or 30 idle minutes forgets them.
+let sac = "", session = "", adminName = "", view = "overview", filter = "all", query = "", cache = null, openId = "", freshId = "";
+const $ = id => document.getElementById(id);
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) { if (v == null || v === false) continue; if (k === "text") e.textContent = v; else if (k.startsWith("on")) e[k] = v; else e.setAttribute(k, v === true ? "" : v); }
+  for (const c of kids.flat(9)) if (c != null && c !== "" && c !== false) e.append(c);
+  return e;
+}
+// Small line icons, drawn from fixed path data only.
+const ICON = {
+  grid: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", users: "M16 20v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-1a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8",
+  pulse: "M3 12h4l3-8 4 16 3-8h4", gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
+  search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3", plus: "M12 5v14M5 12h14", x: "M18 6 6 18M6 6l12 12", chev: "m9 18 6-6-6-6", out: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9",
+  phone: "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2", lock: "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4", key: "M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L15.5 7.5m0 0 3 3L22 7l-3-3m-3.5 3.5L19 4",
+  mail: "M4 4h16v16H4zM4 6l8 7 8-7", power: "M18.4 6.6a9 9 0 1 1-12.8 0M12 2v10", trash: "M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6", check: "M20 6 9 17l-5-5", alert: "M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z", hdd: "M22 12H2M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1zM6 16h.01M10 16h.01",
+};
+function icon(n, size = 18) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("width", size); s.setAttribute("height", size); s.setAttribute("aria-hidden", "true");
+  s.setAttribute("fill", "none"); s.setAttribute("stroke", "currentColor"); s.setAttribute("stroke-width", "1.8"); s.setAttribute("stroke-linecap", "round"); s.setAttribute("stroke-linejoin", "round");
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path"); p.setAttribute("d", ICON[n] || ""); s.append(p); return s;
+}
+function logo(size = 28) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("viewBox", "0 0 108 108"); s.setAttribute("width", size); s.setAttribute("height", size); s.setAttribute("aria-hidden", "true");
+  const mk = (t, a) => { const e = document.createElementNS("http://www.w3.org/2000/svg", t); for (const [k, v] of Object.entries(a)) e.setAttribute(k, v); s.append(e); };
+  mk("rect", { width: 108, height: 108, rx: 28, fill: "#0A0A0A" });
+  mk("path", { d: "M54,30 A24,24 0 1,1 33.2,42", fill: "none", stroke: "#fff", "stroke-width": 10, "stroke-linecap": "round" });
+  mk("circle", { cx: 33.2, cy: 42, r: 8, fill: "#fff" });
+  return s;
+}
+const brand = sub => h("div", { class: "brand" }, logo(30), h("div", {}, h("b", { text: "AssistX" }), h("div", {}, h("span", { text: sub || "Server admin" }))));
+
+/* ---------- talking to the server ---------- */
+let busyN = 0;
+const busy = on => { busyN = Math.max(0, busyN + (on ? 1 : -1)); $("bar").classList.toggle("on", busyN > 0); };
+async function api(method, path, body) {
+  busy(true);
+  try {
+    const hd = { Authorization: "Bearer " + sac, "Content-Type": "application/json" }; if (session) hd["X-Admin-Session"] = session;
+    const r = await fetch(path, { method, headers: hd, body: body && JSON.stringify(body), cache: "no-store" });
+    const data = await r.json().catch(() => ({}));
+    if (r.status === 401 && data.error && data.error.code === "admin_login" && session) { session = ""; toast("Your admin session ended. Sign in again.", true); showLogin(); throw new Error("ended"); }
+    return { ok: r.ok, status: r.status, data };
+  } catch (e) { if (e.message === "ended") throw e; return { ok: false, status: 0, data: { error: { message: "Cannot reach the server." } } }; }
+  finally { busy(false); }
+}
+const why = x => (x.data && x.data.error && x.data.error.message) || "Something went wrong.";
+const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+async function run(btn, fn) { if (btn.classList.contains("loading")) return; btn.classList.add("loading"); btn.disabled = true; try { return await fn(); } catch (e) { if (e.message !== "ended") throw e; } finally { btn.classList.remove("loading"); btn.disabled = false; } }
+const shake = el => { el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); };
+function toast(text, bad) {
+  const t = h("div", { class: "toast" + (bad ? " bad" : "") }, icon(bad ? "alert" : "check", 16), h("span", { text }));
+  $("toasts").append(t); setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 260); }, 3200);
+}
+const field = (label, input, hint) => h("label", { class: "field" }, h("span", { text: label }), input, hint ? h("small", { text: hint }) : null);
+const input = (type, ph, extra) => h("input", Object.assign({ class: "input", type, placeholder: ph || "", autocomplete: "off", autocapitalize: "none", spellcheck: "false" }, extra || {}));
+
+/* ---------- formatting ---------- */
+const day = t => t ? String(t).slice(0, 10) : "";
+const when = t => {
+  if (!t) return "never"; const d = new Date(t); if (isNaN(d)) return String(t).slice(0, 16).replace("T", " ");
+  const s = (Date.now() - d) / 1000;
+  if (s < 60) return "just now"; if (s < 3600) return Math.floor(s / 60) + " min ago"; if (s < 86400) return Math.floor(s / 3600) + " h ago";
+  if (s < 7 * 86400) return Math.floor(s / 86400) + " d ago"; return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
+};
+const full = t => { if (!t) return "never"; const d = new Date(t); return isNaN(d) ? String(t) : d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }); };
+const size = b => b >= 1e9 ? (b / 1e9).toFixed(1) + " GB" : b >= 1e6 ? (b / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round((b || 0) / 1e3)) + " KB";
+const upFor = s => s >= 86400 ? Math.floor(s / 86400) + " days" : s >= 3600 ? Math.floor(s / 3600) + " hours" : Math.max(1, Math.floor(s / 60)) + " min";
+const STATE = a => ({ invited: ["wait", a.invite_expired ? "Invite expired" : "Invited"], pending: ["wait", "Finishing sign-up"], disabled: ["off", "Switched off"],
+  active: [a.unlocked ? "on" : "", a.unlocked ? "Active" : "Locked"] }[a.status] || ["", a.status]);
+const pill = a => { const [c, t] = STATE(a); return h("span", { class: "pill " + c }, h("i"), t); };
+const WORDS = { invite: "was invited", invite_code: "got a new invite code", signup: "finished sign-up", recover: "used their recovery key", lock: "was locked", disable: "was switched off", enable: "was switched on",
+  delete: "was removed", revoke_device: "had a phone forgotten", revoke_devices: "had all phones forgotten", admin_login: "signed in as admin", admin_setup: "created the admin login", admin_password: "changed the admin password" };
+const ACT_ICON = { invite: "mail", invite_code: "key", signup: "check", recover: "key", lock: "lock", disable: "power", enable: "power", delete: "trash", revoke_device: "phone", revoke_devices: "phone", admin_login: "lock", admin_setup: "gear", admin_password: "key" };
+const GROUPS = { all: () => true, active: a => a.status === "active", waiting: a => a.status === "invited" || a.status === "pending", off: a => a.status === "disabled" };
+
+/* ---------- sign-in: 1 Server Access Code, 2 admin login (or first-run setup) ---------- */
+function authPage(step, kids) {
+  const steps = h("div", { class: "steps" }, [1, 2].map(n => h("i", { class: n < step ? "on" : "" })));
+  $("root").replaceChildren(h("div", { class: "auth" }, h("div", { class: "auth-card" }, brand(), steps, h("div", { class: "slide" }, ...kids))));
+  requestAnimationFrame(() => requestAnimationFrame(() => steps.children[step - 1].classList.add("on")));
+}
+function showSac(msg) {
+  sac = ""; session = ""; cache = null;
+  const code = input("password", "At least 25 characters", { autocomplete: "current-password" });
+  const err = h("p", { class: "err", role: "alert", text: msg || "" });
+  const go = h("button", { class: "btn primary wide", type: "button", text: "Continue" });
+  go.onclick = () => run(go, async () => {
+    err.textContent = ""; sac = code.value.trim();
+    if (sac.length < 25) { err.textContent = "The Server Access Code is at least 25 characters."; shake(code); return; }
+    const x = await api("GET", "/v1/server/admin/status");
+    if (!x.ok) { sac = ""; err.textContent = x.status === 401 ? "That Server Access Code is wrong." : why(x); shake(code); return; }
+    x.data.admin ? showLogin() : showSetup();
+  });
+  code.onkeydown = e => { if (e.key === "Enter") go.click(); };
+  authPage(1, [h("h1", { text: "Server admin" }), h("p", { class: "lead", text: "First, the Server Access Code (SAC) for this server." }), field("Server Access Code", code), go, err]);
+  code.focus();
+}
+function showLogin(msg) {
+  session = "";
+  const user = input("text", "admin", { autocomplete: "username" }), pass = input("password", "Admin password", { autocomplete: "current-password" });
+  const err = h("p", { class: "err", role: "alert", text: msg || "" });
+  const go = h("button", { class: "btn primary wide", type: "button", text: "Sign in" });
+  go.onclick = () => run(go, async () => {
+    err.textContent = "";
+    const x = await api("POST", "/v1/server/admin/login", { username: user.value.trim().toLowerCase(), password: pass.value });
+    if (!x.ok) { err.textContent = x.status === 401 ? cap(why(x)) + "." : why(x); shake(pass); return; }
+    start(x.data);
+  });
+  pass.onkeydown = e => { if (e.key === "Enter") go.click(); };
+  authPage(2, [h("h1", { text: "Admin login" }), h("p", { class: "lead", text: "Now the admin's own username and password." }), field("Username", user), field("Password", pass), go, err,
+    h("button", { class: "back", type: "button", text: "← Use a different code", onclick: () => showSac() })]);
+  user.focus();
+}
+function showSetup() {
+  const code = input("text", "XXXX-XXXX-XXXX", { class: "input mono" }), user = input("text", "e.g. admin", { autocomplete: "username" });
+  const p1 = input("password", "At least 12 characters", { autocomplete: "new-password" }), p2 = input("password", "Type it again", { autocomplete: "new-password" });
+  const err = h("p", { class: "err", role: "alert" });
+  const go = h("button", { class: "btn primary wide", type: "button", text: "Create admin login" });
+  go.onclick = () => run(go, async () => {
+    err.textContent = "";
+    if (p1.value !== p2.value) { err.textContent = "The two passwords are different."; shake(p2); return; }
+    const x = await api("POST", "/v1/server/admin/setup", { setup_code: code.value.trim(), username: user.value.trim().toLowerCase(), password: p1.value });
+    if (!x.ok) { err.textContent = cap(why(x)) + "."; shake(go); return; }
+    toast("Admin login created."); start(x.data);
+  });
+  authPage(2, [h("h1", { text: "Create the admin login" }),
+    h("p", { class: "lead", text: "This server has no admin login yet. Use the one-time setup code: the server prints it in its log at start, and keeps it in admin-setup.code in its data folder." }),
+    field("Setup code", code), field("Admin username", user, "3–32 small letters, digits, - or _"), field("Admin password", p1), field("Again", p2), go, err,
+    h("button", { class: "back", type: "button", text: "← Use a different code", onclick: () => showSac() })]);
+  code.focus();
+}
+
+/* ---------- the dashboard ---------- */
+function start(d) { session = d.session; adminName = d.username || adminName; view = "overview"; openId = ""; shell(); load(); }
+async function load(quiet) {
+  if (!quiet && !cache) renderView();
+  try {
+    const [a, o, l] = await Promise.all([api("GET", "/v1/server/accounts"), api("GET", "/v1/server/overview"), api("GET", "/v1/server/log?limit=200")]);
+    if (!a.ok) { toast(why(a), true); return; }
+    cache = { accounts: a.data.items || [], ov: o.ok ? o.data : null, log: (l.ok && l.data.items) || [] };
+    renderNav(); renderView(); if (openId) drawer(openId, true);
+  } catch (e) { /* session ended: already back at sign-in */ }
+}
+const NAV = [["overview", "Overview", "grid"], ["accounts", "Accounts", "users"], ["activity", "Activity", "pulse"], ["settings", "Settings", "gear"]];
+function navBtn([k, t, ic], count) {
+  return h("button", { class: "nav", type: "button", "aria-current": view === k ? "page" : null, onclick: () => { if (view !== k) { view = k; renderNav(); renderView(); } } },
+    icon(ic), h("span", { text: t }), count != null ? h("span", { class: "count num", text: String(count) }) : null);
+}
+function shell() {
+  $("root").replaceChildren(h("div", { class: "shell" },
+    h("aside", { class: "side" }, brand(), h("nav", { id: "sidenav", style: "display:flex;flex-direction:column;gap:2px" }),
+      h("div", { class: "me" }, h("div", { class: "av", text: (adminName || "A").slice(0, 1).toUpperCase() }), h("div", { class: "who" }, h("b", { text: adminName || "admin" }), h("span", { text: "Admin" })),
+        h("button", { class: "btn ghost", type: "button", title: "Sign out", "aria-label": "Sign out", onclick: signOut }, icon("out", 16)))),
+    h("div", {},
+      h("div", { class: "mobilebar" }, brand(), h("button", { class: "btn ghost", type: "button", "aria-label": "Sign out", onclick: signOut }, icon("out", 16))),
+      h("main", { class: "main", id: "main" })),
+    h("nav", { class: "tabs", id: "tabs" })));
+  renderNav();
+}
+function renderNav() {
+  const n = cache ? cache.accounts.length : null;
+  $("sidenav").replaceChildren(...NAV.map(x => navBtn(x, x[0] === "accounts" ? n : null)));
+  $("tabs").replaceChildren(...NAV.map(x => navBtn(x)));
+}
+function topBar(title, ...right) { return h("div", { class: "top" }, h("h1", { text: title }), ...right); }
+const inviteBtn = () => h("button", { class: "btn primary", type: "button", onclick: () => inviteModal() }, icon("plus", 16), h("span", { text: "Invite" }));
+function renderView() {
+  const m = $("main"); if (!m) return;
+  const v = h("div", { class: "view" });
+  ({ overview: vOverview, accounts: vAccounts, activity: vActivity, settings: vSettings }[view])(v);
+  m.replaceChildren(v);
+}
+function skeleton(n) { return h("div", { class: "card", style: "padding:18px" }, Array.from({ length: n }, (_, i) => h("div", { class: "sk", style: "height:18px;margin:" + (i ? "14px" : "0") + " 0 0;width:" + (90 - i * 9) + "%" }))); }
+
+function vOverview(v) {
+  v.append(topBar("Overview", inviteBtn()));
+  if (!cache) { v.append(h("div", { class: "grid stats" }, [0, 1, 2, 3].map(() => h("div", { class: "card stat" }, h("div", { class: "sk", style: "height:12px;width:50%" }), h("div", { class: "sk", style: "height:28px;width:40%;margin-top:10px" })))), skeleton(4)); return; }
+  const { accounts: all, ov } = cache;
+  const stat = (k, ic, val, sub) => h("div", { class: "card stat" }, h("div", { class: "k" }, icon(ic, 14), k), h("div", { class: "v num", text: String(val) }), h("div", { class: "s", text: sub }));
+  if (ov) {
+    v.append(h("div", { class: "grid stats" },
+      stat("Accounts", "users", ov.accounts.total, ov.accounts.active + " active · " + (ov.accounts.invited + ov.accounts.pending) + " waiting"),
+      stat("Unlocked now", "lock", ov.accounts.unlocked, "running their assistant"),
+      stat("Remembered phones", "phone", ov.phones, "unlock after a restart"),
+      stat("Storage", "hdd", size(ov.disk_bytes), "all accounts")));
+    v.append(h("div", { class: "meta" }, h("span", {}, "Version ", h("b", { class: "num", text: ov.version })), h("span", {}, "Up ", h("b", { text: upFor(ov.uptime_secs) })),
+      ov.blocked_addresses ? h("span", { style: "color:var(--warn)" }, h("b", { style: "color:inherit", text: String(ov.blocked_addresses) }), " address(es) slowed down for wrong codes") : h("span", { text: "No one is being slowed down" })));
+  }
+  const att = all.filter(a => a.status === "invited" || a.status === "pending" || a.status === "disabled");
+  const attRow = a => h("div", { class: "att" }, h("div", { class: "av", text: a.username.slice(0, 1).toUpperCase() }),
+    h("div", { class: "txt" }, h("b", { text: a.username }), " ", h("span", { class: "mute", text: a.status === "invited" ? (a.invite_expired ? "· invite expired" : "· hasn't signed up yet") : a.status === "pending" ? "· saving their recovery key" : "· switched off" })),
+    h("button", { class: "btn", type: "button", text: "Open", onclick: () => drawer(a.id) }));
+  v.append(h("div", { class: "grid two" },
+    h("div", { class: "card" }, h("div", { class: "card-h" }, h("h2", { text: "Needs a look" }), h("span", { class: "small mute num", text: String(att.length) })),
+      h("div", { class: "card-b" }, att.length ? att.slice(0, 6).map(attRow) : h("div", { class: "empty", style: "padding:18px 0" }, h("b", { text: "All clear" }), "No waiting invites or switched-off accounts."))),
+    h("div", { class: "card" }, h("div", { class: "card-h" }, h("h2", { text: "Recent activity" }), h("button", { class: "btn ghost small", type: "button", text: "See all", onclick: () => { view = "activity"; renderNav(); renderView(); } })),
+      h("div", { class: "card-b" }, cache.log.length ? cache.log.slice(0, 6).map(actRow) : h("div", { class: "empty", style: "padding:18px 0", text: "Nothing yet." })))));
+}
+function actRow(l) {
+  const who = l.username || (l.account ? "An account" : l.detail || "Someone");
+  return h("div", { class: "act" }, h("div", { class: "dot" }, icon(ACT_ICON[l.action] || "pulse", 14)),
+    h("div", { class: "txt" }, h("b", { text: who }), " ", h("span", { class: "mute", text: WORDS[l.action] || l.action })), h("time", { title: full(l.at), text: when(l.at) }));
+}
+function vAccounts(v) {
+  v.append(topBar("Accounts", inviteBtn()));
+  const card = h("div", { class: "card" }); v.append(card);
+  if (!cache) { card.append(skeleton(5)); return; }
+  const all = cache.accounts;
+  const s = input("search", "Search by username", { value: query, "aria-label": "Search accounts" });
+  const seg = h("div", { class: "seg", role: "group", "aria-label": "Filter" }, [["all", "All"], ["active", "Active"], ["waiting", "Waiting"], ["off", "Off"]].map(([k, t]) =>
+    h("button", { type: "button", "aria-pressed": String(filter === k), onclick: () => { filter = k; renderView(); } }, t, h("span", { class: "n num", text: String(all.filter(GROUPS[k]).length) }))));
+  const body = h("tbody");
+  const draw = () => {
+    const q = query.trim().toLowerCase(), list = all.filter(GROUPS[filter]).filter(a => !q || a.username.includes(q));
+    body.replaceChildren(...(list.length ? list.map(a => h("tr", { class: "row" + (a.id === freshId ? " fresh" : ""), tabindex: "0", onclick: () => drawer(a.id), onkeydown: e => { if (e.key === "Enter") drawer(a.id); } },
+      h("td", {}, h("div", { class: "user" }, h("div", { class: "av", text: a.username.slice(0, 1).toUpperCase() }), h("b", { text: a.username }))),
+      h("td", {}, pill(a)),
+      h("td", { class: "num hide-m", text: String(a.phones) }),
+      h("td", { class: "num hide-m", text: size(a.disk_bytes) }),
+      h("td", { class: "mute hide-m", text: a.status === "active" || a.last_login ? when(a.last_login) : "—" }),
+      h("td", { class: "chev" }, icon("chev", 16)))) :
+      [h("tr", {}, h("td", { colspan: "6" }, h("div", { class: "empty" }, h("b", { text: all.length ? "No matches" : "No accounts yet" }), all.length ? "Try another name or filter." : "Invite the first person to get started.")))]));
+    freshId = "";
+  };
+  s.oninput = () => { query = s.value; draw(); };
+  card.append(h("div", { class: "toolbar" }, h("div", { class: "search" }, icon("search", 15), s), seg),
+    h("table", {}, h("thead", {}, h("tr", {}, h("th", { text: "User" }), h("th", { text: "Status" }), h("th", { class: "hide-m", text: "Phones" }), h("th", { class: "hide-m", text: "Storage" }), h("th", { class: "hide-m", text: "Last sign-in" }), h("th"))), body));
+  draw();
+}
+function vActivity(v) {
+  v.append(topBar("Activity"));
+  const card = h("div", { class: "card" }); v.append(card);
+  if (!cache) { card.append(skeleton(6)); return; }
+  const b = h("div", { class: "card-b", style: "padding-top:14px" }); card.append(b);
+  if (!cache.log.length) { b.append(h("div", { class: "empty", text: "Nothing yet." })); return; }
+  let last = "";
+  for (const l of cache.log) {
+    const d = day(l.at);
+    if (d !== last) { last = d; const dt = new Date(d); b.append(h("div", { class: "day", text: isNaN(dt) ? d : dt.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) })); }
+    b.append(actRow(l));
+  }
+}
+function vSettings(v) {
+  v.append(topBar("Settings"));
+  const old = input("password", "Current password", { autocomplete: "current-password" }), p1 = input("password", "At least 12 characters", { autocomplete: "new-password" }), p2 = input("password", "Type it again", { autocomplete: "new-password" });
+  const err = h("p", { class: "err", role: "alert" });
+  const go = h("button", { class: "btn primary", type: "button", text: "Change password" });
+  go.onclick = () => run(go, async () => {
+    err.textContent = ""; if (p1.value !== p2.value) { err.textContent = "The two new passwords are different."; shake(p2); return; }
+    const x = await api("POST", "/v1/server/admin/password", { old: old.value, new: p1.value });
+    if (!x.ok) { err.textContent = cap(why(x)) + "."; shake(old); return; }
+    session = x.data.session; old.value = p1.value = p2.value = ""; toast("Admin password changed. Other admin sessions were signed out.");
+  });
+  v.append(h("div", { class: "grid narrow" },
+    h("div", { class: "card" }, h("div", { class: "card-h" }, h("h2", { text: "Admin password" })), h("div", { class: "card-b" },
+      h("p", { class: "mute small", style: "margin:0 0 16px", text: "Signed in as " + (adminName || "admin") + ". Changing the password signs out every other admin page." }),
+      field("Current password", old), field("New password", p1), field("Again", p2), go, err)),
+    h("div", { class: "card" }, h("div", { class: "card-h" }, h("h2", { text: "Server Access Code" })), h("div", { class: "card-b" },
+      h("p", { class: "mute small", style: "margin:0", text: "Everyone who signs in to this server needs the Server Access Code, so it does not open this page by itself. To change it, run this on the server and type the new code (25+ characters):" }),
+      h("pre", { class: "input mono", style: "height:auto;padding:12px;margin:12px 0 0;white-space:pre-wrap;font-size:12.5px", text: "AGENT_DATA_DIR=data ./agent-core server-password" }))),
+    h("div", { class: "card" }, h("div", { class: "card-h" }, h("h2", { text: "Session" })), h("div", { class: "card-b" },
+      h("p", { class: "mute small", style: "margin:0 0 14px", text: "This page signs out after 30 idle minutes, 12 hours at most, and whenever the server restarts." }),
+      h("button", { class: "btn", type: "button", onclick: signOut }, icon("out", 16), h("span", { text: "Sign out" }))))));
+}
+
+/* ---------- account drawer ---------- */
+let scrimEl = null, drawerEl = null;
+function closeDrawer() {
+  openId = ""; if (!drawerEl) return;
+  const d = drawerEl, s = scrimEl; drawerEl = scrimEl = null;
+  d.classList.remove("on"); s.classList.remove("on"); setTimeout(() => { d.remove(); s.remove(); }, 320);
+}
+async function act(btn, method, path, done) {
+  await run(btn, async () => { const r = await api(method, path, method === "DELETE" ? undefined : {}); if (!r.ok) { toast(why(r), true); return; } toast(done); await load(true); });
+}
+function drawer(id, refresh) {
+  const a = cache && cache.accounts.find(x => x.id === id); if (!a) { closeDrawer(); return; }
+  openId = id;
+  if (!drawerEl) {
+    scrimEl = h("div", { class: "scrim", onclick: closeDrawer }); drawerEl = h("aside", { class: "drawer", role: "dialog", "aria-modal": "true" });
+    document.body.append(scrimEl, drawerEl); requestAnimationFrame(() => { scrimEl.classList.add("on"); drawerEl.classList.add("on"); });
+  }
+  const b = (text, ic, fn, cls) => { const x = h("button", { class: "btn" + (cls ? " " + cls : ""), type: "button" }, ic ? icon(ic, 15) : null, h("span", { text })); x.onclick = () => fn(x); return x; };
+  const actions = [];
+  if (a.status === "invited" || a.status === "pending") actions.push(b("New invite code", "key", async x => { await run(x, async () => { const r = await api("POST", "/v1/server/accounts/" + a.id + "/invite-code", {}); if (!r.ok) return toast(why(r), true); showCode(a.username, r.data.invite_code, r.data.invite_days); load(true); }); }));
+  if (a.unlocked) actions.push(b("Lock now", "lock", x => act(x, "POST", "/v1/server/accounts/" + a.id + "/lock", a.username + " is locked.")));
+  if (a.status === "active") actions.push(b("Switch off", "power", x => confirmBox("Switch off " + a.username + "?", "They can't sign in until you switch them back on. Their data stays.", "Switch off", false, () => act(x, "POST", "/v1/server/accounts/" + a.id + "/disable", a.username + " is switched off."))));
+  if (a.status === "disabled") actions.push(b("Switch on", "power", x => act(x, "POST", "/v1/server/accounts/" + a.id + "/enable", a.username + " is switched on.")));
+  if (a.phones) actions.push(b("Forget all phones", "phone", x => confirmBox("Forget every phone of " + a.username + "?", "Each phone must sign in again after the next server restart.", "Forget all", false, () => act(x, "POST", "/v1/server/accounts/" + a.id + "/revoke-devices", "All phones forgotten."))));
+  const phones = h("div", {}, h("div", { class: "sk", style: "height:16px;width:70%" }));
+  const body = h("div", { class: "db" },
+    h("div", { class: "sec" }, h("h3", { text: "Details" }),
+      h("div", { class: "kv" }, h("span", { text: "Status" }), pill(a)),
+      h("div", { class: "kv" }, h("span", { text: "Made" }), h("b", { text: full(a.created) })),
+      h("div", { class: "kv" }, h("span", { text: "Last sign-in" }), h("b", { text: full(a.last_login) })),
+      h("div", { class: "kv" }, h("span", { text: "Phone last seen" }), h("b", { text: full(a.last_seen) })),
+      h("div", { class: "kv" }, h("span", { text: "Storage" }), h("b", { class: "num", text: size(a.disk_bytes) }))),
+    actions.length ? h("div", { class: "sec" }, h("h3", { text: "Actions" }), h("div", { class: "actions" }, actions)) : null,
+    a.status === "active" ? h("div", { class: "sec" }, h("h3", { text: "Remembered phones" }), phones) : null,
+    h("div", { class: "sec" }, h("h3", { text: "Danger zone" }), h("div", { class: "danger-zone" },
+      h("p", { text: "Removing deletes " + a.username + " and all of their data for good. This cannot be undone." }),
+      b("Remove account", "trash", x => removeBox(a, x), "danger"))));
+  drawerEl.replaceChildren(h("div", { class: "dh" }, h("div", { class: "av big", text: a.username.slice(0, 1).toUpperCase() }), h("div", { class: "t" }, h("h2", { text: a.username }), h("div", { class: "small mute", text: STATE(a)[1] })),
+    h("button", { class: "btn ghost", type: "button", "aria-label": "Close", onclick: closeDrawer }, icon("x", 18))), body);
+  if (a.status === "active") api("GET", "/v1/server/accounts/" + a.id + "/devices").then(d => {
+    const live = ((d.ok && d.data.items) || []).filter(p => !p.revoked);
+    phones.replaceChildren(...(live.length ? live.map(p => h("div", { class: "phone" }, h("div", { class: "av" }, icon("phone", 15)), h("div", { class: "t" }, h("b", { text: p.label || "Phone" }), h("span", { text: "Added " + when(p.created) + " · seen " + when(p.last_seen) })),
+      b("Forget", null, x => act(x, "DELETE", "/v1/server/accounts/" + a.id + "/devices/" + p.id, "Phone forgotten.")))) : [h("div", { class: "mute small", text: "No remembered phones." })]));
+  }).catch(() => {});
+  if (!refresh) drawerEl.querySelector(".btn.ghost").focus();
+}
+
+/* ---------- modals ---------- */
+function modal(kids, onClose) {
+  const s = h("div", { class: "scrim", style: "z-index:29" }), m = h("div", { class: "modal", role: "dialog", "aria-modal": "true" }, h("div", { class: "box" }, ...kids));
+  const close = () => { s.classList.remove("on"); m.classList.remove("on"); setTimeout(() => { s.remove(); m.remove(); }, 260); document.removeEventListener("keydown", esc); if (onClose) onClose(); };
+  const esc = e => { if (e.key === "Escape") close(); };
+  s.onclick = close; document.addEventListener("keydown", esc);
+  document.body.append(s, m); requestAnimationFrame(() => { s.classList.add("on"); m.classList.add("on"); });
+  return close;
+}
+function confirmBox(title, text, yes, danger, fn) {
+  let close;
+  const ok = h("button", { class: "btn " + (danger ? "danger solid" : "primary"), type: "button", text: yes, onclick: () => { close(); fn(); } });
+  close = modal([h("h2", { text: title }), h("p", { text }), h("div", { class: "row" }, h("button", { class: "btn", type: "button", text: "Cancel", onclick: () => close() }), ok)]);
+  ok.focus();
+}
+function removeBox(a, btn) {
+  let close;
+  const t = input("text", a.username);
+  const ok = h("button", { class: "btn danger solid", type: "button", text: "Remove for good", disabled: true });
+  t.oninput = () => { ok.disabled = t.value.trim() !== a.username; };
+  ok.onclick = () => run(ok, async () => { const r = await api("DELETE", "/v1/server/accounts/" + a.id); if (!r.ok) return toast(why(r), true); close(); closeDrawer(); toast(a.username + " was removed."); load(true); });
+  close = modal([h("h2", { text: "Remove " + a.username + "?" }), h("p", { text: "This deletes the account and all of its data: memory, chats, files and phones. It cannot be undone. Type the username to confirm." }),
+    field("Username", t), h("div", { class: "row" }, h("button", { class: "btn", type: "button", text: "Cancel", onclick: () => close() }), ok)]);
+  t.focus();
+}
+function inviteModal() {
+  let close;
+  const u = input("text", "e.g. sam");
+  const err = h("p", { class: "err", role: "alert" });
+  const go = h("button", { class: "btn primary", type: "button", text: "Create invite" });
+  go.onclick = () => run(go, async () => {
+    err.textContent = ""; const r = await api("POST", "/v1/server/accounts", { username: u.value.trim().toLowerCase() });
+    if (!r.ok) { err.textContent = cap(why(r)) + "."; shake(u); return; }
+    close(); freshId = r.data.id || ""; showCode(r.data.username, r.data.invite_code, r.data.invite_days); load(true);
+  });
+  u.onkeydown = e => { if (e.key === "Enter") go.click(); };
+  close = modal([h("h2", { text: "Invite someone" }), h("p", { text: "Pick their username. You get a one-time code to give them; they choose their own passphrase in the app. You never see it." }),
+    field("Username", u, "3–32 small letters, digits, - or _"), err, h("div", { class: "row" }, h("button", { class: "btn", type: "button", text: "Cancel", onclick: () => close() }), go)]);
+  u.focus();
+}
+function showCode(user, code, days) {
+  let close;
+  const copy = h("button", { class: "btn", type: "button", text: "Copy code" });
+  copy.onclick = async () => { try { await navigator.clipboard.writeText(code); copy.textContent = "Copied"; } catch (e) { copy.textContent = "Select it and copy"; } };
+  close = modal([h("h2", { text: "Invite code for " + user }), h("p", { text: "Give them this code with the server's address and the Server Access Code. It works once, for " + days + " days, and is shown only now." }),
+    h("div", { class: "code", text: code }), h("div", { class: "row" }, copy, h("button", { class: "btn primary", type: "button", text: "Done", onclick: () => close() }))]);
+}
+
+async function signOut() {
+  try { if (session) await api("POST", "/v1/server/admin/logout", {}); } catch (e) {}
+  closeDrawer(); session = ""; cache = null; toast("Signed out."); showLogin();
+}
+setInterval(() => { if (session && !document.hidden && !drawerEl) load(true); }, 60000);
+showSac();
+</script></body></html>

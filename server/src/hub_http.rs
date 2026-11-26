@@ -21,7 +21,7 @@ fn bad(code: StatusCode, c: &str, msg: &str) -> Response {
 
 pub fn router(hub: H) -> Router {
     Router::new()
-        .route("/v1/health", get(|State(h): State<H>| async move { Json(json!({ "ok": true, "accounts": true, "version": env!("CARGO_PKG_VERSION"), "setup": h.list().is_empty() })) }))
+        .route("/v1/health", get(|State(h): State<H>| async move { Json(json!({ "ok": true, "name": "AssistX", "accounts": true, "version": env!("CARGO_PKG_VERSION"), "setup": h.list().is_empty() })) }))
         .route("/v1/server/info", get(info))
         .route("/v1/server/accounts", get(accounts).post(invite))
         .route("/v1/server/accounts/{id}", delete(remove))
@@ -32,8 +32,21 @@ pub fn router(hub: H) -> Router {
         .route("/v1/server/recover", post(recover))
         .route("/v1/server/passphrase", post(passphrase))
         .route("/v1/server/accounts/{id}/revoke-devices", post(revoke_devices))
+        .route("/v1/server/accounts/{id}/disable", post(disable))
+        .route("/v1/server/accounts/{id}/enable", post(enable))
+        .route("/v1/server/accounts/{id}/invite-code", post(invite_code))
+        .route("/v1/server/accounts/{id}/devices", get(devices))
+        .route("/v1/server/accounts/{id}/devices/{device}", delete(revoke_device))
+        .route("/v1/server/overview", get(overview))
+        .route("/v1/server/log", get(admin_log))
         .route("/v1/server/unlock", post(unlock_device))
         .route("/v1/server/unlock/forget", post(forget_device))
+        .route("/v1/server/admin/status", get(admin_status))
+        .route("/v1/server/admin/setup", post(admin_setup))
+        .route("/v1/server/admin/login", post(admin_login))
+        .route("/v1/server/admin/logout", post(admin_logout))
+        .route("/v1/server/admin/password", post(admin_password))
+        .route("/admin", get(admin_page))
         .fallback(dispatch)
         .layer(middleware::from_fn_with_state(hub.clone(), cross_origin))
         .with_state(hub)
@@ -59,19 +72,49 @@ fn gate(hub: &Hub, req: &Request) -> Result<Option<HeaderValue>, Response> {
         return Err(bad(StatusCode::FORBIDDEN, "forbidden", "Wrong Host header."));
     }
     let origin = req.headers().get(header::ORIGIN).and_then(|h| h.to_str().ok()).map(String::from);
-    if let Some(o) = &origin
-        && !hub.cfg.allowed_origins.iter().any(|a| a == o)
-    {
-        return Err(bad(StatusCode::FORBIDDEN, "forbidden", "Origin not allowed."));
+    if let Some(o) = &origin {
+        // The server's own page (the admin dashboard at /admin) calls it from its own origin: no cross-origin headers.
+        if same_origin(req, o) {
+            return Ok(None);
+        }
+        if !hub.cfg.allowed_origins.iter().any(|a| a == o) {
+            return Err(bad(StatusCode::FORBIDDEN, "forbidden", "Origin not allowed."));
+        }
     }
     Ok(origin.and_then(|o| HeaderValue::from_str(&o).ok()))
+}
+
+/// The Origin is this server itself: the scheme plus the Host that was just checked.
+fn same_origin(req: &Request, origin: &str) -> bool {
+    let host = req.headers().get(header::HOST).and_then(|h| h.to_str().ok()).unwrap_or("");
+    !host.is_empty() && origin.strip_prefix("http://").or_else(|| origin.strip_prefix("https://")) == Some(host)
+}
+
+/// `GET /admin`: the server's admin dashboard (docs/architecture/accounts.md). The page holds no data; every call it
+/// makes needs the server password, which the admin types in and the page keeps only in memory.
+async fn admin_page() -> Response {
+    (
+        [
+            (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+            (header::CACHE_CONTROL, "no-store"),
+            (header::X_FRAME_OPTIONS, "DENY"),
+            (header::REFERRER_POLICY, "no-referrer"),
+            (header::X_CONTENT_TYPE_OPTIONS, "nosniff"),
+            (
+                header::CONTENT_SECURITY_POLICY,
+                "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+            ),
+        ],
+        include_str!("../web/admin.html"),
+    )
+        .into_response()
 }
 
 fn with_cors(mut r: Response, origin: Option<HeaderValue>) -> Response {
     if let Some(o) = origin {
         let h = r.headers_mut();
         h.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, o);
-        h.insert(header::ACCESS_CONTROL_ALLOW_HEADERS, HeaderValue::from_static("authorization, content-type, last-event-id"));
+        h.insert(header::ACCESS_CONTROL_ALLOW_HEADERS, HeaderValue::from_static("authorization, content-type, last-event-id, x-admin-session"));
         h.insert(header::ACCESS_CONTROL_ALLOW_METHODS, HeaderValue::from_static("GET, POST, PATCH, PUT, DELETE"));
         h.insert(header::VARY, HeaderValue::from_static("Origin"));
     }
@@ -103,6 +146,21 @@ async fn serve<F>(hub: H, req: Request, f: F) -> Response
 where
     F: FnOnce(Arc<Hub>, Value) -> Out + Send + 'static,
 {
+    serve_as(hub, req, false, f).await
+}
+
+/// An admin route: everything `serve` checks, plus a live admin session (`x-admin-session`, see `hub_admin.rs`).
+async fn admin<F>(hub: H, req: Request, f: F) -> Response
+where
+    F: FnOnce(Arc<Hub>, Value) -> Out + Send + 'static,
+{
+    serve_as(hub, req, true, f).await
+}
+
+async fn serve_as<F>(hub: H, req: Request, need_admin: bool, f: F) -> Response
+where
+    F: FnOnce(Arc<Hub>, Value) -> Out + Send + 'static,
+{
     let origin = match gate(&hub, &req) {
         Ok(o) => o,
         Err(r) => return r,
@@ -120,6 +178,15 @@ where
             hub.token_missed(&who); // a wrong token counts; no token at all does not
         }
         return with_cors(bad(StatusCode::UNAUTHORIZED, "unauthorized", "Missing or wrong server token."), origin);
+    }
+    if need_admin {
+        let session = req.headers().get("x-admin-session").and_then(|h| h.to_str().ok()).map(String::from);
+        if !session.as_deref().is_some_and(|t| hub.admin_session_ok(t)) {
+            if session.is_some() {
+                hub.token_missed(&who); // a guessed or ended session counts as a wrong token
+            }
+            return with_cors(bad(StatusCode::UNAUTHORIZED, "admin_login", "Sign in with the admin login first."), origin);
+        }
     }
     hub.token_ok_from(&who);
     let body = match axum::body::to_bytes(req.into_body(), 64 * 1024).await {
@@ -149,19 +216,63 @@ async fn info(State(h): State<H>, req: Request) -> Response {
     serve(h, req, |h, _| Ok(json!({ "ok": true, "accounts": h.list().len(), "version": env!("CARGO_PKG_VERSION") }))).await
 }
 async fn accounts(State(h): State<H>, req: Request) -> Response {
-    serve(h, req, |h, _| Ok(json!({ "items": h.list() }))).await
+    admin(h, req, |h, _| Ok(json!({ "items": h.list() }))).await
 }
 async fn invite(State(h): State<H>, req: Request) -> Response {
-    serve(h, req, |h, b| h.invite(s(&b, "username")).map_err(invalid)).await
+    admin(h, req, |h, b| h.invite(s(&b, "username")).map_err(invalid)).await
 }
 async fn remove(State(h): State<H>, Path(id): Path<String>, req: Request) -> Response {
-    serve(h, req, move |h, _| h.delete(&id).map(|_| json!({ "deleted": id })).map_err(invalid)).await
+    admin(h, req, move |h, _| h.delete(&id).map(|_| json!({ "deleted": id })).map_err(invalid)).await
 }
 async fn lock(State(h): State<H>, Path(id): Path<String>, req: Request) -> Response {
-    serve(h, req, move |h, _| Ok(json!({ "locked": h.lock(&id) }))).await
+    admin(h, req, move |h, _| {
+        let locked = h.lock(&id);
+        if locked {
+            h.log_admin("lock", &id, "");
+        }
+        Ok(json!({ "locked": locked }))
+    }).await
+}
+async fn disable(State(h): State<H>, Path(id): Path<String>, req: Request) -> Response {
+    admin(h, req, move |h, _| h.set_enabled(&id, false).map_err(invalid)).await
+}
+async fn enable(State(h): State<H>, Path(id): Path<String>, req: Request) -> Response {
+    admin(h, req, move |h, _| h.set_enabled(&id, true).map_err(invalid)).await
+}
+async fn invite_code(State(h): State<H>, Path(id): Path<String>, req: Request) -> Response {
+    admin(h, req, move |h, _| h.new_invite_code(&id).map_err(invalid)).await
+}
+async fn devices(State(h): State<H>, Path(id): Path<String>, req: Request) -> Response {
+    admin(h, req, move |h, _| Ok(json!({ "items": h.devices(&id) }))).await
+}
+async fn revoke_device(State(h): State<H>, Path((id, device)): Path<(String, String)>, req: Request) -> Response {
+    admin(h, req, move |h, _| h.revoke_device(&id, &device).map_err(invalid)).await
+}
+async fn overview(State(h): State<H>, req: Request) -> Response {
+    admin(h, req, |h, _| Ok(h.overview())).await
+}
+async fn admin_log(State(h): State<H>, req: Request) -> Response {
+    let limit = req.uri().query().and_then(|q| q.split('&').find_map(|kv| kv.strip_prefix("limit="))).and_then(|n| n.parse().ok()).unwrap_or(50);
+    admin(h, req, move |h, _| Ok(json!({ "items": h.admin_log(limit) }))).await
+}
+async fn admin_status(State(h): State<H>, req: Request) -> Response {
+    serve(h, req, |h, _| Ok(json!({ "admin": h.admin_exists() }))).await
+}
+async fn admin_setup(State(h): State<H>, req: Request) -> Response {
+    serve(h, req, |h, b| h.admin_setup(s(&b, "setup_code"), s(&b, "username"), s(&b, "password")).map_err(|e| (StatusCode::UNAUTHORIZED, e))).await
+}
+async fn admin_login(State(h): State<H>, req: Request) -> Response {
+    serve(h, req, |h, b| h.admin_login(s(&b, "username"), s(&b, "password")).map_err(|e| (StatusCode::UNAUTHORIZED, e))).await
+}
+async fn admin_logout(State(h): State<H>, req: Request) -> Response {
+    let t = req.headers().get("x-admin-session").and_then(|h| h.to_str().ok()).unwrap_or("").to_string();
+    admin(h, req, move |h, _| { h.admin_logout(&t); Ok(json!({ "signed_out": true })) }).await
+}
+async fn admin_password(State(h): State<H>, req: Request) -> Response {
+    admin(h, req, |h, b| h.admin_change_password(s(&b, "old"), s(&b, "new")).map_err(invalid)).await
 }
 async fn signup(State(h): State<H>, req: Request) -> Response {
-    serve(h, req, |h, b| h.signup(s(&b, "username"), s(&b, "passphrase")).map_err(invalid)).await
+    serve(h, req, |h, b| h.signup(s(&b, "username"), s(&b, "passphrase"), s(&b, "invite_code")).map_err(invalid)).await
 }
 async fn confirm(State(h): State<H>, req: Request) -> Response {
     serve(h, req, |h, b| h.confirm(s(&b, "username"), s(&b, "passphrase"), s(&b, "tail"), s(&b, "label"), b["enroll"] == true).map_err(invalid)).await
@@ -177,7 +288,11 @@ async fn passphrase(State(h): State<H>, req: Request) -> Response {
 }
 
 async fn revoke_devices(State(h): State<H>, Path(id): Path<String>, req: Request) -> Response {
-    serve(h, req, move |h, _| Ok(json!({ "revoked": h.revoke_devices(&id) }))).await
+    admin(h, req, move |h, _| {
+        let n = h.revoke_devices(&id);
+        h.log_admin("revoke_devices", &id, &n.to_string());
+        Ok(json!({ "revoked": n }))
+    }).await
 }
 
 /// A remembered phone asks to unlock its account (after a server restart) or to be forgotten. The phone's device key
@@ -249,14 +364,15 @@ async fn dispatch(State(hub): State<H>, mut req: Request) -> Response {
     };
     let router = hub.routers.read().unwrap().get(acct).cloned();
     let Some(router) = router else {
-        let locked = hub.is_active(acct);
-        if !locked {
-            hub.token_missed(&who); // an account that does not exist
-        }
-        return with_cors(
-            if locked { bad(StatusCode::LOCKED, "account_locked", "This account is locked. Sign in again to unlock it.") } else { bad(StatusCode::UNAUTHORIZED, "unauthorized", "Missing or wrong token.") },
-            origin,
-        );
+        let r = match hub.status_of(acct).as_deref() {
+            Some("active") => bad(StatusCode::LOCKED, "account_locked", "This account is locked. Sign in again to unlock it."),
+            Some("disabled") => bad(StatusCode::FORBIDDEN, "account_disabled", "This account is switched off. Ask the server's admin."),
+            _ => {
+                hub.token_missed(&who); // an account that does not exist
+                bad(StatusCode::UNAUTHORIZED, "unauthorized", "Missing or wrong token.")
+            }
+        };
+        return with_cors(r, origin);
     };
     if let Ok(v) = HeaderValue::from_str(&format!("Bearer {secret}")) {
         req.headers_mut().insert(header::AUTHORIZATION, v);

@@ -31,7 +31,18 @@ pub struct Hub {
     models: Box<Models>,
     /// Wrong tokens per caller address: (misses in a row, last miss, locked until, how many times locked).
     guesses: Mutex<HashMap<String, (u32, i64, i64, u32)>>,
+    /// When this server started (unix seconds), for the admin dashboard.
+    started: i64,
+    /// Admin sessions (`hub_admin.rs`): token hash -> (made, last used).
+    pub(crate) admin_sessions: Mutex<HashMap<String, (i64, i64)>>,
+    /// The hash of the one-time admin setup code, while no admin login exists.
+    pub(crate) admin_setup: Mutex<Option<String>>,
 }
+
+/// How long an invite code works.
+const INVITE_DAYS: i64 = 7;
+/// The Server Access Code (SAC, the server password) needs at least this many characters.
+pub const SAC_MIN: usize = 25;
 
 const SCHEMA: &str = r#"
 CREATE TABLE IF NOT EXISTS accounts (
@@ -42,7 +53,44 @@ CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS devices (
   id TEXT PRIMARY KEY, account_id TEXT NOT NULL, label TEXT, wrapped TEXT NOT NULL, created TEXT NOT NULL, last_seen TEXT, revoked INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS admin_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, action TEXT NOT NULL, account TEXT, detail TEXT
+);
 "#;
+
+/// Columns added after the first release. `ALTER TABLE` fails when the column is there already; that is fine.
+const COLUMNS: [&str; 3] = ["ALTER TABLE accounts ADD COLUMN invite_hash TEXT", "ALTER TABLE accounts ADD COLUMN invite_expires INTEGER", "ALTER TABLE admin_log ADD COLUMN name TEXT"];
+
+pub(crate) fn open_schema(c: &Connection) -> Result<(), String> {
+    c.execute_batch(SCHEMA).map_err(|e| e.to_string())?;
+    for sql in COLUMNS {
+        let _ = c.execute(sql, []);
+    }
+    Ok(())
+}
+
+/// An invite code people can read out and type: 12 letters and digits in groups of 4, without 0/O and 1/I/L.
+pub(crate) fn invite_code() -> String {
+    const ABC: &[u8] = b"23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+    let raw = vault::random_key();
+    let chars: Vec<char> = raw.iter().take(12).map(|b| ABC[*b as usize % ABC.len()] as char).collect();
+    chars.chunks(4).map(|c| c.iter().collect::<String>()).collect::<Vec<_>>().join("-")
+}
+
+/// Compare codes the way people type them: case, spaces and dashes do not matter.
+pub(crate) fn code_hash(code: &str) -> String {
+    let clean: String = code.chars().filter(|c| c.is_ascii_alphanumeric()).collect::<String>().to_ascii_uppercase();
+    util::sha256_hex(clean.as_bytes())
+}
+
+/// Bytes used by a folder and everything in it.
+fn dir_size(p: &FsPath) -> u64 {
+    std::fs::read_dir(p).map(|rd| rd.flatten().map(|e| match e.file_type() {
+        Ok(t) if t.is_dir() => dir_size(&e.path()),
+        Ok(t) if t.is_file() => e.metadata().map(|m| m.len()).unwrap_or(0),
+        _ => 0,
+    }).sum()).unwrap_or(0)
+}
 
 type Row = (String, String, Option<String>, Option<String>, Option<String>, Option<String>);
 
@@ -60,10 +108,10 @@ impl Hub {
             use std::os::unix::fs::PermissionsExt;
             let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
         }
-        c.execute_batch(SCHEMA).map_err(|e| e.to_string())?;
+        open_schema(&c)?;
         let mut cfg = cfg;
         cfg.server_dir = cfg.data_dir.clone();
-        Ok(Arc::new(Hub { cfg, sdb: Mutex::new(c), apps: Default::default(), routers: Default::default(), fails: Default::default(), models, guesses: Default::default() }))
+        Ok(Arc::new(Hub { cfg, sdb: Mutex::new(c), apps: Default::default(), routers: Default::default(), fails: Default::default(), models, guesses: Default::default(), started: util::unix_now(), admin_sessions: Default::default(), admin_setup: Default::default() }))
     }
 
     /// The server token: made once. It keeps the old owner token's text when there was one (so a phone that
@@ -95,11 +143,11 @@ impl Hub {
     /// the plain `server.token` file, if any, is removed. Used by `agent-core server-password`, which reads it from stdin.
     pub fn set_server_password(data_dir: &FsPath, new: &str) -> Result<(), String> {
         let new = new.trim();
-        if new.chars().count() < 12 {
-            return Err("use at least 12 characters".into());
+        if new.chars().count() < SAC_MIN {
+            return Err(format!("the Server Access Code needs at least {SAC_MIN} characters"));
         }
         let c = Connection::open(data_dir.join("server.db")).map_err(|e| format!("server database: {e}"))?;
-        c.execute_batch(SCHEMA).map_err(|e| e.to_string())?;
+        open_schema(&c)?;
         c.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('token_hash', ?1)", [util::sha256_hex(new.as_bytes())]).map_err(|e| e.to_string())?;
         let _ = std::fs::remove_file(data_dir.join("server.token"));
         Ok(())
@@ -149,7 +197,9 @@ impl Hub {
         self.sdb.lock().unwrap().query_row("SELECT 1 FROM accounts WHERE id = ?1 AND status = 'active'", [id], |_| Ok(())).is_ok()
     }
 
-    /// The admin makes a place for a person. The person then sets their own passphrase; the admin never learns it.
+    /// The admin makes a place for a person and gets a one-time invite code to pass on. Sign-up needs that code, so
+    /// knowing the server password and the name is not enough to take the place. The person then sets their own
+    /// passphrase; the admin never learns it.
     pub fn invite(&self, username: &str) -> Result<Value, String> {
         let username = username.trim().to_lowercase();
         if !valid_username(&username) {
@@ -159,23 +209,130 @@ impl Hub {
             return Err("that username is taken".into());
         }
         let id = util::random_hex(5);
-        self.sdb.lock().unwrap().execute("INSERT INTO accounts (id, username, status, created) VALUES (?1, ?2, 'invited', ?3)", params![id, username, util::now_iso()]).map_err(|e| e.to_string())?;
-        Ok(json!({ "id": id, "username": username, "status": "invited" }))
+        let (code, expires) = (invite_code(), util::unix_now() + INVITE_DAYS * 86400);
+        self.sdb.lock().unwrap().execute("INSERT INTO accounts (id, username, status, created, invite_hash, invite_expires) VALUES (?1, ?2, 'invited', ?3, ?4, ?5)",
+            params![id, username, util::now_iso(), code_hash(&code), expires]).map_err(|e| e.to_string())?;
+        self.log_admin("invite", &id, &username);
+        Ok(json!({ "id": id, "username": username, "status": "invited", "invite_code": code, "invite_days": INVITE_DAYS }))
+    }
+
+    /// A fresh invite code for an account that is not set up yet (the old code stops working). A half-done sign-up
+    /// goes back to the start, so whoever started it cannot finish it.
+    pub fn new_invite_code(&self, id: &str) -> Result<Value, String> {
+        let (code, expires) = (invite_code(), util::unix_now() + INVITE_DAYS * 86400);
+        let n = self.sdb.lock().unwrap().execute(
+            "UPDATE accounts SET status = 'invited', salt = NULL, wrapped_pass = NULL, wrapped_recovery = NULL, tail_hash = NULL, invite_hash = ?1, invite_expires = ?2 WHERE id = ?3 AND status IN ('invited', 'pending')",
+            params![code_hash(&code), expires, id]).map_err(|e| e.to_string())?;
+        if n == 0 {
+            return Err("only an account that is not set up yet gets a new invite code".into());
+        }
+        self.log_admin("invite_code", id, "");
+        Ok(json!({ "id": id, "invite_code": code, "invite_days": INVITE_DAYS }))
+    }
+
+    fn invite_ok(&self, id: &str, code: &str) -> bool {
+        let row: Option<(Option<String>, Option<i64>)> = self.sdb.lock().unwrap()
+            .query_row("SELECT invite_hash, invite_expires FROM accounts WHERE id = ?1", [id], |r| Ok((r.get(0)?, r.get(1)?))).optional().ok().flatten();
+        matches!(row, Some((Some(h), Some(exp))) if exp > util::unix_now() && h == code_hash(code))
+    }
+
+    // ---------------- admin ----------------
+
+    /// Write one line to the admin log (server.db). Only ids, usernames and the action; never a secret.
+    pub(crate) fn log_admin(&self, action: &str, account: &str, detail: &str) {
+        let c = self.sdb.lock().unwrap();
+        // The username as it was then, so the line still reads right after the account is removed.
+        let name: Option<String> = c.query_row("SELECT username FROM accounts WHERE id = ?1", [account], |r| r.get(0)).optional().ok().flatten();
+        let _ = c.execute("INSERT INTO admin_log (at, action, account, detail, name) VALUES (?1, ?2, ?3, ?4, ?5)", params![util::now_iso(), action, account, util::clean_line(detail, 2), name]);
+        let _ = c.execute("DELETE FROM admin_log WHERE id <= (SELECT MAX(id) FROM admin_log) - 1000", []);
+        eprintln!("admin: {action} {account}");
+    }
+
+    /// The newest admin log lines, newest first.
+    pub fn admin_log(&self, limit: usize) -> Vec<Value> {
+        let c = self.sdb.lock().unwrap();
+        let Ok(mut st) = c.prepare("SELECT at, action, account, detail, COALESCE((SELECT username FROM accounts a WHERE a.id = l.account), l.name) FROM admin_log l ORDER BY id DESC LIMIT ?1") else { return vec![] };
+        st.query_map([limit.clamp(1, 500) as i64], |r| Ok(json!({ "at": r.get::<_, String>(0)?, "action": r.get::<_, String>(1)?, "account": r.get::<_, Option<String>>(2)?,
+            "detail": r.get::<_, Option<String>>(3)?, "username": r.get::<_, Option<String>>(4)? })))
+            .map(|x| x.flatten().collect()).unwrap_or_default()
+    }
+
+    /// One screen of numbers for the admin dashboard.
+    pub fn overview(&self) -> Value {
+        let list = self.list();
+        let count = |s: &str| list.iter().filter(|a| a["status"] == s).count();
+        let disk: u64 = list.iter().filter_map(|a| a["disk_bytes"].as_u64()).sum();
+        let phones: i64 = list.iter().filter_map(|a| a["phones"].as_i64()).sum();
+        let blocked = { let now = util::unix_now(); self.guesses.lock().unwrap().values().filter(|g| g.2 > now).count() };
+        json!({
+            "version": env!("CARGO_PKG_VERSION"),
+            "uptime_secs": util::unix_now() - self.started,
+            "accounts": { "total": list.len(), "active": count("active"), "invited": count("invited"), "pending": count("pending"), "disabled": count("disabled"),
+                "unlocked": list.iter().filter(|a| a["unlocked"] == true).count() },
+            "phones": phones,
+            "disk_bytes": disk,
+            "blocked_addresses": blocked,
+        })
+    }
+
+    /// Switch an account off: its key is forgotten, it cannot sign in or unlock, and its data stays. `enable` undoes it.
+    pub fn set_enabled(&self, id: &str, on: bool) -> Result<Value, String> {
+        let (from, to) = if on { ("disabled", "active") } else { ("active", "disabled") };
+        let n = self.sdb.lock().unwrap().execute("UPDATE accounts SET status = ?1 WHERE id = ?2 AND status = ?3", params![to, id, from]).map_err(|e| e.to_string())?;
+        if n == 0 {
+            return Err(if on { "only a switched-off account can be switched on".into() } else { "only an active account can be switched off".into() });
+        }
+        if !on {
+            self.lock(id);
+        }
+        self.log_admin(if on { "enable" } else { "disable" }, id, "");
+        Ok(json!({ "id": id, "status": to }))
+    }
+
+    /// The remembered phones of one account, newest first.
+    pub fn devices(&self, account: &str) -> Vec<Value> {
+        let c = self.sdb.lock().unwrap();
+        let Ok(mut st) = c.prepare("SELECT id, label, created, last_seen, revoked FROM devices WHERE account_id = ?1 ORDER BY created DESC") else { return vec![] };
+        st.query_map([account], |r| Ok(json!({ "id": r.get::<_, String>(0)?, "label": r.get::<_, Option<String>>(1)?, "created": r.get::<_, String>(2)?,
+            "last_seen": r.get::<_, Option<String>>(3)?, "revoked": r.get::<_, i64>(4)? != 0 })))
+            .map(|x| x.flatten().collect()).unwrap_or_default()
+    }
+
+    /// Forget one remembered phone of an account.
+    pub fn revoke_device(&self, account: &str, device: &str) -> Result<Value, String> {
+        let n = self.sdb.lock().unwrap().execute("UPDATE devices SET revoked = 1 WHERE id = ?1 AND account_id = ?2 AND revoked = 0", params![device, account]).map_err(|e| e.to_string())?;
+        if n == 0 {
+            return Err("no such remembered phone".into());
+        }
+        self.log_admin("revoke_device", account, device);
+        Ok(json!({ "revoked": device }))
+    }
+
+    /// `active`, `invited`, `pending`, `disabled`, or none for an unknown id.
+    pub(crate) fn status_of(&self, id: &str) -> Option<String> {
+        self.sdb.lock().unwrap().query_row("SELECT status FROM accounts WHERE id = ?1", [id], |r| r.get(0)).ok()
     }
 
     pub fn list(&self) -> Vec<Value> {
         let unlocked: Vec<String> = self.apps.read().unwrap().keys().cloned().collect();
         let c = self.sdb.lock().unwrap();
-        let mut st = c.prepare("SELECT id, username, status, created, last_login FROM accounts ORDER BY created").expect("prepare");
+        let Ok(mut st) = c.prepare("SELECT id, username, status, created, last_login, invite_expires FROM accounts ORDER BY created") else { return vec![] };
+        let now = util::unix_now();
         st.query_map([], |r| {
             let id: String = r.get(0)?;
-            Ok(json!({ "id": id, "username": r.get::<_, String>(1)?, "status": r.get::<_, String>(2)?, "created": r.get::<_, String>(3)?,
+            let status: String = r.get(2)?;
+            let expires: Option<i64> = r.get(5)?;
+            let waiting = status == "invited" || status == "pending";
+            Ok(json!({ "id": id, "username": r.get::<_, String>(1)?, "status": status, "created": r.get::<_, String>(3)?,
                 "last_login": r.get::<_, Option<String>>(4)?, "unlocked": unlocked.contains(&id),
-                "phones": c.query_row("SELECT COUNT(*) FROM devices WHERE account_id = ?1 AND revoked = 0", [&id], |x| x.get::<_, i64>(0)).unwrap_or(0) }))
+                "invite_expires": if waiting { expires } else { None }, "invite_expired": waiting && expires.is_none_or(|e| e <= now),
+                "phones": c.query_row("SELECT COUNT(*) FROM devices WHERE account_id = ?1 AND revoked = 0", [&id], |x| x.get::<_, i64>(0)).unwrap_or(0),
+                "last_seen": c.query_row("SELECT MAX(last_seen) FROM devices WHERE account_id = ?1", [&id], |x| x.get::<_, Option<String>>(0)).ok().flatten(),
+                "disk_bytes": if id.chars().all(|c| c.is_ascii_hexdigit()) { dir_size(&self.cfg.data_dir.join("accounts").join(&id)) } else { 0 } }))
         }).map(|x| x.flatten().collect()).unwrap_or_default()
     }
 
-    fn throttle(&self, username: &str) -> Result<(), String> {
+    pub(crate) fn throttle(&self, username: &str) -> Result<(), String> {
         let now = util::unix_now();
         if let Some((n, until)) = self.fails.lock().unwrap().get(username)
             && *n >= 5
@@ -186,20 +343,32 @@ impl Hub {
         Ok(())
     }
 
-    fn failed(&self, username: &str) {
+    pub(crate) fn failed(&self, username: &str) {
         let now = util::unix_now();
         let mut f = self.fails.lock().unwrap();
+        if f.len() > 5000 {
+            f.retain(|_, v| v.1 > now - 3600); // forget names that have been quiet for an hour (wrong names never get removed otherwise)
+        }
         let e = f.entry(username.to_string()).or_insert((0, 0));
         e.0 += 1;
         e.1 = now + 60 * (e.0 as i64 - 4).clamp(1, 30); // the 5th miss: a minute, then longer
     }
 
     /// Step 1 of sign-up. Makes the keys and returns the recovery key, once. Nothing is active until `confirm`.
-    pub fn signup(&self, username: &str, passphrase: &str) -> Result<Value, String> {
+    pub fn signup(&self, username: &str, passphrase: &str, code: &str) -> Result<Value, String> {
+        const NO: &str = "wrong username or invite code; ask the server's admin";
         let username = username.trim().to_lowercase();
-        let (id, status, ..) = self.row(&username).ok_or("no account is waiting for that username; ask the server's admin")?;
+        self.throttle(&username)?;
+        let Some((id, status, ..)) = self.row(&username) else {
+            self.failed(&username);
+            return Err(NO.into());
+        };
         if status == "active" || status == "disabled" {
             return Err("that account is already set up".into());
+        }
+        if !self.invite_ok(&id, code) {
+            self.failed(&username);
+            return Err("wrong or expired invite code; ask the server's admin for a new one".into());
         }
         if passphrase.chars().count() < 10 {
             return Err("use a passphrase of at least 10 characters; a few random words is best".into());
@@ -228,7 +397,8 @@ impl Hub {
             self.failed(&username);
             return Err("those are not the last 8 characters of the recovery key; check you copied it".into());
         }
-        self.sdb.lock().unwrap().execute("UPDATE accounts SET status = 'active' WHERE id = ?1", [&id]).map_err(|e| e.to_string())?;
+        self.sdb.lock().unwrap().execute("UPDATE accounts SET status = 'active', invite_hash = NULL, invite_expires = NULL WHERE id = ?1", [&id]).map_err(|e| e.to_string())?;
+        self.log_admin("signup", &id, &username);
         self.finish_login(&id, &username, &key, label, enroll)
     }
 
@@ -325,6 +495,7 @@ impl Hub {
         })?;
         let key: [u8; 32] = data.try_into().map_err(|_| "damaged key".to_string())?;
         self.rewrap(&id, &key, new_passphrase)?;
+        self.log_admin("recover", &id, &username);
         self.revoke_devices(&id); // a lost passphrase may mean a lost phone: remembered phones must sign in again
         self.fails.lock().unwrap().remove(&username);
         Ok(json!({ "ok": true }))
@@ -375,6 +546,10 @@ impl Hub {
 
     pub fn delete(&self, id: &str) -> Result<(), String> {
         self.lock(id);
+        let exists = self.sdb.lock().unwrap().query_row("SELECT 1 FROM accounts WHERE id = ?1", [id], |_| Ok(())).optional().ok().flatten().is_some();
+        if exists {
+            self.log_admin("delete", id, ""); // before the row goes, so the log keeps the name
+        }
         let _ = self.sdb.lock().unwrap().execute("DELETE FROM devices WHERE account_id = ?1", [id]);
         let n = self.sdb.lock().unwrap().execute("DELETE FROM accounts WHERE id = ?1", [id]).map_err(|e| e.to_string())?;
         if n == 0 {

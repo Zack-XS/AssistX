@@ -33,6 +33,7 @@ pub mod health;
 pub mod detect;
 pub mod phone;
 pub mod hub;
+pub mod hub_admin;
 pub mod hub_http;
 pub mod nodes;
 pub mod models;

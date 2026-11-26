@@ -12,7 +12,7 @@ In order. The roadmap page draws these as the road ahead.
 
 | # | Milestone | What it means |
 |---|---|---|
-| 1 | Account system fixes | Close the known gaps in [Accounts](../architecture/accounts.md): sign-in, keys, remembered phones. |
+| 1 | Account system fixes | Close the known gaps in [Accounts](../architecture/accounts.md): sign-in, keys, remembered phones. Started 2026-11-25: invite codes, switch off/on, per-phone removal, admin log and the admin dashboard (a web page on the server at `/admin`) are built. |
 | 2 | Improved skill data | Richer, better-sorted data behind each skill, so the assistant picks and uses skills well. |
 | 3 | Multi-computer support | One owner, many computers, per the [Multi-device plan](../architecture/multi-device.md). |
 | 4 | Skill rewrites and more skills | Rewrite older plugins to today's rules, and add new ones. |

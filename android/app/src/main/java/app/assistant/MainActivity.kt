@@ -851,6 +851,14 @@ class MainActivity : Activity() {
             if (url.startsWith("https://")) runOnUiThread { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
         }
 
+        /** Look for AssistX servers on the local network. Each one found calls `__lanFound(json)`; the end calls `__lanDone()`. */
+        @JavascriptInterface
+        fun scanLan() {
+            LanScan.start(this@MainActivity,
+                { s -> val q = JSONObject.quote(s.toString()); runOnUiThread { js("window.__lanFound&&__lanFound($q)") } },
+                { runOnUiThread { js("window.__lanDone&&__lanDone()") } })
+        }
+
         /** Share plain text (a list) through Android's share sheet. Text only, capped. */
         @JavascriptInterface
         fun shareText(title: String, text: String) {

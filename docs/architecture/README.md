@@ -72,7 +72,7 @@ src/plugins/<id>.rs      Rust tool code for shipped plugins (`agent-core tool-ru
 tests/golden.rs          golden conversations, injection and auth tests
 ```
 
-More modules in `server/src/` not in that list: `hub.rs`, `hub_http.rs`, `vault.rs` (accounts), `power.rs`, `detect.rs`, `embed.rs`, `recipes.rs`, `links.rs`, `summary.rs`, `audit.rs`, `autoreport.rs`, `mind.rs`, `eval.rs`, `email.rs`, `spotify.rs`, `hevy.rs`, `health.rs`, `google_health.rs`, `oauth.rs`, `reports.rs`, `schedule_import.rs`, `util.rs`.
+More modules in `server/src/` not in that list: `hub.rs`, `hub_http.rs`, `vault.rs` (accounts), `power.rs`, `detect.rs`, `embed.rs`, `recipes.rs`, `links.rs`, `summary.rs`, `audit.rs`, `autoreport.rs`, `mind.rs`, `eval.rs`, `email.rs`, `spotify.rs`, `hevy.rs`, `health.rs`, `google_health.rs`, `oauth.rs`, `reports.rs`, `util.rs`.
 
 ## Tech stack (planned)
 

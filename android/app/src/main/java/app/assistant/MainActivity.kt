@@ -733,14 +733,33 @@ class MainActivity : Activity() {
 
     // ---------- vibration ----------
 
+    /**
+     * One small feel for each kind of moment. On phones with a good motor these are crisp "primitives" (short,
+     * tuned taps); on others the same moment falls back to a plain predefined effect.
+     * tick: any tap · select: a tab or a choice · toggle: a switch · click: a main button · heavy: long press
+     * success: done · warn: needs a look · error: it failed.
+     */
     private fun haptic(kind: String) {
         val v = getSystemService(VibratorManager::class.java)?.defaultVibrator ?: return
+        if (!v.hasVibrator()) return
+        fun comp(vararg parts: Triple<Int, Float, Int>): VibrationEffect? {
+            if (!v.areAllPrimitivesSupported(*parts.map { it.first }.toIntArray())) return null
+            val c = VibrationEffect.startComposition()
+            for ((prim, scale, delay) in parts) c.addPrimitive(prim, scale, delay)
+            return c.compose()
+        }
+        val C = VibrationEffect.Composition.PRIMITIVE_CLICK
+        val T = VibrationEffect.Composition.PRIMITIVE_TICK
+        val L = VibrationEffect.Composition.PRIMITIVE_LOW_TICK
         val fx = when (kind) {
-            "click" -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
-            "heavy" -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
-            "success" -> VibrationEffect.createWaveform(longArrayOf(0, 14, 70, 14), -1)
-            "error" -> VibrationEffect.createWaveform(longArrayOf(0, 30, 60, 30, 60, 30), -1)
-            else -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
+            "select" -> comp(Triple(L, 0.9f, 0)) ?: VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
+            "toggle" -> comp(Triple(C, 0.6f, 0)) ?: VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+            "click" -> comp(Triple(C, 0.8f, 0)) ?: VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+            "heavy" -> comp(Triple(C, 1f, 0), Triple(T, 0.5f, 40)) ?: VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
+            "success" -> comp(Triple(T, 0.6f, 0), Triple(C, 0.9f, 70)) ?: VibrationEffect.createWaveform(longArrayOf(0, 14, 70, 14), -1)
+            "warn" -> comp(Triple(C, 0.7f, 0), Triple(C, 0.7f, 110)) ?: VibrationEffect.createWaveform(longArrayOf(0, 20, 110, 20), -1)
+            "error" -> comp(Triple(C, 1f, 0), Triple(C, 0.8f, 80), Triple(C, 0.6f, 80)) ?: VibrationEffect.createWaveform(longArrayOf(0, 30, 60, 30, 60, 30), -1)
+            else -> comp(Triple(T, 0.45f, 0)) ?: VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
         }
         v.vibrate(fx)
     }

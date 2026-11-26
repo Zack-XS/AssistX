@@ -243,7 +243,6 @@ These are in `server/src/api.rs` today.
 | `POST /v1/jobs/{id}/run` | Start a task now. Returns the thread its report will be in. |
 | `POST /v1/jobs/{id}/skip` | Skip one day of a repeating alarm, reminder or task. |
 | `POST /v1/calendar/events/{id}/skip` | Skip one day of a repeating event: `{date, undo?}`. The rest stay. |
-| `POST /v1/calendar/import/preview`, `POST /v1/calendar/import`, `POST /v1/calendar/import/undo` | Import events on top of the calendar: `{events, remind_minutes?}`. Existing events are never touched. |
 | `GET /v1/automations/watch` | Which phone apps the phone should forward notifications from (only apps that start a task). |
 | `POST /v1/automations/notify` | The phone saw a notification from a watched app: `{app, app_name?, title, text}`. Device or client token. |
 | `GET,PUT /v1/power` | The master switch. Off: no jobs, no thinking, no dreaming, uploads refused, work refused with 503 `power_off`. Reading still works. |

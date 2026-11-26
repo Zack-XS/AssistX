@@ -3355,45 +3355,6 @@ fn one_day_of_a_repeating_event_or_alarm_can_be_skipped_without_touching_the_res
 }
 
 #[test]
-fn a_pasted_schedule_is_previewed_then_added_on_top_of_the_calendar_and_can_be_undone() {
-    let reply = "Here you go:\n```json\n[\n {\"title\":\"Gym\",\"start\":\"2030-01-07 18:00\",\"end\":\"2030-01-07 19:00\",\"all_day\":false,\"repeat\":\"week\",\"until\":null,\"location\":null},\n \
-{\"title\":\"Work\",\"start\":\"2030-01-08 09:00\",\"end\":\"2030-01-08 17:00\",\"repeat\":\"weekdays\"},\n {\"title\":\"Dentist\",\"start\":\"2030-02-12 14:30\"},\n {\"start\":\"2030-01-09 10:00\"},\n {\"title\":\"Bad\",\"start\":\"not a time\"}\n]\n```";
-    let s = start_with("import", json!([{ "text": reply }]), |c| c.timezone = "UTC".into());
-    // What is already there stays: a meeting that overlaps the gym slot, and a dentist visit that is a repeat of an import line.
-    s.call("POST", "/v1/calendar/events", Some(json!({ "title": "Meeting", "start": "2030-01-07 18:30", "end": "2030-01-07 19:30" })));
-    s.call("POST", "/v1/calendar/events", Some(json!({ "title": "Dentist", "start": "2030-02-12 14:30" })));
-    let (code, v) = s.call("POST", "/v1/calendar/import/preview", Some(json!({ "text": "gym Mondays 6pm, work Mon-Fri 9 to 5, dentist 12 Feb 2:30" })));
-    assert_eq!(code, 200, "{v}");
-    let ev = v["events"].as_array().unwrap();
-    assert_eq!(ev.len(), 5, "{v}");
-    let by = |t: &str| ev.iter().find(|e| e["title"] == t).unwrap().clone();
-    assert_eq!((by("Gym")["ok"].as_bool(), by("Gym")["clash"].as_str(), by("Gym")["repeat"].as_str()), (Some(true), Some("Meeting"), Some("week")), "{v}");
-    assert_eq!((by("Work")["repeat"].as_str(), by("Work")["duplicate"].as_bool()), (Some("weekdays"), Some(false)));
-    assert_eq!(by("Dentist")["duplicate"], true, "an identical event is marked, not added twice");
-    assert_eq!(by("Bad")["ok"], false);
-    assert!(ev.iter().any(|e| e["ok"] == false && e["error"].as_str().is_some_and(|m| m.contains("title"))), "a line without a title is refused in words: {v}");
-    // Nothing was saved by the preview.
-    let (_, before) = s.call("GET", "/v1/calendar/events?from=2030-01-01&to=2030-03-01", None);
-    assert_eq!(before["events"].as_array().unwrap().iter().filter(|e| e["title"] == "Gym" || e["title"] == "Work").count(), 0);
-    // Add the ticked ones (duplicates are skipped even if ticked), with a reminder; the calendar keeps what it had.
-    let ticked: Vec<Value> = ev.iter().filter(|e| e["ok"] == true).cloned().collect();
-    let (code, done) = s.call("POST", "/v1/calendar/import", Some(json!({ "events": ticked, "remind_minutes": 10 })));
-    assert_eq!((code, done["added"].as_i64(), done["duplicates_skipped"].as_i64()), (200, Some(2), Some(1)), "{done}");
-    let (_, after) = s.call("GET", "/v1/calendar/events?from=2030-01-07&to=2030-01-11", None);
-    let titles: Vec<&str> = after["events"].as_array().unwrap().iter().map(|e| e["title"].as_str().unwrap()).collect();
-    assert!(titles.contains(&"Gym") && titles.contains(&"Meeting") && titles.iter().filter(|t| **t == "Work").count() == 4, "{titles:?}");
-    // Undo removes exactly those two, and the existing events stay.
-    let (_, gone) = s.call("POST", "/v1/calendar/import/undo", Some(json!({ "ids": done["ids"] })));
-    assert_eq!(gone["removed"], 2);
-    let (_, last) = s.call("GET", "/v1/calendar/events?from=2030-01-07&to=2030-01-11", None);
-    let titles: Vec<&str> = last["events"].as_array().unwrap().iter().map(|e| e["title"].as_str().unwrap()).collect();
-    assert_eq!(titles, ["Meeting"], "{titles:?}");
-    // Too long, or empty, is refused in plain words.
-    assert_eq!(s.call("POST", "/v1/calendar/import/preview", Some(json!({ "text": "  " }))).0, 400);
-    assert_eq!(s.call("POST", "/v1/calendar/import/preview", Some(json!({ "text": "x".repeat(9000) }))).0, 400);
-}
-
-#[test]
 fn alarms_on_chosen_dates_and_many_at_once_without_repeating() {
     let s = start_with("alarmdates", json!([]), |c| c.timezone = "UTC".into());
     let tool = |name: &str, a: Value| agent_core::scheduler::tool(&s.app, "t", false, name, &a);

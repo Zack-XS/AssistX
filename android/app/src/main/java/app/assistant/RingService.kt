@@ -79,9 +79,11 @@ class RingService : Service() {
             player = null // no sound file worked; vibration and the card still show
         }
         main.post(louder)
-        getSystemService(VibratorManager::class.java)?.defaultVibrator?.vibrate(
-            VibrationEffect.createWaveform(longArrayOf(0, 600, 400, 600, 1400), 0),
-            android.os.VibrationAttributes.createForUsage(android.os.VibrationAttributes.USAGE_ALARM))
+        val buzz = VibrationEffect.createWaveform(longArrayOf(0, 600, 400, 600, 1400), 0)
+        val vib = getSystemService(VibratorManager::class.java)?.defaultVibrator
+        // Android 13+: mark it as an alarm, so it buzzes even when touch vibration is off. Android 12: the older call.
+        if (android.os.Build.VERSION.SDK_INT >= 33) vib?.vibrate(buzz, android.os.VibrationAttributes.createForUsage(android.os.VibrationAttributes.USAGE_ALARM))
+        else @Suppress("DEPRECATION") vib?.vibrate(buzz, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
     }
 
     /** Start soft and get louder over about 30 seconds. "gentle" stays softer. */

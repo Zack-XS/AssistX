@@ -59,7 +59,7 @@ One public page for AssistX, for users and helpers. It is built by the Rust docs
 - **Contributors:** everyone who has helped, with their GitHub picture and name.
 - **Info:** the roadmap picture, the rules, and how to report a security problem.
 
-Status 2026-11-25: a first version is built into the docs site as its home page (`docs-site/src/home.rs`). It has the nav (Home, Docs, GitHub), a GitHub download button, app screens, a terminal, a contributor leaderboard, and release, pull request and push logs. Refresh GitHub data with `cargo run -j1 -- fetch` in `docs-site/`, then `build`. Real screenshots go in `docs-site/assets/screens/` (PNG, JPG or WebP); without them the page draws the screens. Still to do: hosting, and real screenshots.
+Status 2026-11-25: a first version is built into the docs site as its home page (`docs-site/src/home.rs`). It has the nav (Home, Docs, GitHub), a download button, real app screenshots, a feature list, how to run it, contributors, and release, pull request and commit logs. Refresh GitHub data with `cargo run -j1 -- fetch` in `docs-site/`, then `build`. Screenshots are in `docs-site/assets/screens/light/` and `dark/` (see `docs-site/README.md`). Still to do: hosting.
 
 Open choices: where it is hosted (it is local only today, see [Docs site](../plans/docs-site.md)), and whether pushes and contributors are read at build time or live from GitHub. Build time is the safe default: no tokens on the page.
 

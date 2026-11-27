@@ -109,7 +109,7 @@ pub fn render_sidebar(
     // Home link
     let cls = if home_active { "pl active" } else { "pl" };
     out.push_str(&format!(
-        r#"<div class="section"><a class="pl" href="{root}index.html">← AssistX home</a><a class="{cls}" href="{root}docs.html">Docs home</a></div>"#
+        r#"<div class="section"><a class="{cls}" href="{root}docs.html">Docs home</a></div>"#
     ));
     for s in sections {
         let sec_cls = if active == s.index_rel { "stitle active" } else { "stitle" };

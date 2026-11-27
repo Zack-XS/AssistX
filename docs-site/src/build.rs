@@ -216,15 +216,21 @@ pub fn run(docs_dir: &Path, repo_root: &Path, out_dir: &Path) -> Result<(), Stri
     // (filled by `fetch`) and any real screenshots in assets/screens/.
     let site_dir = out_dir.parent().unwrap_or(out_dir);
     let gh = crate::github::load(&site_dir.join("github.json"));
+    // Screens come in two folders, light/ and dark/, with the same file names.
+    // `screens` lists the names found in light/.
     let mut screens: Vec<String> = Vec::new();
-    if let Ok(entries) = fs::read_dir(site_dir.join("assets").join("screens")) {
-        fs::create_dir_all(assets_dir.join("screens")).map_err(|e| e.to_string())?;
+    for theme in ["light", "dark"] {
+        let Ok(entries) = fs::read_dir(site_dir.join("assets").join("screens").join(theme)) else { continue };
+        let to = assets_dir.join("screens").join(theme);
+        fs::create_dir_all(&to).map_err(|e| e.to_string())?;
         for e in entries.flatten() {
             let name = e.file_name().to_string_lossy().to_string();
             let lower = name.to_lowercase();
             if [".png", ".jpg", ".jpeg", ".webp"].iter().any(|x| lower.ends_with(x)) {
-                fs::copy(e.path(), assets_dir.join("screens").join(&name)).map_err(|e| e.to_string())?;
-                screens.push(name);
+                fs::copy(e.path(), to.join(&name)).map_err(|e| e.to_string())?;
+                if theme == "light" {
+                    screens.push(name);
+                }
             }
         }
     }

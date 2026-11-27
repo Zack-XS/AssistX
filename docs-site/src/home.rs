@@ -1,9 +1,9 @@
 //! The AssistX home page (`out/index.html`): top nav (Home, Docs, GitHub),
-//! hero with a GitHub download button, app screens, a terminal, why AssistX,
-//! a contributor leaderboard, and release, pull request and push logs.
+//! a short intro with the download button, real app screenshots, what it does,
+//! how to run it, and contributors, releases, pull requests and commits.
 //!
-//! Real screenshots: drop PNG/JPG/WebP files into `docs-site/assets/screens/`.
-//! When there are none, the page draws the screens from the design language.
+//! Screenshots live in `docs-site/assets/screens/light/` and `dark/`, with the
+//! same file names. See the README for how to retake them.
 
 use crate::github::{Data, REPO_URL};
 
@@ -36,8 +36,8 @@ pub fn page(gh: &Data, screens: &[String], icons: &std::collections::HashMap<Str
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="AssistX: an AI buddy that runs your life, on your own server.">
-<title>AssistX · an AI buddy that runs your life</title>
+<meta name="description" content="AssistX: a personal assistant that runs on your own server.">
+<title>AssistX</title>
 <link rel="stylesheet" href="assets/tokens.css">
 <link rel="stylesheet" href="assets/main.css">
 {boot}
@@ -51,99 +51,87 @@ pub fn page(gh: &Data, screens: &[String], icons: &std::collections::HashMap<Str
         nav = crate::template::site_nav("", "home", &icon(icons, "sun"), &icon(icons, "moon"), None),
     ));
 
-    // Hero
+    // Hero: a plain line, two buttons, and a real screen.
     s.push_str(&format!(
         r##"<section class="hm-hero">
   <div class="hm-hero-text">
-    <h1>An AI buddy<br><span>that runs your life.</span></h1>
-    <p class="hm-lede">AssistX remembers you, acts for you, starts work on its own and learns new skills. It runs on your own server, with safety in code, not in a prompt.</p>
+    <h1>A personal assistant that runs on your own server.</h1>
+    <p class="hm-lede">AssistX keeps your calendar, alarms, lists and notes. You can ask it to change them, and it remembers what you tell it. You pick the model and keep the data.</p>
     <div class="hm-ctas">
       <a class="hm-btn hm-primary" href="{dl}" target="_blank" rel="noopener noreferrer">Download for Android</a>
       <a class="hm-btn hm-secondary" href="docs.html">Read the docs</a>
     </div>
-    <p class="hm-kicker">{note} · Open source · Rust</p>
+    <p class="hm-kicker">{note} · Open source</p>
   </div>
-  <div class="hm-hero-art">{phone}</div>
+  <div class="hm-hero-art">{art}</div>
 </section>
 "##,
         dl = esc(&download_url),
         note = download_note,
-        phone = phone_chat(),
+        art = if has(screens, "chat.png") { shot("chat.png", "The Assistant screen answering a question about tomorrow", "eager") } else { String::new() },
     ));
 
-    // Why
-    s.push_str(r#"<section class="hm-sec"><h2>Why AssistX</h2><div class="hm-why">"#);
-    for (title, text) in [
-        ("Knows you", "A real memory you own, tidied each night."),
-        ("Does things", "Calendar, alarms, lists, mail, music, files and your phone."),
-        ("Thinks ahead", "Check-ins, a morning brief, reminders by time or place."),
-        ("Learns skills", "Writes its own plugins, with your yes."),
-        ("Safe in code", "Risky acts need a tap. Every act is logged."),
-        ("Yours", "Your server, any model, encrypted at rest."),
-    ] {
-        s.push_str(&format!(
-            r#"<div class="hm-card"><h3>{title}</h3><p>{text}</p></div>"#
-        ));
-    }
-    s.push_str("</div></section>");
-
-    // Screens
-    s.push_str(r#"<section class="hm-sec"><h2>Screens</h2><div class="hm-screens">"#);
-    if screens.is_empty() {
-        s.push_str(&format!(
-            r#"<figure>{}<figcaption>Chat that acts</figcaption></figure><figure>{}<figcaption>Your day at a glance</figcaption></figure><figure>{}<figcaption>Talk hands-free</figcaption></figure>"#,
-            phone_chat(),
-            phone_today(),
-            phone_voice()
-        ));
-    } else {
-        for f in screens {
-            let name = f.rsplit_once('.').map(|(a, _)| a).unwrap_or(f).replace(['-', '_'], " ");
-            s.push_str(&format!(
-                r#"<figure><div class="hm-phone hm-shot"><img src="assets/screens/{f}" alt="{alt}" loading="lazy"></div><figcaption>{alt}</figcaption></figure>"#,
-                f = esc(f),
-                alt = esc(&name)
-            ));
+    // Screens: real screenshots of the app page, in a fixed order.
+    let shown: Vec<&(&str, &str, &str)> = SCREENS.iter().filter(|(f, _, _)| has(screens, f)).collect();
+    if !shown.is_empty() {
+        s.push_str(r#"<section class="hm-sec"><h2>The app</h2><div class="hm-screens">"#);
+        for (f, cap, alt) in shown {
+            s.push_str(&format!(r#"<figure>{}<figcaption>{cap}</figcaption></figure>"#, shot(f, alt, "lazy")));
         }
+        s.push_str(r#"</div><p class="hm-note">Screenshots of the app with sample data.</p></section>"#);
     }
-    s.push_str("</div></section>");
 
-    // Terminal
+    // What it does: a plain list.
+    s.push_str(r#"<section class="hm-sec"><h2>What it does</h2><ul class="hm-list">"#);
+    for line in [
+        "Remembers what you tell it. You can read, edit or delete anything it keeps.",
+        "Handles your calendar, alarms, lists, mail, music and files.",
+        "Sends a daily report and reminds you by time or by place.",
+        "Can write new plugins for itself, after you say yes.",
+        "Asks before doing anything risky, and logs every action.",
+        "Runs on your server with any model. The database is encrypted.",
+    ] {
+        s.push_str(&format!("<li>{line}</li>"));
+    }
+    s.push_str("</ul></section>");
+
+    // Run it yourself: a plain code block.
     s.push_str(&format!(
         r##"<section class="hm-sec hm-split">
-  <div><h2>Run it yourself</h2><p class="hm-lede">One Rust server and one encrypted database file. Point it at any model: a local one with Ollama, or a cloud one. The tests need no API key.</p>
-  <p><a href="getting-started/run-server.html">Run the server →</a><br><a href="getting-started/run-android.html">Run the Android app →</a></p></div>
-  <div class="hm-term" role="img" aria-label="Terminal: clone, test and run the AssistX server">
-    <div class="hm-term-bar"><b>Terminal</b></div>
-    <pre><code><span class="l"><i>$</i> git clone {REPO_URL}.git</span><span class="l"><i>$</i> cd AssistX/server</span><span class="l"><i>$</i> cargo test -j1 <em># unit + golden tests, no key needed</em></span><span class="l"><i>$</i> AGENT_MODEL_BASE_URL=http://127.0.0.1:11434/v1 \</span><span class="l">  AGENT_MODEL_NAME=llama3.1 cargo run -j1</span><span class="l"><i>$</i> cargo run -j1 -- token create client phone <em># pair the app</em></span><span class="l hm-cursor"><i>$</i> </span></code></pre>
-  </div>
+  <div><h2>Run it yourself</h2><p class="hm-lede">The server is one Rust program and one encrypted database file. It works with a local model through Ollama or with a cloud model. The tests need no API key.</p>
+  <p><a href="getting-started/run-server.html">Run the server</a><br><a href="getting-started/run-android.html">Run the Android app</a></p></div>
+  <pre class="hm-code"><code>git clone {REPO_URL}.git
+cd AssistX/server
+cargo test -j1
+
+AGENT_MODEL_BASE_URL=http://127.0.0.1:11434/v1 \
+  AGENT_MODEL_NAME=llama3.1 cargo run -j1
+
+# make a token for the phone
+cargo run -j1 -- token create client phone</code></pre>
 </section>
 "##
     ));
 
     // Community: leaderboard + logs
-    s.push_str(r#"<section class="hm-sec"><h2>Community</h2><div class="hm-community">"#);
+    s.push_str(r#"<section class="hm-sec"><h2>Development</h2><div class="hm-community">"#);
 
     // Leaderboard
     s.push_str(r#"<div class="hm-panel hm-board"><h3>Contributors</h3>"#);
     if gh.contributors.is_empty() {
         s.push_str(r#"<p class="hm-empty">No contributors loaded yet.</p>"#);
     } else {
-        let top = gh.contributors[0].commits.max(1);
         s.push_str(r#"<ol class="hm-leader">"#);
-        for (i, c) in gh.contributors.iter().take(10).enumerate() {
-            let medal = match i { 0 => " hm-gold", 1 => " hm-silver", 2 => " hm-bronze", _ => "" };
+        for c in gh.contributors.iter().take(10) {
             let avatar = if c.avatar.starts_with("https://avatars.githubusercontent.com/") {
                 format!(r#"<img src="{}&s=64" alt="" width="32" height="32" loading="lazy">"#, esc(&c.avatar))
             } else {
                 format!(r#"<span class="hm-av">{}</span>"#, esc(&c.login.chars().next().unwrap_or('?').to_uppercase().to_string()))
             };
             s.push_str(&format!(
-                r#"<li class="hm-lrow{medal}"><span class="hm-rank">{}</span>{avatar}<a href="{}" target="_blank" rel="noopener noreferrer">{}</a><span class="hm-bar"><span style="width:{}%"></span></span><span class="hm-cnt">{} {}</span></li>"#,
-                i + 1,
+                r#"<li class="hm-lrow">{avatar}<a href="{}" target="_blank" rel="noopener noreferrer">{}</a><span class="hm-cnt">{} {}</span></li>"#,
                 esc(&c.url),
                 esc(&c.login),
-                (c.commits * 100 / top).max(4),
                 c.commits,
                 if c.commits == 1 { "commit" } else { "commits" }
             ));
@@ -151,7 +139,7 @@ pub fn page(gh: &Data, screens: &[String], icons: &std::collections::HashMap<Str
         s.push_str("</ol>");
     }
     s.push_str(&format!(
-        r#"<a class="hm-more" href="{REPO_URL}/blob/production/docs/contributing/README.md" target="_blank" rel="noopener noreferrer">Join them: how to contribute →</a></div>"#
+        r#"<a class="hm-more" href="{REPO_URL}/blob/production/docs/contributing/README.md" target="_blank" rel="noopener noreferrer">How to contribute</a></div>"#
     ));
 
     // Releases
@@ -174,12 +162,12 @@ pub fn page(gh: &Data, screens: &[String], icons: &std::collections::HashMap<Str
         }
         s.push_str("</ul>");
     }
-    s.push_str(&format!(r#"<a class="hm-more" href="{REPO_URL}/releases" target="_blank" rel="noopener noreferrer">All releases →</a></div>"#));
+    s.push_str(&format!(r#"<a class="hm-more" href="{REPO_URL}/releases" target="_blank" rel="noopener noreferrer">All releases</a></div>"#));
 
     // Pull requests
     s.push_str(r#"<div class="hm-panel"><h3>Pull requests</h3>"#);
     if gh.pulls.is_empty() {
-        s.push_str(r#"<p class="hm-empty">No pull requests yet. Yours could be the first.</p>"#);
+        s.push_str(r#"<p class="hm-empty">No pull requests yet.</p>"#);
     } else {
         s.push_str(r#"<ul class="hm-log">"#);
         for p in gh.pulls.iter().take(8) {
@@ -195,12 +183,12 @@ pub fn page(gh: &Data, screens: &[String], icons: &std::collections::HashMap<Str
         }
         s.push_str("</ul>");
     }
-    s.push_str(&format!(r#"<a class="hm-more" href="{REPO_URL}/pulls" target="_blank" rel="noopener noreferrer">All pull requests →</a></div>"#));
+    s.push_str(&format!(r#"<a class="hm-more" href="{REPO_URL}/pulls" target="_blank" rel="noopener noreferrer">All pull requests</a></div>"#));
 
     // Recent pushes
-    s.push_str(r#"<div class="hm-panel"><h3>Recent pushes</h3>"#);
+    s.push_str(r#"<div class="hm-panel"><h3>Recent commits</h3>"#);
     if gh.commits.is_empty() {
-        s.push_str(r#"<p class="hm-empty">No pushes loaded yet.</p>"#);
+        s.push_str(r#"<p class="hm-empty">No commits loaded yet.</p>"#);
     } else {
         s.push_str(r#"<ul class="hm-log">"#);
         for c in gh.commits.iter().take(6) {
@@ -215,7 +203,7 @@ pub fn page(gh: &Data, screens: &[String], icons: &std::collections::HashMap<Str
         }
         s.push_str("</ul>");
     }
-    s.push_str(&format!(r#"<a class="hm-more" href="{REPO_URL}/commits" target="_blank" rel="noopener noreferrer">All commits →</a></div>"#));
+    s.push_str(&format!(r#"<a class="hm-more" href="{REPO_URL}/commits" target="_blank" rel="noopener noreferrer">All commits</a></div>"#));
 
     s.push_str("</div>");
     if !gh.fetched_at.is_empty() {
@@ -235,42 +223,25 @@ pub fn page(gh: &Data, screens: &[String], icons: &std::collections::HashMap<Str
     s
 }
 
-fn phone(inner: &str, label: &str) -> String {
-    format!(r#"<div class="hm-phone" role="img" aria-label="{label}"><div class="hm-notch"></div><div class="hm-screen">{inner}</div></div>"#)
+/// The screens shown under "The app": file, caption, alt text.
+const SCREENS: &[(&str, &str, &str)] = &[
+    ("home.png", "Home", "Home screen with today's tasks and what is coming up"),
+    ("calendar.png", "Calendar", "Plan screen with the month calendar and today's events"),
+    ("list.png", "Lists", "A shopping list with two items done"),
+    ("alarms.png", "Alarms", "Alarms screen with the next alarm and two weekly alarms"),
+];
+
+fn has(screens: &[String], f: &str) -> bool {
+    screens.iter().any(|s| s == f)
 }
 
-fn phone_chat() -> String {
-    phone(
-        r#"<div class="hm-sbar"><b>Assistant</b><span class="hm-live"></span></div>
-<div class="hm-msg hm-me">Move my dentist to Friday and remind me the night before.</div>
-<div class="hm-msg hm-ai">Dentist is Tue 10:00. I can move it to Fri 10:00 and set a reminder Thu 20:00.</div>
-<div class="hm-approve"><b>Move “Dentist” to Fri 10:00?</b><span class="hm-row"><span class="hm-b hm-ok">Allow</span><span class="hm-b">No</span></span></div>
-<div class="hm-msg hm-ai">Done. Reminder set for Thursday night.</div>
-<div class="hm-compose"><span>Message</span><i></i></div>"#,
-        "App screen: a chat where the assistant moves an appointment after you allow it",
-    )
-}
-
-fn phone_today() -> String {
-    phone(
-        r#"<div class="hm-sbar"><b>Today</b><span>Wed</span></div>
-<div class="hm-tcard"><small>Morning brief</small><b>Sunny, 18°. Two meetings, gym at 6.</b></div>
-<div class="hm-tcard"><small>Next</small><b>10:00 Design review</b><span class="hm-pbar"><span></span></span></div>
-<div class="hm-tcard"><small>Shopping</small><b>Milk · Eggs · Coffee</b></div>
-<div class="hm-tcard"><small>Noticed</small><b>You usually leave at 8:40. Traffic is light.</b></div>
-<div class="hm-tabs"><i class="on"></i><i></i><i></i><i></i></div>"#,
-        "App screen: today, with the morning brief, the next meeting and a list",
-    )
-}
-
-fn phone_voice() -> String {
-    phone(
-        r#"<div class="hm-sbar"><b>Voice</b><span>Live</span></div>
-<div class="hm-orb"><span></span></div>
-<p class="hm-heard">“What's on tomorrow?”</p>
-<p class="hm-said">Two things: standup at 9 and lunch with Sam at 12:30.</p>
-<div class="hm-tabs"><i></i><i></i><i class="on"></i><i></i></div>"#,
-        "App screen: voice mode, listening and answering",
+/// One screenshot in a plain rounded frame. Both the light and the dark file
+/// are in the page; CSS shows the one that matches the site theme.
+fn shot(f: &str, alt: &str, loading: &str) -> String {
+    format!(
+        r#"<div class="hm-shot"><img class="for-light" src="assets/screens/light/{f}" alt="{alt}" width="390" height="844" loading="{loading}"><img class="for-dark" src="assets/screens/dark/{f}" alt="{alt}" width="390" height="844" loading="lazy"></div>"#,
+        f = esc(f),
+        alt = esc(alt),
     )
 }
 
@@ -286,7 +257,7 @@ mod tests {
         assert!(p.contains(">Home</a>") && p.contains(">Docs</a>") && p.contains("<span>GitHub</span>"));
         assert!(p.contains("No releases yet") && p.contains("No pull requests yet"));
         assert!(p.contains("https://github.com/Zack-XS/AssistX/releases"), "download falls back to releases");
-        assert!(p.contains("hm-term") && p.contains("hm-phone"));
+        assert!(p.contains("hm-code") && !p.contains("hm-shot"), "no screens, no frames");
     }
 
     #[test]
@@ -295,11 +266,12 @@ mod tests {
           "releases":[{"tag":"v2","name":"","date":"2026-11-20","url":"https://github.com/r/v2","body":"- One","apk":"https://github.com/r/app.apk"}],
           "pulls":[{"number":7,"title":"fix: y","state":"merged","user":"a","date":"2026-11-21","url":"https://github.com/p/7"}],
           "commits":[]}"#);
-        let p = page(&d, &["chat.png".into()], &HashMap::new());
-        assert!(p.contains("hm-gold") && p.contains("4 commits") && p.contains("1 commit<"));
+        let p = page(&d, &["chat.png".into(), "home.png".into()], &HashMap::new());
+        assert!(p.contains("4 commits") && p.contains("1 commit<"));
         assert!(p.contains("b&lt;x&gt;"), "escaped");
         assert!(p.contains("https://github.com/r/app.apk") && p.contains("Android · v2"));
         assert!(p.contains("hm-merged") && p.contains("#7"));
-        assert!(p.contains("assets/screens/chat.png"));
+        assert!(p.contains("assets/screens/light/chat.png") && p.contains("assets/screens/dark/home.png"));
+        assert!(!p.contains("calendar.png"), "missing screens are skipped");
     }
 }

@@ -49,7 +49,7 @@ On Android these map to `SpringForce` (or Compose `spring()`). On the web, use t
 - **Chat:** your bubble pops up from the composer. The assistant's text streams in; no per-word animation. The typing dots pulse in opacity only.
 - **Live / listening:** a slow breath (1.4 s) on `ink`. The voice ring follows sound level.
 - **Theme change:** a cross-fade with view transitions, `ease-in-out`.
-- **Docs site and home page:** sections rise 16 px and fade in as they scroll into view (`dur-page`, `ease-out`, 40 ms apart). Moving between pages fades the old page out in `dur-quick` and the new one in with `dur-base`.
+- **Docs site and home page:** no scroll or page-load animation. Content is just there. Only the theme switch eases between light and dark.
 - **Haptics** go with motion: a click on press, a confirm when an answer finishes. See [Haptics](haptics.md).
 
 ## Reduced motion

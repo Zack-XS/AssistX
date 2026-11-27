@@ -66,6 +66,18 @@ fn sac_store(c: &Connection, token: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Misses for one name from all addresses together before that name is locked everywhere.
+const NAME_WIDE: u32 = 50;
+
+thread_local! {
+    /// Who is calling, set by `hub_http` around each server route (the address, or `local`).
+    pub(crate) static CALLER: std::cell::RefCell<String> = const { std::cell::RefCell::new(String::new()) };
+}
+
+fn fail_key(username: &str) -> String {
+    format!("{username}@{}", CALLER.with(|c| c.borrow().clone()))
+}
+
 /// How long an invite code works.
 const INVITE_DAYS: i64 = 7;
 /// The Server Access Code (SAC, the server password) needs at least this many characters.
@@ -136,12 +148,7 @@ impl Hub {
     pub fn open(cfg: Config, models: Box<Models>) -> Result<Arc<Hub>, String> {
         std::fs::create_dir_all(cfg.data_dir.join("accounts")).map_err(|e| format!("data dir: {e}"))?;
         let path = cfg.data_dir.join("server.db");
-        let c = Connection::open(&path).map_err(|e| format!("server database: {e}"))?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-        }
+        let c = crate::db::open_server(&path)?;
         open_schema(&c)?;
         let mut cfg = cfg;
         cfg.server_dir = cfg.data_dir.clone();
@@ -180,7 +187,7 @@ impl Hub {
         if new.chars().count() < SAC_MIN {
             return Err(format!("the Server Access Code needs at least {SAC_MIN} characters"));
         }
-        let c = Connection::open(data_dir.join("server.db")).map_err(|e| format!("server database: {e}"))?;
+        let c = crate::db::open_server(&data_dir.join("server.db"))?;
         open_schema(&c)?;
         sac_store(&c, new)?;
         let _ = std::fs::remove_file(data_dir.join("server.token"));
@@ -391,13 +398,19 @@ impl Hub {
         }).map(|x| x.flatten().collect()).unwrap_or_default()
     }
 
+/// Wrong tries are counted per name *and address* (security review #19): five misses lock that name from that
+    /// address only, so a stranger cannot lock a person out. A name is locked from everywhere only after
+    /// `NAME_WIDE` misses (guessing spread over many addresses).
     pub(crate) fn throttle(&self, username: &str) -> Result<(), String> {
         let now = util::unix_now();
-        if let Some((n, until)) = self.fails.lock().unwrap().get(username)
-            && *n >= 5
-            && *until > now
-        {
-            return Err(format!("too many wrong tries; wait {} seconds", until - now));
+        let f = self.fails.lock().unwrap();
+        for (k, limit) in [(fail_key(username), 5), (username.to_string(), NAME_WIDE)] {
+            if let Some((n, until)) = f.get(&k)
+                && *n >= limit
+                && *until > now
+            {
+                return Err(format!("too many wrong tries; wait {} seconds", until - now));
+            }
         }
         Ok(())
     }
@@ -408,9 +421,17 @@ impl Hub {
         if f.len() > 5000 {
             f.retain(|_, v| v.1 > now - 3600); // forget names that have been quiet for an hour (wrong names never get removed otherwise)
         }
-        let e = f.entry(username.to_string()).or_insert((0, 0));
-        e.0 += 1;
-        e.1 = now + 60 * (e.0 as i64 - 4).clamp(1, 30); // the 5th miss: a minute, then longer
+        for (k, limit) in [(fail_key(username), 5u32), (username.to_string(), NAME_WIDE)] {
+            let e = f.entry(k).or_insert((0, 0));
+            e.0 += 1;
+            e.1 = now + 60 * (e.0 as i64 - (limit as i64 - 1)).clamp(1, 30); // the limit-th miss: a minute, then longer
+        }
+        eprintln!("security: wrong sign-in for '{username}' from {}", CALLER.with(|c| c.borrow().clone()));
+    }
+
+    /// A right answer clears this address's count for the name (the name-wide count runs down by itself).
+    pub(crate) fn cleared(&self, username: &str) {
+        self.fails.lock().unwrap().remove(&fail_key(username));
     }
 
     /// Step 1 of sign-up. Makes the keys and returns the recovery key, once. Nothing is active until `confirm`.
@@ -480,7 +501,7 @@ impl Hub {
             return Err(if status == "disabled" { "this account is switched off".into() } else { "this account is not set up yet; finish sign-up first".to_string() });
         }
         let key = self.open_with_passphrase(&id, passphrase, salt.as_deref(), wp.as_deref()).inspect_err(|_| self.failed(&username))?;
-        self.fails.lock().unwrap().remove(&username);
+        self.cleared(&username);
         self.finish_login(&id, &username, &key, label, enroll)
     }
 
@@ -557,7 +578,7 @@ impl Hub {
         self.end_sign_ins(&id);
         self.log_admin("recover", &id, &username);
         self.revoke_devices(&id); // a lost passphrase may mean a lost phone: remembered phones must sign in again
-        self.fails.lock().unwrap().remove(&username);
+        self.cleared(&username);
         Ok(json!({ "ok": true }))
     }
 
@@ -720,4 +741,30 @@ pub fn sync_plugins(src: &FsPath, dst: &FsPath) -> std::io::Result<()> {
         }
     }
     std::fs::write(marker, serde_json::to_string(&shipped).unwrap_or_default())
+}
+
+#[cfg(test)]
+mod lockout_tests {
+    use super::*;
+
+    #[test]
+    fn wrong_tries_lock_a_name_only_from_that_address() {
+        let mut cfg = Config::from_env();
+        cfg.data_dir = std::env::temp_dir().join(format!("lock{}", util::random_hex(4)));
+        let hub = Hub::open(cfg, Box::new(|_| Err("no model".into()))).unwrap();
+        let from = |who: &str| CALLER.with(|c| *c.borrow_mut() = who.to_string());
+        from("203.0.113.9");
+        for _ in 0..5 {
+            hub.failed("dana");
+        }
+        assert!(hub.throttle("dana").is_err(), "the guessing address is slowed down");
+        from("198.51.100.7");
+        assert!(hub.throttle("dana").is_ok(), "the real person, from another address, is not locked out");
+        for _ in 0..NAME_WIDE {
+            hub.failed("dana");
+        }
+        from("192.0.2.1");
+        assert!(hub.throttle("dana").is_err(), "guessing spread over many addresses still locks the name");
+        let _ = std::fs::remove_dir_all(&hub.cfg.data_dir);
+    }
 }

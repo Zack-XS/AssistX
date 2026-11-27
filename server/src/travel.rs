@@ -158,7 +158,9 @@ pub fn resolve(app: &App, to: &str) -> Result<(f64, f64, String), String> {
 /// The driving route between two points: `(seconds, metres)`.
 pub fn route(from: (f64, f64), to: (f64, f64)) -> Result<(f64, f64), String> {
     let base = std::env::var("AGENT_ROUTING_BASE").unwrap_or_else(|_| "https://router.project-osrm.org".into());
-    let url = format!("{base}/route/v1/driving/{:.6},{:.6};{:.6},{:.6}?overview=false", from.1, from.0, to.1, to.0);
+    // Rounded like every outside lookup (security review #24): the router never sees an exact home or position.
+    let ((fa, fo, d), (ta, to_, _)) = (crate::location::rounded(from.0, from.1), crate::location::rounded(to.0, to.1));
+    let url = format!("{base}/route/v1/driving/{fo:.d$},{fa:.d$};{to_:.d$},{ta:.d$}?overview=false");
     let v = get_json(&url).map_err(|e| format!("the router: {e}"))?;
     parse_route(&v)
 }

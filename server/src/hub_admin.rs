@@ -152,7 +152,7 @@ impl Hub {
 
     /// `agent-core admin-password`: set or reset the admin login from the server itself.
     pub fn set_admin_password(data_dir: &FsPath, username: &str, password: &str) -> Result<(), String> {
-        let c = Connection::open(data_dir.join("server.db")).map_err(|e| format!("server database: {e}"))?;
+        let c = crate::db::open_server(&data_dir.join("server.db"))?;
         crate::hub::open_schema(&c)?;
         store(&c, username.trim(), password)?;
         let _ = std::fs::remove_file(data_dir.join(SETUP_FILE));

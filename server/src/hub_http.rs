@@ -102,12 +102,27 @@ async fn admin_page() -> Response {
             (header::X_CONTENT_TYPE_OPTIONS, "nosniff"),
             (
                 header::CONTENT_SECURITY_POLICY,
-                "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+                admin_csp(),
             ),
         ],
         include_str!("../web/admin.html"),
     )
         .into_response()
+}
+
+/// The admin page's policy: only its own script runs, named by its SHA-256 (security review #27), never any
+/// inline script an attacker could slip in. Styles stay inline (they cannot run code).
+fn admin_csp() -> &'static str {
+    static CSP: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    CSP.get_or_init(|| {
+        let page = include_str!("../web/admin.html");
+        let script = page.split_once("<script>").and_then(|(_, rest)| rest.split_once("</script>")).map(|(s, _)| s).unwrap_or("");
+        let digest = crate::vault::from_hex(&crate::util::sha256_hex(script.as_bytes())).unwrap_or_default();
+        format!(
+            "default-src 'none'; script-src 'sha256-{}'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+            crate::util::base64(&digest)
+        )
+    })
 }
 
 fn with_cors(mut r: Response, origin: Option<HeaderValue>) -> Response {
@@ -122,8 +137,18 @@ fn with_cors(mut r: Response, origin: Option<HeaderValue>) -> Response {
 }
 
 /// Who is calling: the peer address when the server provides it (the real server does), else one shared "local" name.
+/// Behind a proxy on this same computer (for example `tailscale serve`), every caller would be 127.0.0.1 and one
+/// person's typos would slow down everyone (security review #18). With `AGENT_TRUST_PROXY=1`, and only when the peer
+/// is loopback, the first `X-Forwarded-For` address is used instead.
 fn caller(req: &Request) -> String {
-    req.extensions().get::<axum::extract::ConnectInfo<std::net::SocketAddr>>().map(|c| c.0.ip().to_string()).unwrap_or_else(|| "local".into())
+    let peer = req.extensions().get::<axum::extract::ConnectInfo<std::net::SocketAddr>>().map(|c| c.0.ip());
+    if peer.is_some_and(|ip| ip.is_loopback()) && std::env::var("AGENT_TRUST_PROXY").is_ok_and(|v| v == "1")
+        && let Some(f) = req.headers().get("x-forwarded-for").and_then(|h| h.to_str().ok()).and_then(|v| v.split(',').next())
+        && let Ok(ip) = f.trim().parse::<std::net::IpAddr>()
+    {
+        return ip.to_string();
+    }
+    peer.map(|ip| ip.to_string()).unwrap_or_else(|| "local".into())
 }
 
 /// 429 with how long to wait.
@@ -193,7 +218,12 @@ where
         Ok(b) => serde_json::from_slice::<Value>(&b).unwrap_or(Value::Null),
         Err(_) => Value::Null,
     };
-    let r = tokio::task::spawn_blocking(move || f(hub, body)).await;
+    let r = tokio::task::spawn_blocking(move || {
+        crate::hub::CALLER.with(|c| *c.borrow_mut() = who);
+        let out = f(hub, body);
+        crate::hub::CALLER.with(|c| c.borrow_mut().clear());
+        out
+    }).await;
     with_cors(
         match r {
             Ok(Ok(v)) => Json(v).into_response(),

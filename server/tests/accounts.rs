@@ -385,6 +385,7 @@ async fn the_admin_dashboard_is_a_page_on_the_server_and_may_call_its_own_routes
     assert!(hv("content-type").starts_with("text/html"));
     assert_eq!((hv("cache-control"), hv("x-frame-options")), ("no-store".into(), "DENY".into()));
     assert!(hv("content-security-policy").contains("connect-src 'self'") && hv("content-security-policy").contains("frame-ancestors 'none'"));
+    assert!(hv("content-security-policy").contains("script-src 'sha256-") && !hv("content-security-policy").contains("script-src 'unsafe-inline'"), "#27: only the page's own script runs");
     let body = String::from_utf8(to_bytes(r.into_body(), 1 << 20).await.unwrap().to_vec()).unwrap();
     assert!(body.contains("Server admin") && body.contains("/v1/server/overview"));
     // Its own calls carry this server's origin: let through, with no cross-origin headers. The password is still needed.
@@ -469,7 +470,8 @@ async fn the_first_admin_login_is_made_with_the_one_time_setup_code() {
 async fn security_review_fixes_hold() {
     let t = T::new("secfix");
     // #16: the server token is kept as Argon2id, never as a fast SHA-256.
-    let c = rusqlite::Connection::open(t.dir.join("server.db")).unwrap();
+    assert!(!String::from_utf8_lossy(&std::fs::read(t.dir.join("server.db")).unwrap()).starts_with("SQLite format 3"), "#10: server.db is encrypted");
+    let c = agent_core::db::open_server(&t.dir.join("server.db")).unwrap();
     let stored: Vec<String> = c.prepare("SELECT key FROM meta WHERE key LIKE 'token_%'").unwrap().query_map([], |r| r.get(0)).unwrap().flatten().collect();
     assert_eq!(stored, vec!["token_argon".to_string()], "only the slow hash is stored");
     drop(c);

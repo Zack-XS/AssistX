@@ -41,7 +41,7 @@ Code is in `android/app/src/main/java/app/assistant/`. The app is two things: th
 
 The page is one self-contained HTML file: `server/examples/dummy-client/index.html`, copied into `android/app/src/main/assets/index.html`. Today it has four tabs:
 
-Home, Plan (Calendar, Alarms, Lists), Assistant (chat) and Settings (about 21 rows that open sub-pages). The redesign renames them Today, Plan, Chat and You, with the same view ids ([Screens](../design/screens.md)).
+Home, Plan (Calendar, Alarms, Lists), Assistant (chat) and Settings (12 rows in cards, plus Noticing and Developer with developer mode on; the rest are found by search). The redesign renames them Today, Plan, Chat and You, with the same view ids ([Screens](../design/screens.md)).
 
 The server's rules call it a reference client: the backend never depends on it.
 

@@ -48,7 +48,15 @@ On Android these map to `SpringForce` (or Compose `spring()`). On the web, use t
 - **Sheet:** rises from the bottom with `spring-smooth`; drag down to close.
 - **Chat:** your bubble pops up from the composer. The assistant's text streams in; no per-word animation. The typing dots pulse in opacity only.
 - **Live / listening:** a slow breath (1.4 s) on `ink`. The voice ring follows sound level.
-- **Theme change:** a cross-fade with view transitions, `ease-in-out`.
+- **Theme change:** a cross-fade with view transitions, `ease-in-out`. The old look does not shrink, root images do not blend, and the phone's bars change halfway. Row-to-page animations are cancelled when each transition ends, so no edge of the other colour shows.
+- **Row to page:** a tapped row grows into its page (Settings rows, a list). A page closed another way still slides out.
+- **No flicker (`settle()`):** a screen swaps content only when it changed. A refresh with the same data does nothing. A changed refresh swaps with no entrance. A tab waits up to 300 ms for its content, then plays the entrance once. Home gathers its top cards before it draws, so nothing pops in later.
+- **List tick:** the round check fills, the text is crossed out, then the row slides to Done.
+- **Mind map:** branches grow in when it opens. Tapping a name flies to it.
+- **Toast:** rises in, fades out after about 3 s.
+- **Docs site and home page:** sections rise 16 px and fade in as they scroll into view (`dur-page`, `ease-out`, 40 ms apart). Moving between pages fades the old page out in `dur-quick` and the new one in with `dur-base`.
+- **Theme change:** a cross-fade with view t- **Ringing alarm:** the bell shakes on the top card.
+ransitions, `ease-in-out`.
 - **Docs site and home page:** no scroll or page-load animation. Content is just there. Only the theme switch eases between light and dark.
 - **Haptics** go with motion: a click on press, a confirm when an answer finishes. See [Haptics](haptics.md).
 
@@ -57,7 +65,8 @@ On Android these map to `SpringForce` (or Compose `spring()`). On the web, use t
 When the system asks for less motion (`prefers-reduced-motion`, Android "Remove animations"):
 
 - No moves, scales or overshoot. Use a fade of `dur-quick` or nothing.
-- No loops (typing dots, live pulse, glow breath). Show a still state.
+- No loops (typing dots, live pulse, glow breath, bell shake). Show a still state.
+- The Mind map opens already grown.
 - Streaming text still appears; it just does not animate.
 
 ## Gaps

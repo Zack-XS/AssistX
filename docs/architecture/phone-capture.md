@@ -97,6 +97,8 @@ POST /v1/ambient/chunks
 
 `paused_until` is read-only here; use `/pause` and `/resume`.
 
+In the app: Settings, Privacy. One Listening switch, the places to listen at, how long to keep text, and delete, in one card. Counts and manual processing show only with developer mode on.
+
 ## Processing
 
 The core timer starts a dreaming run when enough chunks wait (or when notes wait, as before). Dreaming has three more tools:

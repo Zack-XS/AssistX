@@ -34,6 +34,7 @@ All in Settings in the app:
 | Listening (phone capture) | [Phone capture](../architecture/phone-capture.md) |
 | Health Connect | [health](../plugins/health.md) |
 | Spotify, Gmail, Google Health, Hevy sign-in | [Plugins](../plugins/README.md) |
-| Noticing (parcels, bills, plans) | [Location](../architecture/location.md), Noticing |
-| Morning brief | [Mind](../architecture/mind.md) |
+| Noticing (parcels, bills, plans), developer mode only | [Location](../architecture/location.md), Noticing |
+| Morning brief: make it as an automation | [Mind](../architecture/mind.md) |
+| Time to leave: Automation, Built in | [Location](../architecture/location.md) |
 | Wake word and voice | [Voice](../architecture/voice.md) |

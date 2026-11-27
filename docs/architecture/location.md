@@ -94,7 +94,7 @@ POST /v1/location/transitions  {place, what: "arrive"|"leave", ts?}             
 
 ## Noticing (leaving home, gym visits, phone notices)
 
-`src/detect.rs`. Five switches, all on by default: `GET /v1/detected/settings` (device, client or owner), `PATCH /v1/detected/settings {leave_home, gym, parcel, bill, plan, home_place?}` (owner or client). Page: Settings, Noticing.
+`src/detect.rs`. Five switches, all on by default: `GET /v1/detected/settings` (device, client or owner), `PATCH /v1/detected/settings {leave_home, gym, parcel, bill, plan, home_place?}` (owner or client). Page: Settings, Noticing, shown only with developer mode on.
 
 - **Leaving home.** Home is the place named Home (or `home_place`). Its circle is added to `GET /v1/location/fences`, so the phone's geofence reports the departure at once.
 
@@ -132,4 +132,4 @@ POST /v1/location/transitions  {place, what: "arrive"|"leave", ts?}             
   It works the trip out (again every 15 minutes) and when `start - travel - buffer` is reached it sends "Leave in 10 min for X (25 min drive)" (or "Leave now ..." when late), once per event occurrence (`travel_alerts`).
 
   Nothing when the phone has no fresh point or is already within 300 m. Priority `urgent` (it is about to be missed), `normal` for events from outside content.
-- **Settings.** `GET,PATCH /v1/travel {enabled, mode: driving|walking|cycling, buffer_min: 0-60}`; defaults on, driving, 10.
+- **Settings.** `GET,PATCH /v1/travel {enabled, mode: driving|walking|cycling, buffer_min: 0-60}`; defaults on, driving, 10. In the app: Settings, Automation, "Built in".

@@ -65,9 +65,10 @@ Below a tab, a detail opens as a **sheet**: full screen, back button, title. She
 | Settings: Calendar (jump to Plan) | **removed**: Plan · Calendar is its home | — |
 | Settings: Lists (jump to Plan) | **removed**: Plan · Lists is its home | — |
 | Settings: Location | You · Devices · Location | — |
-| Settings: Noticing | You · Assistant · Noticing | — |
+| Settings: Noticing | You · App · Developer (only with developer mode on) | — |
 | Settings: Health | You · Devices · Health | — |
-| Settings: Morning | You · Assistant · Morning | Today (brief card) |
+| Settings: Morning | **removed** (Nov 2026): a brief is an automation, made in Plan · Tasks | Today (brief card) |
+| Time to leave (was on Morning) | Plan · Tasks, "Built in" | — |
 | Settings: Computers | You · Devices · Computers  | — |
 | Settings: Devices (phones, tokens) | You · App · Access | — |
 | Settings: Privacy (phone capture) | You · Devices · Privacy | Today (capture paused/on) |
@@ -79,12 +80,59 @@ You is one list in four groups, in this order. Search stays at the top.
 
 | Group | Rows |
 |---|---|
-| Assistant | Models, Voice, Skills, Noticing, Morning |
+| Assistant | Models, Voice, Skills |
 | Memory | Memory (Folders · Map) |
 | Devices | Privacy, Location, Health, Computers |
-| App | Set up, Appearance, Connection, Status, Access, Account |
+| App | Set up, Appearance, Connection, Status, Access, Account, Developer (hidden until on) |
 
-Check before the redesign ships: the 21 old Settings rows, 3 Plan segments, Chats, Connect, Account, "Needs your attention" and the update bar all appear above. Three rows are removed on purpose: they were second doors.
+Check before the redesign ships: the old Settings rows, 3 Plan segments, Chats, Connect, Account, "Needs your attention" and the update bar all appear above. Four rows are removed on purpose: three were second doors, and Morning became an automation.
+
+### Settings today (before the redesign)
+
+The page still has the old tabs. Settings is one list in cards (`GROUPS` in the page):
+
+| Group | Rows |
+|---|---|
+| (top) | General, Voice |
+| Assistant | Intelligence, Memory, Mind map, Automation, Recipes, Integrations |
+| Phone | Location, Health, Computers, Privacy |
+| (bottom) | Noticing, Developer: only with developer mode on (tap Version 7 times in General) |
+
+Setup steps, Alarms, Calendar, Lists, Status and Devices have no row but are still found by search (`HIDDEN`).
+
+**Developer mode.** Simple pages first. Numbers, counts and manual buttons show only with developer mode on. Use `devOn()` for anything technical.
+
+**Search.** Each page has a word list of what is on it (`TAGS`). Search also checks plugin names, summaries and tool names; a plugin hit opens Integrations. Small typos match ("calander" finds Calendar), but only when an exact search finds nothing. Each result says why it matched. No match offers "Ask the assistant". A new page needs a `TAGS` entry.
+
+### What the main pages hold
+
+| Page | Normal | Developer mode adds |
+|---|---|---|
+| Intelligence | Model and cloud choice at top; keys and per-job models fold away | Memory runs, stats, manual sort |
+| Privacy | One Listening switch, places to listen at (`listen_places`), keep-for menu and delete, in one card | Counts, manual processing |
+| Health | Today in three tiles, a short week with a steps bar | Every metric |
+| Memory | Search, an "About you" card, a folder tree; tap a fact to move or forget it; doubtful facts get a "Not sure" tag | — |
+| Mind map | "You" in the middle; branches People, Groups, Places, Things; dashed lines for links memory found. Tap a name to fly to it and light its links; tap a branch to fold it. Drag, pinch or scroll; +, − and fit buttons. | — |
+| Automation | Your automations, then "Built in" (Time to leave) | — |
+
+### Plan · Alarms
+
+- Top card: when the next alarm rings ("in 8 h"), then quick alarms.
+- A ringing alarm shows first, with a shaking bell and big Snooze and Stop.
+- Every alarm in one grouped card: big time, label, days, a switch each. "New alarm" is the last row.
+- Phone settings that break alarms are rows with "Fix". Sounds is a row; its page splits Yours and Built in.
+- Edit alarm: round day buttons, plus Once, Weekdays, Weekends, Every day. A live "Rings in 9 h 52 min · Tomorrow" under the time. Delete is the last row.
+
+### Plan · Lists
+
+- One grouped card: each list with a progress bar and its open count. "To-do" and "New list" are rows at the bottom.
+- A list: one add box with a round + button. "2 milk" or "milk x2" fills How many.
+- Round checks: a tick fills the circle, crosses the text out, then the row slides to Done.
+- A progress line ("2 of 5 done"). Done folds away; Clear empties it. Share, Rename and Delete are rows in a "List" card.
+
+### Changes show at once
+
+Switches, ticks and similar small changes update the screen first. The server is told in the background. On failure the change flips back and a toast says so.
 
 ## States every screen shows
 
@@ -152,11 +200,11 @@ There are no page unit tests. Each change passes these by hand:
 
 ## Not decided
 
-- Whether Mind map stays a segment of Memory.
+- Whether Mind map stays its own row or becomes a segment of Memory.
 - A skeleton style for loading cards.
 - Whether `examples/panel/` folds into You · App · Status later.
 
 ## Gaps
 
 - The page still has the old tabs: Home, Plan, Assistant, Settings.
-- About 91 inline `style` uses remain in the page.
+- About 100 inline `style` uses remain in the page.

@@ -6,7 +6,7 @@ order: 3
 
 # Design language rollout
 
-Status: plan, not built.
+Status: plan, mostly not built. Toasts (step 8) and a spacing pass (part of step 4, real values, not yet `space-*` variables) shipped in Nov 2026.
 
 The app is the WebView page (`server/examples/dummy-client/index.html`, copied to `android/app/src/main/assets/index.html`) plus native Kotlin screens. There is no Compose. Most of the look lives in the page, so most steps are page steps. Each step is a small change that ships alone and keeps the app working. The gaps are listed at the end of each [Design](../design/README.md) page.
 
@@ -19,7 +19,7 @@ The app is the WebView page (`server/examples/dummy-client/index.html`, copied t
 5. **Motion.** Replace hand-written curves and times with `dur-*` and `ease-*` variables. Check every animation is inside the reduced-motion block.
 6. **Icons.** Keep `ICONS` but check each against Lucide and set sizes with `icon-*`. Add the animated icons: mic → stop, send, done check.
 7. **Native screens.** Move `RingActivity.kt`, `AssistActivity.kt` and `VoiceGlow.kt` to `@color/ax_*` and `@dimen/ax_*`. Voice and live states use `accent`. Notification icons follow [Icons](../design/icons.md).
-8. **Components.** Add sheets, toasts and swipe row actions to the page. Unify the approval card, ringing card and voice card buttons with [Components](../design/components.md).
+8. **Components.** Add sheets and swipe row actions to the page (toasts are in). Unify the approval card, ringing card and voice card buttons with [Components](../design/components.md).
 9. **Wide layouts.** Replace the phone frame at 520 px with the breakpoints: rail at 600, list and detail at 840, side pane at 1200.
 10. **Accessibility pass.** TalkBack on native screens, 200% text, keyboard on desktop, row text selectable on desktop.
 11. **Smart UI.** Last, once the layout is stable: the "why this" card on Home, context cards and suggested replies, behind a Settings switch. See [Smart UI](../design/smart-ui.md).

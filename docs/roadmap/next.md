@@ -112,7 +112,7 @@ What can break:
 
 Acceptance for round 2 (suggest):
 1. jsc parse check passes (`assistantx-app-release` step) and the page calls `pageReady` on load.
-2. A checklist in the PR: each of the 21 Settings rows + 3 Plan segments + chat history + connect/account reachable in the new map (from the [Screens](../design/screens.md#where-every-screen-goes) table).
+2. A checklist in the PR: each Settings row (the 21 old ones, minus Morning) + 3 Plan segments + chat history + connect/account reachable in the new map (from the [Screens](../design/screens.md#where-every-screen-goes) table).
 3. Every `NA.*` call and `window.__*` callback above still present (grep diff = 0 removed, or both sides changed).
 4. Screenshots light + dark of each top place, phone width, from a real install (or the Mac test page) — before and after.
 5. No new `innerHTML` with data, no inline `style:` added; tokens only.

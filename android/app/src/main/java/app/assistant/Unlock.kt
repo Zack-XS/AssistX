@@ -1,6 +1,7 @@
 package app.assistant
 
 import android.content.Context
+import android.util.Log
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -19,13 +20,22 @@ object Unlock {
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("app", Context.MODE_PRIVATE)
 
+    /** Kept under the strict key when the phone has a screen lock (security review #15), else the plain one. */
     fun save(ctx: Context, deviceJson: String) {
-        prefs(ctx).edit().putString(KEY, Vault.seal(deviceJson)).apply()
+        prefs(ctx).edit().putString(KEY, Vault.sealStrict(deviceJson) ?: Vault.seal(deviceJson)).apply()
     }
 
     private fun creds(ctx: Context): JSONObject? = try {
-        val s = Vault.open(prefs(ctx).getString(KEY, null))
-        if (s.isEmpty()) null else JSONObject(s)
+        val sealed = prefs(ctx).getString(KEY, null)
+        val s = Vault.open(sealed)
+        if (s.isNotEmpty() && !Vault.isStrict(sealed)) {
+            // Saved by an older version under the plain key: move it to the strict one when that works.
+            Vault.sealStrict(s)?.let { prefs(ctx).edit().putString(KEY, it).apply() }
+        }
+        if (s.isEmpty()) {
+            if (Vault.isStrict(sealed)) Log.i("Unlock", "the phone was not unlocked lately; the account unlocks after the next phone unlock")
+            null
+        } else JSONObject(s)
     } catch (e: Exception) { null }
 
     private fun post(ctx: Context, path: String, c: JSONObject): Int = try {

@@ -79,7 +79,7 @@ The model can make folders, file entries, move them and rate confidence with the
 
 The core forces every `topic_path` to start with one of the five folders; anything else goes under `Other/`.
 
-A readable copy is kept at `data/memory/<Folder>/<name>-<id>.md` with the description on top; the database stays the source of truth and edits to the files are not read back.
+No plain copy is kept on disk: memory lives only in the encrypted database (security review #3); an export makes a readable copy on request.
 
 Rules:
 - Every line ends with its load id: `plugin:<id>`, `mem:<id>` or `dir:<Folder>`.

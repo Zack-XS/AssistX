@@ -25,7 +25,7 @@ fn meta(c: &Connection, k: &str) -> Option<String> {
 }
 
 /// Same length, every byte looked at: no early exit that tells a guesser how close they were.
-fn same(a: &str, b: &str) -> bool {
+pub(crate) fn same(a: &str, b: &str) -> bool {
     a.len() == b.len() && a.bytes().zip(b.bytes()).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
 }
 
@@ -92,6 +92,69 @@ impl Hub {
         Ok(self.new_session(username))
     }
 
+    /// Sign in. When a sign-in code is set up (`admin_totp`), the six digits from the authenticator app are needed
+    /// too (security review #20); each code works once.
+    pub fn admin_login_code(&self, username: &str, password: &str, code: &str) -> Result<Value, String> {
+        let key = format!("admin:{username}");
+        self.throttle(&key)?;
+        let totp = meta(&self.sdb.lock().unwrap(), "admin_totp");
+        let session = self.admin_login(username, password)?;
+        if let Some(secret) = totp {
+            let last: i64 = meta(&self.sdb.lock().unwrap(), "admin_totp_last").and_then(|v| v.parse().ok()).unwrap_or(-1);
+            match crate::totp::check(&secret, code, util::unix_now()) {
+                Some(step) if step > last => {
+                    let _ = self.sdb.lock().unwrap().execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('admin_totp_last', ?1)", [step.to_string()]);
+                }
+                _ => {
+                    if let Some(t) = session["session"].as_str() {
+                        self.admin_logout(t);
+                    }
+                    self.failed(&key);
+                    return Err(if code.trim().is_empty() { "enter the 6-digit code from your authenticator app".into() } else { "wrong or used code".into() });
+                }
+            }
+        }
+        Ok(session)
+    }
+
+    /// Whether the admin login asks for a code.
+    pub fn admin_totp_on(&self) -> bool {
+        meta(&self.sdb.lock().unwrap(), "admin_totp").is_some()
+    }
+
+    /// Set up sign-in codes, in two steps: `start` makes a secret (shown once), `confirm` with a right code turns
+    /// them on. `off` needs the admin password. Run from a signed-in admin session.
+    pub fn admin_totp(&self, action: &str, code: &str, password: &str) -> Result<Value, String> {
+        let user = self.admin_name();
+        let c = self.sdb.lock().unwrap();
+        let set = |k: &str, v: &str| c.execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?1, ?2)", params![k, v]).map(|_| ()).map_err(|e| e.to_string());
+        match action {
+            "start" => {
+                let secret = crate::totp::new_secret();
+                set("admin_totp_pending", &secret)?;
+                Ok(json!({ "secret": secret, "uri": crate::totp::uri(&secret, &user) }))
+            }
+            "confirm" => {
+                let pending = meta(&c, "admin_totp_pending").ok_or("start first")?;
+                let step = crate::totp::check(&pending, code, util::unix_now()).ok_or("that code is not right; check the phone's clock")?;
+                set("admin_totp", &pending)?;
+                set("admin_totp_last", &step.to_string())?;
+                c.execute("DELETE FROM meta WHERE key = 'admin_totp_pending'", []).map_err(|e| e.to_string())?;
+                drop(c);
+                self.log_admin("admin_totp_on", "", &user);
+                Ok(json!({ "on": true }))
+            }
+            "off" => {
+                drop(c);
+                self.admin_login(&user, password).map_err(|_| "the admin password is wrong".to_string())?;
+                self.sdb.lock().unwrap().execute("DELETE FROM meta WHERE key IN ('admin_totp', 'admin_totp_last', 'admin_totp_pending')", []).map_err(|e| e.to_string())?;
+                self.log_admin("admin_totp_off", "", &user);
+                Ok(json!({ "on": false }))
+            }
+            _ => Err("action is start, confirm or off".into()),
+        }
+    }
+
     pub fn admin_login(&self, username: &str, password: &str) -> Result<Value, String> {
         let key = format!("admin:{username}");
         self.throttle(&key)?;
@@ -152,9 +215,11 @@ impl Hub {
 
     /// `agent-core admin-password`: set or reset the admin login from the server itself.
     pub fn set_admin_password(data_dir: &FsPath, username: &str, password: &str) -> Result<(), String> {
-        let c = Connection::open(data_dir.join("server.db")).map_err(|e| format!("server database: {e}"))?;
+        let c = crate::db::open_server(&data_dir.join("server.db"))?;
         crate::hub::open_schema(&c)?;
         store(&c, username.trim(), password)?;
+        // A reset from the server's own shell is also the way back in after losing the authenticator.
+        let _ = c.execute("DELETE FROM meta WHERE key IN ('admin_totp', 'admin_totp_last', 'admin_totp_pending')", []);
         let _ = std::fs::remove_file(data_dir.join(SETUP_FILE));
         Ok(())
     }

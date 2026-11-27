@@ -267,8 +267,33 @@ pub fn profiles(app: &App, opts: &Opts) -> Vec<(String, String)> {
         .collect()
 }
 
+/// Where older versions kept runs as plain files; moved into the database at start (security review #4).
 fn dir(app: &App) -> std::path::PathBuf {
     app.cfg.data_dir.join("evals")
+}
+
+const SCHEMA: &str = "CREATE TABLE IF NOT EXISTS eval_runs (id TEXT PRIMARY KEY, body TEXT NOT NULL);";
+
+/// Plain run files from older versions: into the encrypted database, then the folder is deleted.
+pub fn move_into_db(app: &App) {
+    let d = dir(app);
+    if !d.exists() {
+        return;
+    }
+    for e in std::fs::read_dir(&d).into_iter().flatten().flatten() {
+        if let Ok(text) = std::fs::read_to_string(e.path())
+            && let Ok(v) = serde_json::from_str::<Value>(&text)
+            && let Some(id) = v["id"].as_str()
+        {
+            let c = app.db.lock();
+            let _ = c.execute_batch(SCHEMA);
+            let _ = c.execute("INSERT OR REPLACE INTO eval_runs (id, body) VALUES (?1, ?2)", rusqlite::params![id, text]);
+        }
+    }
+    match std::fs::remove_dir_all(&d) {
+        Ok(()) => eprintln!("security: moved plain model-test files into the encrypted database and removed {}", d.display()),
+        Err(e) => eprintln!("security: could not remove {}: {e}", d.display()),
+    }
 }
 
 /// Start a run in the background. Returns its id and plan, or an error when one is running already.
@@ -396,15 +421,10 @@ fn cleanup(app: &App, threads: &[String]) {
 }
 
 fn save(app: &App, id: &str, v: &Value) -> Result<(), String> {
-    let d = dir(app);
-    std::fs::create_dir_all(&d).map_err(|e| e.to_string())?;
-    let path = d.join(format!("{id}.json"));
-    std::fs::write(&path, util::scrub(&serde_json::to_string_pretty(v).map_err(|e| e.to_string())?, &app.secret_words())).map_err(|e| e.to_string())?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-    }
+    let text = util::scrub(&serde_json::to_string_pretty(v).map_err(|e| e.to_string())?, &app.secret_words());
+    let c = app.db.lock();
+    c.execute_batch(SCHEMA).map_err(|e| e.to_string())?;
+    c.execute("INSERT OR REPLACE INTO eval_runs (id, body) VALUES (?1, ?2)", rusqlite::params![id, text]).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -414,10 +434,13 @@ fn valid_id(id: &str) -> bool {
 
 /// Newest first, without the per-case results. The run in progress, if any, is `running`.
 pub fn list(app: &App) -> Value {
-    let mut items: Vec<Value> = std::fs::read_dir(dir(app)).into_iter().flatten().flatten()
-        .filter(|e| e.file_name().to_string_lossy().ends_with(".json"))
-        .filter_map(|e| std::fs::read_to_string(e.path()).ok())
-        .filter_map(|s| serde_json::from_str::<Value>(&s).ok())
+    let bodies: Vec<String> = {
+        let c = app.db.lock();
+        let _ = c.execute_batch(SCHEMA);
+        c.prepare("SELECT body FROM eval_runs").and_then(|mut st| st.query_map([], |r| r.get::<_, String>(0)).map(|x| x.flatten().collect())).unwrap_or_default()
+    };
+    let mut items: Vec<Value> = bodies.iter()
+        .filter_map(|s| serde_json::from_str::<Value>(s).ok())
         .map(|r| json!({ "id": r["id"], "started": r["started"], "finished": r["finished"], "cloud": r["cloud"], "models": r["models"], "skills": r["skills"], "table": r["table"] }))
         .collect();
     items.sort_by(|a, b| b["id"].as_str().cmp(&a["id"].as_str()));
@@ -432,7 +455,9 @@ pub fn get(app: &App, id: &str) -> Option<Value> {
     if let Some(p) = progress(app).filter(|p| p["id"] == id) {
         return Some(p);
     }
-    std::fs::read_to_string(dir(app).join(format!("{id}.json"))).ok().and_then(|s| serde_json::from_str(&s).ok())
+    let c = app.db.lock();
+    let _ = c.execute_batch(SCHEMA);
+    c.query_row("SELECT body FROM eval_runs WHERE id = ?1", [id], |r| r.get::<_, String>(0)).ok().and_then(|s| serde_json::from_str(&s).ok())
 }
 
 // ---------------- the command line ----------------

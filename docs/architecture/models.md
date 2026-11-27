@@ -93,7 +93,7 @@ A tool that waits for a yes counts as answered and the turn is stopped, so nothi
 
 Cloud profiles run only with `cloud: true` / `--cloud` (they cost money).
 
-- `POST /v1/evals/run {cloud?, profiles?, only?, wait_secs?}` (owner) starts a run in the background (one at a time, 409 otherwise); `GET /v1/evals` lists runs (newest first, with the per-model and per-skill tables) and the one `running`; `GET /v1/evals/{id}` is one run in full. Results are saved to `data/evals/<time>.json` (0600, secrets scrubbed).
+- `POST /v1/evals/run {cloud?, profiles?, only?, wait_secs?}` (owner) starts a run in the background (one at a time, 409 otherwise); `GET /v1/evals` lists runs (newest first, with the per-model and per-skill tables) and the one `running`; `GET /v1/evals/{id}` is one run in full. Results are saved to the encrypted database (table `eval_runs`) (0600, secrets scrubbed).
 - `agent-core eval [--cloud] [--profiles a,b] [--only ids-or-skills] [--wait-secs N]` runs it: with `--server URL --token-file F` it asks a running server (an account's key lives only there) and prints the table; without, it runs on the one-owner data folder.
 - `assistantx-eval` (outside the repo, `~/bin`) runs it on the main server over ssh. It needs an owner token of the account in `~/.config/assistantx/eval.token` (0600, made once in the app); the token goes over ssh stdin and is never printed.
 - The server panel (`examples/panel/`) shows the last run and has a button to start one.

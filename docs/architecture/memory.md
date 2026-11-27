@@ -82,7 +82,7 @@ Where a fact came from matters more than when.
 
   The index shows each folder with a count and a few names; `load dir:People` lists its files with descriptions; `load mem:<id>` reads the profile.
 
-  A readable copy is kept at `data/memory/<Folder>/<name>-<id>.md` (description on top; the database stays the source of truth, edits to the files are not read back).
+  No plain copy is kept on disk: memory lives only in the encrypted database (security review #3). An export (`GET /v1/export`) makes a readable copy on request; old `data/memory/` folders are deleted at start.
 - Folders can nest and the model can make its own: skill plugin `memory-tools` (tools `list_folders`, `make_folder`, `write_entry`, `move_entry`, `move_folder`, `list_confidence`, `set_confidence`).
 
   `topic_path` is the folder an entry lives in (its own name is the title). Folders made on purpose live in table `memory_folders`; an unknown top-level name goes to `Other/`.

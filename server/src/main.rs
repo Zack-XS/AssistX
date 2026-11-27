@@ -62,6 +62,26 @@ async fn serve_accounts(cfg: Config) {
     if let Some((code, path)) = hub.ensure_admin_setup() {
         println!("no admin login yet: open /admin and use the setup code {code} (also in {}).", path.display());
     }
+    // Old one-owner files left in the data folder (security review #11): the database key sits beside its database.
+    // They are not deleted here (they may be the only copy); this says what is left until the owner removes them.
+    let left: Vec<&str> = ["core.db", "db.key", "owner.token", "memory", "reports", "core.db.plain-backup"].into_iter().filter(|f| hub.cfg.data_dir.join(f).exists()).collect();
+    if !left.is_empty() {
+        eprintln!("SECURITY WARNING: old one-owner data in {}: {}. Move it into an account, then delete it.", hub.cfg.data_dir.display(), left.join(", "));
+    }
+    // Idle lock (security review #1): an account nothing has reached for this long is locked, so its key leaves
+    // memory. The phone's background check reaches it every 15 minutes, so this only bites when the phone is gone.
+    // `AGENT_IDLE_LOCK_HOURS`, default 24; 0 = never.
+    let idle_hours: i64 = std::env::var("AGENT_IDLE_LOCK_HOURS").ok().and_then(|v| v.parse().ok()).unwrap_or(24);
+    if idle_hours > 0 {
+        let h = hub.clone();
+        tokio::spawn(async move {
+            let mut tick = tokio::time::interval(std::time::Duration::from_secs(300));
+            loop {
+                tick.tick().await;
+                h.lock_idle(idle_hours * 3600);
+            }
+        });
+    }
     let sandbox = agent_core::sandbox::probe().map(String::from);
     if hub.cfg.sandbox != "macos" && hub.cfg.sandbox != "linux" {
         eprintln!("WARNING: sandbox is '{}'.", hub.cfg.sandbox);

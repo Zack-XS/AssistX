@@ -1519,8 +1519,9 @@ async function subIntelligence(b) {
       h("label", { class: "field" }, h("span", { text: "Model" }), mode),
       modeInfo ? h("div", { class: "sub", text: modeInfo.label.split(":").slice(1).join(":").trim() }) : null,
       cur && cur.warning ? h("div", { class: "sub", style: "color:var(--bad)", text: "⚠ " + cur.warning }) : null,
-      h("label", { class: "field", style: "margin-top:20px" }, h("span", { text: "Use the cloud for hard things" }), up),
-      mdl.cloud_upgrade === "never" ? null : h("label", { class: "field" }, h("span", { text: "Cloud model" }), cloud)));
+      toggle("Keep everything on my server", "Chats, memory and health never go to a cloud model. Only local models answer.", !!mdl.local_only, v => save({ local_only: v })),
+      mdl.local_only ? null : h("label", { class: "field", style: "margin-top:20px" }, h("span", { text: "Use the cloud for hard things" }), up),
+      mdl.local_only || mdl.cloud_upgrade === "never" ? null : h("label", { class: "field" }, h("span", { text: "Cloud model" }), cloud)));
     // Folded away: keys for cloud models, and a model for each job.
     const keyed = profs.filter(p => !p.local && p.key_secret);
     if (keyed.length) b.append(h("details", { class: "card more" }, h("summary", {}, h("span", { text: "Cloud keys" }), h("small", { text: keyed.filter(p => p.ready).length + " of " + keyed.length + " set" })),
@@ -3000,8 +3001,18 @@ async function hello(base) {
     const r = await fetch(base + "/v1/health", { cache: "no-store", signal: ctl.signal }); clearTimeout(t);
     const j = await r.json(); return r.ok && (j.name === "AssistX" || "accounts" in j || "model" in j) ? j : null; } catch (e) { return null; }
 }
+// Plain http only inside a private network (home Wi-Fi, Tailscale, this phone). Anywhere else it would show the
+// passphrase and tokens to the network, so only https is allowed there (security review #6).
+function privateHost(base) {
+  let h; try { h = new URL(base).hostname.replace(/^\[|\]$/g, "").toLowerCase(); } catch (e) { return false; }
+  if (h === "localhost" || h.endsWith(".local") || h.endsWith(".ts.net") || !h.includes(".") && !h.includes(":")) return true;
+  const m = h.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
+  if (m) { const a = +m[1], b = +m[2]; return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127); }
+  return h === "::1" || /^f[cd]/.test(h) || h.startsWith("fe80");
+}
 async function useServer(base, err, el) {
   err.textContent = "";
+  if (/^http:/i.test(base) && !privateHost(base)) return fail(err, el, "That address is on the open internet. Use https:// there, or reach the server through Tailscale.");
   const j = await hello(base);
   if (!j) return fail(err, el, "No AssistX server answered at that address.");
   cfg.base = base; health = j; sessionStorage.setItem("base", base); showSac();

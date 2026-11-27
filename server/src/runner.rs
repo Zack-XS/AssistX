@@ -32,14 +32,21 @@ pub fn backend(app: &App, m: &Manifest) -> Option<Backend> {
     }
 }
 
-/// Expand `$AGENT_FILES_ROOT` and `$AGENT_TERM_CWD` in `needs.paths`.
+/// Expand `$AGENT_FILES_ROOT` and `$AGENT_TERM_CWD` in `needs.paths`. With accounts (several people on one server)
+/// a plugin may not name any other folder: an absolute path could reach the host outside the account (security
+/// review #14). The one-owner mode keeps absolute paths, since the owner is the host's owner.
 fn rw_paths(app: &App, m: &Manifest) -> Vec<PathBuf> {
+    let accounts = app.cfg.server_dir != app.cfg.data_dir;
     m.needs
         .list("paths")
         .iter()
         .filter_map(|p| match p.as_str() {
             "$AGENT_FILES_ROOT" => Some(app.cfg.files_root.clone()),
             "$AGENT_TERM_CWD" => Some(app.cfg.term_cwd.clone()),
+            s if accounts => {
+                eprintln!("security: plugin {} asked for the path {s}; refused, only its account's folders are allowed", m.id);
+                None
+            }
             s if s.starts_with('/') && !s.contains("..") => Some(PathBuf::from(s)),
             _ => None,
         })
@@ -221,4 +228,27 @@ pub async fn run(app: &Arc<App>, m: &Manifest, tool: &str, args: Value, draft: b
     }
     let clean = util::scrub(&result.to_string(), &secret_values);
     Ok(serde_json::from_str(&clean).unwrap_or(Value::String(clean)))
+}
+
+#[cfg(test)]
+mod path_tests {
+    use super::*;
+    use std::sync::Arc;
+
+    #[test]
+    fn accounts_refuse_absolute_plugin_paths() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let mut cfg = crate::config::Config::from_env();
+        cfg.plugins_dir = root.join("plugins");
+        cfg.prompts_dir = root.join("prompts");
+        cfg.data_dir = std::env::temp_dir().join(format!("rwp{}", crate::util::random_hex(4)));
+        cfg.server_dir = cfg.data_dir.clone();
+        let mut m = crate::manifest::load_one(&root.join("plugins/files"), "files").unwrap();
+        m.needs = serde_yaml::from_str("paths: [$AGENT_FILES_ROOT, /etc]").unwrap();
+        let one = App::new(cfg.clone(), crate::db::Db::open_memory().unwrap(), Arc::new(crate::model::Mock::new(&[])));
+        assert_eq!(rw_paths(&one, &m).len(), 2, "one-owner mode keeps an absolute path");
+        cfg.server_dir = cfg.data_dir.parent().unwrap().to_path_buf();
+        let acct = App::new(cfg, crate::db::Db::open_memory().unwrap(), Arc::new(crate::model::Mock::new(&[])));
+        assert_eq!(rw_paths(&acct, &m), vec![acct.cfg.files_root.clone()], "an account gets only its own folder");
+    }
 }

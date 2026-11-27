@@ -290,14 +290,24 @@ pub fn add_points(app: &Arc<App>, device: &str, points: &Value) -> Result<Value,
 // ---------------- names from OpenStreetMap ----------------
 
 /// Ask Nominatim what is at a spot. One request at a time, at most one a second (its rules).
+/// Ask OpenStreetMap what is near a point. The point is rounded first (security review #24): OpenStreetMap never sees
+/// an exact position, only one about 100 m across (`AGENT_GEOCODE_DECIMALS`, default 3; 4 = about 10 m).
 pub fn reverse_lookup(base: &str, lat: f64, lon: f64) -> Result<Value, String> {
     let agent: ureq::Agent = ureq::Agent::config_builder().timeout_global(Some(Duration::from_secs(12))).http_status_as_error(false).build().into();
-    let url = format!("{base}/reverse?format=jsonv2&addressdetails=1&zoom=18&lat={lat:.6}&lon={lon:.6}");
+    let (lat, lon, d) = rounded(lat, lon);
+    let url = format!("{base}/reverse?format=jsonv2&addressdetails=1&zoom=17&lat={lat:.d$}&lon={lon:.d$}");
     let mut r = agent.get(&url).header("User-Agent", "self-hosted-personal-assistant/0.1 (one user, a few requests a day)").header("Accept-Language", "en").call().map_err(|e| e.to_string())?;
     if r.status().as_u16() != 200 {
         return Err(format!("OpenStreetMap answered {}", r.status().as_u16()));
     }
     serde_json::from_str(&r.body_mut().read_to_string().map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+}
+
+/// A point rounded for outside lookups, and how many decimals were kept.
+pub fn rounded(lat: f64, lon: f64) -> (f64, f64, usize) {
+    let d: usize = std::env::var("AGENT_GEOCODE_DECIMALS").ok().and_then(|v| v.parse().ok()).filter(|d| (2..=5).contains(d)).unwrap_or(3);
+    let f = 10f64.powi(d as i32);
+    ((lat * f).round() / f, (lon * f).round() / f, d)
 }
 
 /// A short name for what Nominatim found: the place's own name, else the kind of place, else the street.
@@ -570,5 +580,15 @@ mod tests {
         let house = json!({ "address": { "house_number": "12", "road": "Oak Ave", "city": "Town" } });
         assert_eq!(pick_name(&house).unwrap().0, "12 Oak Ave");
         assert!(pick_name(&json!({})).is_none());
+    }
+}
+
+#[cfg(test)]
+mod rounding_tests {
+    #[test]
+    fn outside_lookups_get_a_rounded_point() {
+        let (lat, lon, d) = super::rounded(49.234_567_8, -121.765_432_1);
+        assert_eq!(d, 3);
+        assert_eq!(format!("{lat:.d$},{lon:.d$}"), "49.235,-121.765");
     }
 }

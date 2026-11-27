@@ -124,12 +124,60 @@ impl Db {
 
 /// The key as SQLCipher wants it: a passphrase from the environment, or raw hex from `db.key`.
 fn db_key(path: &Path) -> Result<String, String> {
-    if let Ok(k) = std::env::var("AGENT_DB_KEY")
+    key_from("AGENT_DB_KEY", &key_file(path, "db.key"))
+}
+
+/// Where a key file lives: systemd's credentials folder (`LoadCredential=`), else `AGENT_KEY_DIR`, else beside the
+/// database. A key kept apart from `data/` means a copy of `data/` alone cannot be opened (security review #10).
+fn key_file(path: &Path, name: &str) -> std::path::PathBuf {
+    // The credentials folder is read-only and holds only what the unit lists: use it only when the key is there.
+    if let Ok(d) = std::env::var("CREDENTIALS_DIRECTORY")
+        && Path::new(d.trim()).join(name).is_file()
+    {
+        return Path::new(d.trim()).join(name);
+    }
+    if let Ok(d) = std::env::var("AGENT_KEY_DIR")
+        && !d.trim().is_empty()
+    {
+        return Path::new(d.trim()).join(name);
+    }
+    path.with_file_name(name)
+}
+
+/// The server's own database (`server.db`: accounts, phones, admin log), encrypted with SQLCipher (security review
+/// #10). Key: `AGENT_SERVER_DB_KEY`, or the file `server.key` (see `key_file`), made on first run. A plain file from an
+/// older version is encrypted in place, checked, and its plain copy removed.
+pub fn open_server(path: &Path) -> Result<Connection, String> {
+    let key = key_from("AGENT_SERVER_DB_KEY", &key_file(path, "server.key"))?;
+    let plain = { use std::io::Read; let mut h = [0u8; 16]; std::fs::File::open(path).and_then(|mut f| f.read_exact(&mut h)).is_ok() && &h == b"SQLite format 3\0" };
+    if plain && opens_with(path, None) {
+        encrypt_in_place(path, &key).map_err(|e| format!("encrypting server.db: {e}"))?;
+        let backup = path.with_extension("db.plain-backup");
+        match std::fs::remove_file(&backup) {
+            Ok(()) => eprintln!("security: server.db is now encrypted; the plain copy was checked and removed"),
+            Err(e) => eprintln!("security: server.db is now encrypted, but the plain copy {} could not be removed: {e}", backup.display()),
+        }
+    }
+    let c = Connection::open(path).map_err(|e| format!("server database: {e}"))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+    }
+    set_key(&c, &key).map_err(|e| e.to_string())?;
+    c.query_row("SELECT count(*) FROM sqlite_master", [], |r| r.get::<_, i64>(0))
+        .map_err(|_| "the server database key is wrong (AGENT_SERVER_DB_KEY or server.key)".to_string())?;
+    Ok(c)
+}
+
+/// A key from `var` (any passphrase) or else the hex `file` (32 random bytes, 0600, made when missing).
+fn key_from(var: &str, file: &Path) -> Result<String, String> {
+    if let Ok(k) = std::env::var(var)
         && !k.trim().is_empty()
     {
         return Ok(format!("'{}'", k.trim().replace('\'', "''")));
     }
-    let file = path.with_file_name("db.key");
+    let file = file.to_path_buf();
     let hex = match std::fs::read_to_string(&file) {
         Ok(s) if s.trim().len() == 64 && s.trim().chars().all(|c| c.is_ascii_hexdigit()) => s.trim().to_string(),
         Ok(_) => return Err(format!("{} is not a 64 character hex key", file.display())),
@@ -237,5 +285,28 @@ impl Db {
     /// Short critical sections only; never hold this across an `.await`.
     pub fn lock(&self) -> MutexGuard<'_, Connection> {
         self.0.lock().unwrap_or_else(|e| e.into_inner())
+    }
+}
+
+#[cfg(test)]
+mod server_db_tests {
+    #[test]
+    fn a_plain_server_db_is_encrypted_and_its_plain_copy_removed() {
+        let dir = std::env::temp_dir().join(format!("srvdb{}", crate::util::random_hex(4)));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("server.db");
+        {
+            let c = rusqlite::Connection::open(&path).unwrap();
+            c.execute_batch("CREATE TABLE accounts (username TEXT); INSERT INTO accounts VALUES ('dana');").unwrap();
+        }
+        let c = super::open_server(&path).unwrap();
+        let name: String = c.query_row("SELECT username FROM accounts", [], |r| r.get(0)).unwrap();
+        assert_eq!(name, "dana", "the data survived");
+        drop(c);
+        let raw = std::fs::read(&path).unwrap();
+        assert!(!raw.starts_with(b"SQLite format 3") && !String::from_utf8_lossy(&raw).contains("dana"), "encrypted on disk");
+        assert!(!path.with_extension("db.plain-backup").exists(), "no plain copy left");
+        assert!(dir.join("server.key").exists());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

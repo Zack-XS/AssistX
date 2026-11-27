@@ -55,13 +55,13 @@ Then tell the agent: *"Read `AssistantX-reviews/latest.md` and the AssistantX re
 
 Status: built. `src/autoreport.rs`.
 
-When one plugin tool has failed 3 times in 24 hours (failed calls in the action log), or a turn a person was waiting on ends on an error, the core writes the same report a "Send log" tap does into `data/reports/`, with `auto: true` and the note `auto: <plugin.tool> failed N times in 24 h: <last errors>` (or `auto: a turn ended on an error (<code>): ...`).
+When one plugin tool has failed 3 times in 24 hours (failed calls in the action log), or a turn a person was waiting on ends on an error, the core saves the same report a "Send log" tap does (into the encrypted database), with `auto: true` and the note `auto: <plugin.tool> failed N times in 24 h: <last errors>` (or `auto: a turn ended on an error (<code>): ...`).
 
 At most one per tool, or per error code, a day; secrets are scrubbed; model-test chats (`eval: ...`) never count. Each one is also an `auto_report` audit event. `GET /v1/reports?auto=1` lists only these. `AGENT_AUTO_REPORTS=off` turns it off.
 
 ## Reports
 
-- `POST /v1/threads/{id}/report {note?}`: save everything about one chat for review: messages as the model saw them (tool calls, tool results with their `[core] RESULT` lines), turns with status and errors, actions, approvals, events, and model settings. Written to `data/reports/<id>.json` (mode 0600), known secret values scrubbed, newest 200 kept. Any token may send one.
+- `POST /v1/threads/{id}/report {note?}`: save everything about one chat for review: messages as the model saw them (tool calls, tool results with their `[core] RESULT` lines), turns with status and errors, actions, approvals, events, and model settings. Written to the encrypted database (table `reports`) (mode 0600), known secret values scrubbed, newest 200 kept. Any token may send one.
 - `GET /v1/reports` lists them, `GET /v1/reports/{id}` returns one. Owner only: a report holds a whole chat.
 
 Example review packs were kept in `reviews/` at the top of the project. They hold real chats, so they are not copied into these docs.

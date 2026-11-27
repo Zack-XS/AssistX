@@ -50,7 +50,7 @@ impl Lumo {
         let cool = std::env::var("AGENT_LUMO_COOLDOWN_MINS").ok().and_then(|v| v.parse::<i64>().ok()).unwrap_or(30);
         Lumo {
             url: url.into(),
-            token: std::env::var("AGENT_LUMO_TOKEN").ok().map(|t| t.trim().to_string()).filter(|t| !t.is_empty()),
+            token: std::env::var("AGENT_LUMO_TOKEN").ok().map(|t| t.trim().to_string()).filter(|t| !t.is_empty()).or_else(|| crate::config::credential("lumo_token")),
             agent: ureq::Agent::config_builder().timeout_global(Some(Duration::from_secs(secs))).http_status_as_error(false).build().into(),
             blocked_until: AtomicI64::new(0),
             cooldown_secs: cool.max(1) * 60,

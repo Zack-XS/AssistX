@@ -26,6 +26,8 @@ sha2 = "=0.11.1"                                   # token hashes, approval call
 ureq = "=3.5.1"                                    # blocking HTTP for model adapter and web/weather plugins
 argon2 = "=0.5.3"                                    # Argon2id: turns a passphrase into the key that unlocks an account (docs/15)
 tower = { version = "=0.5.3", default-features = false, features = ["util"] }  # hand a request to one account's router (src/hub_http.rs); already inside axum
+hmac = "=0.12.1"                                   # HMAC for admin sign-in codes (TOTP, RFC 6238; security review #20)
+sha1 = "=0.10.7"                                   # TOTP's SHA-1, what every authenticator app uses (not used for anything else)
 chacha20poly1305 = "=0.10.1"                          # authenticated encryption for the wrapped account keys (docs/15)
 
 # `node/` is the small program a computer runs to connect to this server (docs/11).

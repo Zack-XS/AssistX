@@ -385,6 +385,7 @@ async fn the_admin_dashboard_is_a_page_on_the_server_and_may_call_its_own_routes
     assert!(hv("content-type").starts_with("text/html"));
     assert_eq!((hv("cache-control"), hv("x-frame-options")), ("no-store".into(), "DENY".into()));
     assert!(hv("content-security-policy").contains("connect-src 'self'") && hv("content-security-policy").contains("frame-ancestors 'none'"));
+    assert!(hv("content-security-policy").contains("script-src 'sha256-") && !hv("content-security-policy").contains("script-src 'unsafe-inline'"), "#27: only the page's own script runs");
     let body = String::from_utf8(to_bytes(r.into_body(), 1 << 20).await.unwrap().to_vec()).unwrap();
     assert!(body.contains("Server admin") && body.contains("/v1/server/overview"));
     // Its own calls carry this server's origin: let through, with no cross-origin headers. The password is still needed.
@@ -463,4 +464,77 @@ async fn the_first_admin_login_is_made_with_the_one_time_setup_code() {
     assert!(hub.admin_setup(&code, "eve", "eve's own password").is_err(), "only once");
     assert!(hub.ensure_admin_setup().is_none());
     let _ = std::fs::remove_dir_all(dir);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn security_review_fixes_hold() {
+    let t = T::new("secfix");
+    // #16: the server token is kept as Argon2id, never as a fast SHA-256.
+    assert!(!String::from_utf8_lossy(&std::fs::read(t.dir.join("server.db")).unwrap()).starts_with("SQLite format 3"), "#10: server.db is encrypted");
+    let c = agent_core::db::open_server(&t.dir.join("server.db")).unwrap();
+    let stored: Vec<String> = c.prepare("SELECT key FROM meta WHERE key LIKE 'token_%'").unwrap().query_map([], |r| r.get(0)).unwrap().flatten().collect();
+    assert_eq!(stored, vec!["token_argon".to_string()], "only the slow hash is stored");
+    drop(c);
+
+    // #12: a new passphrase ends every sign-in token at once.
+    let (tok, _) = t.make("dana", "dana's first passphrase").await;
+    assert_eq!(t.call("GET", "/v1/threads", Some(&tok), None).await.0, StatusCode::OK);
+    let (c, v) = t.srv("/v1/server/passphrase", json!({ "username": "dana", "old": "dana's first passphrase", "new": "dana's second passphrase" })).await;
+    assert_eq!(c, StatusCode::OK, "{v}");
+    assert_eq!(t.call("GET", "/v1/threads", Some(&tok), None).await.0, StatusCode::UNAUTHORIZED, "the old sign-in is over");
+
+    // #3, #4: plain copies left by older versions are moved into the database and deleted on unlock.
+    let id = tok.split_once('.').unwrap().0.to_string();
+    let acct = t.dir.join("accounts").join(&id);
+    std::fs::create_dir_all(acct.join("memory/People")).unwrap();
+    std::fs::write(acct.join("memory/core.md"), "Dana likes tea.\n").unwrap();
+    std::fs::write(acct.join("memory/People/x.md"), "secret").unwrap();
+    std::fs::create_dir_all(acct.join("reports")).unwrap();
+    std::fs::write(acct.join("reports/rep_old.json"), json!({ "id": "rep_old", "created": "2026-01-01T00:00:00Z", "auto": false, "thread": {} }).to_string()).unwrap();
+    std::fs::create_dir_all(acct.join("evals")).unwrap();
+    std::fs::write(acct.join("evals/2026-01-01-0000.json"), json!({ "id": "2026-01-01-0000", "started": "x" }).to_string()).unwrap();
+    assert!(t.hub.lock(&id));
+    let (c, v) = t.srv("/v1/server/login", json!({ "username": "dana", "passphrase": "dana's second passphrase" })).await;
+    assert_eq!(c, StatusCode::OK, "{v}");
+    let tok = v["token"].as_str().unwrap().to_string();
+    assert!(!acct.join("memory").exists(), "no plain memory folder");
+    assert!(!acct.join("reports").exists(), "no plain reports folder");
+    assert!(!acct.join("evals").exists(), "no plain model-test folder");
+    // #1: an account used just now is not idle; one past the limit is locked and its key leaves memory.
+    assert!(t.hub.lock_idle(3600).is_empty(), "just used");
+    assert_eq!(t.hub.lock_idle(-1), vec![id.clone()]);
+    assert_eq!(t.call("GET", "/v1/threads", Some(&tok), None).await.0, StatusCode::LOCKED);
+    let (_, v) = t.srv("/v1/server/login", json!({ "username": "dana", "passphrase": "dana's second passphrase" })).await;
+    let tok = v["token"].as_str().unwrap().to_string();
+    let (_, runs) = t.call("GET", "/v1/evals", Some(&tok), None).await;
+    assert_eq!(runs["items"][0]["id"], "2026-01-01-0000", "the old run moved into the database");
+    let (_, reps) = t.call("GET", "/v1/reports", Some(&tok), None).await;
+    assert_eq!(reps["items"][0]["id"], "rep_old", "the old report moved into the database");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_admin_login_can_ask_for_an_authenticator_code() {
+    // Security review #20.
+    let t = T::new("totp");
+    let (c, v) = t.srv("/v1/server/admin/totp", json!({ "action": "start" })).await;
+    assert_eq!(c, StatusCode::OK, "{v}");
+    let secret = v["secret"].as_str().unwrap().to_string();
+    assert!(v["uri"].as_str().unwrap().starts_with("otpauth://totp/"));
+    let now = || std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
+    let code = |step: i64| agent_core::totp::code_at(&agent_core::totp::decode(&secret).unwrap(), step);
+    let (c, _) = t.srv("/v1/server/admin/totp", json!({ "action": "confirm", "code": "000000" })).await;
+    assert_ne!(c, StatusCode::OK, "a wrong code does not turn it on");
+    let s0 = now() / 30;
+    let (c, v) = t.srv("/v1/server/admin/totp", json!({ "action": "confirm", "code": code(s0) })).await;
+    assert_eq!(c, StatusCode::OK, "{v}");
+    let (_, st) = t.call("GET", "/v1/server/admin/status", Some(&t.server), None).await;
+    assert_eq!(st["code"], true);
+    let login = |code: String| t.call("POST", "/v1/server/admin/login", Some(&t.server), Some(json!({ "username": "boss", "password": "the boss password", "code": code })));
+    assert_eq!(login(String::new()).await.0, StatusCode::UNAUTHORIZED, "the password alone is not enough");
+    assert_eq!(login(code(s0)).await.0, StatusCode::UNAUTHORIZED, "the code used to switch it on is spent");
+    assert_eq!(login(code(s0 + 1)).await.0, StatusCode::OK, "the next code works");
+    assert_eq!(login(code(s0 + 1)).await.0, StatusCode::UNAUTHORIZED, "a code works once");
+    // The server's own shell can always reset the login, codes included.
+    Hub::set_admin_password(&t.dir, "boss", "the boss password").unwrap();
+    assert_eq!(login(String::new()).await.0, StatusCode::OK);
 }

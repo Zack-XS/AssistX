@@ -872,7 +872,7 @@ fn search_memory_finds_unsorted_notes_and_tool_events_are_emitted() {
 #[test]
 fn prompt_hands_over_no_user_facts_only_a_directory() {
     let s = start("directory_only", json!([]));
-    agent_core::memory::write_core(&s.app.cfg.data_dir, "The user lives in Lisbon and hates mornings.\n").unwrap();
+    agent_core::memory::write_core(&s.app.db, "The user lives in Lisbon and hates mornings.\n").unwrap();
     let (code, _) = s.call("POST", "/v1/memory", Some(json!({ "title": "Dentist", "summary": "Dentist visit on Tuesday at 9", "topic_path": "health/dentist" })));
     assert_eq!(code, 201);
     s.mock.push(&[
@@ -945,7 +945,7 @@ fn dreaming_runs_by_itself_when_notes_wait() {
 #[test]
 fn memory_switches_turn_off_core_and_recent_lines() {
     let s = start_with("switches", json!([]), |c| { c.memory_core = false; c.memory_recent = false; });
-    agent_core::memory::write_core(&s.app.cfg.data_dir, "The user lives in Lisbon.\n").unwrap();
+    agent_core::memory::write_core(&s.app.db, "The user lives in Lisbon.\n").unwrap();
     let a = s.thread();
     let t1 = s.send(&a, "hello");
     s.wait_turn(&t1, &["done"]);
@@ -1005,14 +1005,10 @@ fn memory_is_five_folders_with_a_readable_file_per_entry() {
     assert!(!sys.contains("Close friend"), "descriptions are not in the prompt, only names");
     let listing = reqs[1].messages.iter().rev().find(|m| m["role"] == "tool").unwrap()["content"].as_str().unwrap().to_string();
     assert!(listing.contains("Sam: Close friend from university") && listing.contains("(load: mem:m_"), "{listing}");
-    // The copy on disk.
+    // No plain copy on disk any more (security review #3): memory lives only in the encrypted database.
     s.app.soft_dirty_index();
     s.app.sync_memory_files();
-    let people: Vec<_> = std::fs::read_dir(s.app.cfg.data_dir.join("memory/People")).unwrap().flatten().collect();
-    assert_eq!(people.len(), 1);
-    let text = std::fs::read_to_string(people[0].path()).unwrap();
-    assert!(text.starts_with("# Sam\ndescription: Close friend from university\n"), "{text}");
-    assert!(s.app.cfg.data_dir.join("memory/Questions").is_dir());
+    assert!(!s.app.cfg.data_dir.join("memory").exists(), "no readable memory copy is written");
 }
 
 fn mt(tool: &str, args: Value) -> Value {
@@ -1063,11 +1059,11 @@ fn model_makes_nested_folders_files_things_moves_them_and_rates_confidence() {
     assert!((e.confidence - 0.4).abs() < 1e-9);
     let report = last_tool_content(&s.mock);
     assert!(report.contains("\"level\": \"low\"") && report.contains("Algebra test"), "{report}");
-    // The disk copy has real subfolders.
+    // Real subfolders exist in the database's folder tree; nothing is written to disk (security review #3).
     s.app.soft_dirty_index();
     s.app.sync_memory_files();
-    assert!(s.app.cfg.data_dir.join("memory/School/math").is_dir());
-    assert_eq!(std::fs::read_dir(s.app.cfg.data_dir.join("memory/Things")).unwrap().flatten().count(), 1);
+    assert!(agent_core::memory::folder_rows(&s.app.db).iter().any(|f| f.path == "School/math"));
+    assert!(!s.app.cfg.data_dir.join("memory").exists());
 }
 
 #[test]
@@ -1090,20 +1086,14 @@ fn memory_folder_names_cannot_escape_and_builtin_folders_stay_put() {
 }
 
 #[test]
-fn disk_copy_drops_folders_that_nobody_made_and_nothing_lives_in() {
+fn an_old_plain_memory_copy_is_deleted_at_start() {
+    // Security review #3: older versions wrote data/memory/**.md. A new start removes it; the database is the source.
     let s = start("disk_prune", json!([]));
-    let (code, e) = s.call("POST", "/v1/memory", Some(json!({ "title": "Bone", "summary": "A chew toy", "topic_path": "Things/toys" })));
-    assert_eq!(code, 201, "{e}");
-    let id = e["id"].as_str().unwrap().to_string();
-    s.app.soft_dirty_index();
-    s.app.sync_memory_files();
-    let dir = s.app.cfg.data_dir.join("memory/Things/toys");
-    assert!(dir.join(std::fs::read_dir(&dir).unwrap().flatten().next().unwrap().file_name()).is_file());
-    let (code, _) = s.call("PATCH", &format!("/v1/memory/{id}"), Some(json!({ "topic_path": "Things" })));
-    assert_eq!(code, 200);
-    s.app.sync_memory_files();
-    assert!(!dir.exists(), "the empty subfolder is removed");
-    assert!(s.app.cfg.data_dir.join("memory/Things").is_dir() && s.app.cfg.data_dir.join("memory/Questions").is_dir(), "built-in folders stay");
+    let old = s.app.cfg.data_dir.join("memory/Things/toys");
+    std::fs::create_dir_all(&old).unwrap();
+    std::fs::write(old.join("bone.md"), "# Bone").unwrap();
+    agent_core::memory::remove_plain_copies(&s.app.db, &s.app.cfg.data_dir);
+    assert!(!s.app.cfg.data_dir.join("memory").exists());
 }
 
 #[test]
@@ -2648,7 +2638,7 @@ fn send_log_saves_the_whole_chat_for_review_and_only_the_owner_reads_it() {
     let text = full.to_string();
     assert!(text.contains("[core] RESULT: FAILED") && text.contains("files.read") || text.contains("\"tool\":\"read\""), "tool results are in it");
     assert!(full["events"].as_array().unwrap().iter().any(|e| e["type"] == "turn.done"));
-    assert!(s.app.cfg.data_dir.join(format!("reports/{id}.json")).exists());
+    assert!(!s.app.cfg.data_dir.join("reports").exists(), "kept in the encrypted database, not as a plain file");
     let (_, list) = s.call("GET", "/v1/reports", None);
     assert_eq!(list["items"][0]["id"], id.as_str());
     assert_eq!(s.call("GET", "/v1/reports/..%2Fowner.token", None).0, 404);
@@ -3893,4 +3883,16 @@ fn phone_signals_are_kept_and_brief_and_travel_settings_check_their_input() {
     // The tool says plainly when it does not know where the user is.
     let e = agent_core::travel::travel_time(&s.app, &json!({ "to": "Gym" })).unwrap_err();
     assert!(e.contains("do not know where"), "{e}");
+}
+
+#[test]
+fn local_only_keeps_every_call_off_the_cloud() {
+    // Security review #7, #25: with "never send to the cloud" on, a cloud profile is swapped for the local default.
+    let s = start("localonly", json!([]));
+    agent_core::store::secret_set(&s.app, "NIM_API_KEY", "nvapi-test");
+    assert_eq!(agent_core::models::allowed_profile(&s.app, "nim"), "nim", "off: the cloud may be used");
+    let (_, v) = s.call("PATCH", "/v1/models", Some(json!({ "local_only": true })));
+    assert_eq!(v["local_only"], true, "{v}");
+    assert_eq!(agent_core::models::allowed_profile(&s.app, "nim"), "local");
+    assert_eq!(agent_core::models::allowed_profile(&s.app, "local-light"), "local-light", "local ones are untouched");
 }

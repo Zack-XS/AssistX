@@ -78,7 +78,7 @@ Both are SSE and support replay with `Last-Event-ID`.
 
 ### Reports
 
-- `POST /v1/threads/{id}/report {note?}`: save everything about one chat for review: messages as the model saw them (tool calls, tool results with their `[core] RESULT` lines), turns with status and errors, actions, approvals, events, and model settings. Written to `data/reports/<id>.json` (mode 0600), known secret values scrubbed, newest 200 kept. Any token may send one.
+- `POST /v1/threads/{id}/report {note?}`: save everything about one chat for review: messages as the model saw them (tool calls, tool results with their `[core] RESULT` lines), turns with status and errors, actions, approvals, events, and model settings. Written to the encrypted database (table `reports`) (mode 0600), known secret values scrubbed, newest 200 kept. Any token may send one.
 - `GET /v1/reports` lists them, `GET /v1/reports/{id}` returns one. Owner only: a report holds a whole chat.
 
 ### Approvals (routes)
@@ -307,10 +307,10 @@ Memory: `GET,POST /v1/memory` · `GET,PATCH,DELETE /v1/memory/{id}` · `GET /v1/
 Dreaming: `POST /v1/dreaming/run` · `GET /v1/dreaming/runs` · `GET /v1/dreaming/runs/{id}`
 Plugins: `GET /v1/plugins` · `GET,DELETE /v1/plugins/{id}` · `GET /v1/plugins/{id}/versions` · `GET /v1/plugins/{id}/diff` · `POST /v1/plugins/install` · `POST /v1/plugins/{id}/approve|reject|disable|rollback`
 Jobs, secrets, triggers: `GET,POST /v1/jobs` · `GET,PATCH,DELETE /v1/jobs/{id}` · `GET /v1/secrets` · `PUT,DELETE /v1/secrets/{name}` · `POST /v1/triggers/{source}`
-Reports: `POST /v1/threads/{id}/report {note?}` ("Send log" in the app; any token) saves the whole chat to `data/reports/rep_*.json` (0600, secrets scrubbed); `GET /v1/reports`, `GET /v1/reports/{id}` (owner). Review one: `ssh assistantx-server ls -t ~/assistantx/data/reports`
+Reports: `POST /v1/threads/{id}/report {note?}` ("Send log" in the app; any token) saves the whole chat to the encrypted database (table `reports`, secrets scrubbed; no plain file); `GET /v1/reports`, `GET /v1/reports/{id}` (owner). Review one: `GET /v1/reports` then `GET /v1/reports/{id}` with the owner token
 Audit ([Audit](audit.md)): `GET /v1/audit/review` · `GET /v1/audit/turns/{id}` · `POST /v1/notices/{n}/feedback`
 Auto reports ([Audit](audit.md)): a plugin tool failing 3 times in 24 h, or an attended turn ending on an error, writes a report itself (`auto: true`, note `auto: <tool> failed N times: ...`, one per tool or error code a day, `src/autoreport.rs`); `GET /v1/reports?auto=1` lists only those; `AGENT_AUTO_REPORTS=off`
-Model tests ([Models](models.md)): `POST /v1/evals/run {cloud?, profiles?, only?}` · `GET /v1/evals` · `GET /v1/evals/{id}` (owner; `src/eval.rs`, cases `evals/cases.json` + the smoke ten; results `data/evals/<time>.json`; CLI `agent-core eval [--cloud] [--server URL --token-file F]`; on the server `assistantx-eval`, token in `~/.config/assistantx/eval.token` on the Mac)
+Model tests ([Models](models.md)): `POST /v1/evals/run {cloud?, profiles?, only?}` · `GET /v1/evals` · `GET /v1/evals/{id}` (owner; `src/eval.rs`, cases `evals/cases.json` + the smoke ten; results in the encrypted database (table `eval_runs`); CLI `agent-core eval [--cloud] [--server URL --token-file F]`; on the server `assistantx-eval`, token in `~/.config/assistantx/eval.token` on the Mac)
 Notices: `POST /v1/notices/{n}/snooze` · `GET /v1/notices` (event `assistant.notice`: priority, title, text, silent, thread_id)
 Speech: `GET,POST /v1/speech` (`{text}` in, WAV out; the Kokoro voice of the service at `AGENT_TTS_URL`, loopback only, always engine `kokoro`; 503 when unset)
 Alarms, sounds: `GET /v1/alarms/ringing` · `POST /v1/alarms/snooze|dismiss` · `GET /v1/sounds` · `GET,PUT,DELETE /v1/sounds/{name}`

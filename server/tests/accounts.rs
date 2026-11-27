@@ -500,6 +500,12 @@ async fn security_review_fixes_hold() {
     assert!(!acct.join("memory").exists(), "no plain memory folder");
     assert!(!acct.join("reports").exists(), "no plain reports folder");
     assert!(!acct.join("evals").exists(), "no plain model-test folder");
+    // #1: an account used just now is not idle; one past the limit is locked and its key leaves memory.
+    assert!(t.hub.lock_idle(3600).is_empty(), "just used");
+    assert_eq!(t.hub.lock_idle(-1), vec![id.clone()]);
+    assert_eq!(t.call("GET", "/v1/threads", Some(&tok), None).await.0, StatusCode::LOCKED);
+    let (_, v) = t.srv("/v1/server/login", json!({ "username": "dana", "passphrase": "dana's second passphrase" })).await;
+    let tok = v["token"].as_str().unwrap().to_string();
     let (_, runs) = t.call("GET", "/v1/evals", Some(&tok), None).await;
     assert_eq!(runs["items"][0]["id"], "2026-01-01-0000", "the old run moved into the database");
     let (_, reps) = t.call("GET", "/v1/reports", Some(&tok), None).await;

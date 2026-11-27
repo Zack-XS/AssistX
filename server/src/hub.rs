@@ -40,6 +40,8 @@ pub struct Hub {
     /// (stored Argon2id value, SHA-256 of the token) once the token has passed the slow check, so later requests stay
     /// fast. Tied to the stored value: a new server password set from the CLI ends it at once.
     sac_ok: Mutex<Option<(String, String)>>,
+    /// account id -> when a request last reached it (unix seconds), for the idle lock.
+    seen: Mutex<HashMap<String, i64>>,
 }
 
 /// The server token kept as Argon2id (`salt:hash`, hex), never as a fast hash (security review #16).
@@ -152,7 +154,7 @@ impl Hub {
         open_schema(&c)?;
         let mut cfg = cfg;
         cfg.server_dir = cfg.data_dir.clone();
-        Ok(Arc::new(Hub { cfg, sdb: Mutex::new(c), apps: Default::default(), routers: Default::default(), fails: Default::default(), models, guesses: Default::default(), started: util::unix_now(), admin_sessions: Default::default(), admin_setup: Default::default(), sac_ok: Default::default() }))
+        Ok(Arc::new(Hub { cfg, sdb: Mutex::new(c), apps: Default::default(), routers: Default::default(), fails: Default::default(), models, guesses: Default::default(), started: util::unix_now(), admin_sessions: Default::default(), admin_setup: Default::default(), sac_ok: Default::default(), seen: Default::default() }))
     }
 
     /// The server token: made once. It keeps the old owner token's text when there was one (so a phone that
@@ -637,6 +639,29 @@ impl Hub {
     }
 
     /// Forget the key and stop the account's background work. Its data stays encrypted on disk.
+    /// A request reached this account (the phone's quarter-hourly check counts too).
+    pub(crate) fn touch(&self, id: &str) {
+        self.seen.lock().unwrap().insert(id.to_string(), util::unix_now());
+    }
+
+    /// Lock every unlocked account that nothing has reached for `max_idle` seconds (security review #1): its key
+    /// leaves memory. A remembered phone unlocks it again on its next request (within 15 minutes of the phone being
+    /// unlocked). Returns the ids locked.
+    pub fn lock_idle(&self, max_idle: i64) -> Vec<String> {
+        let now = util::unix_now();
+        let open: Vec<String> = self.apps.read().unwrap().keys().cloned().collect();
+        let idle: Vec<String> = {
+            let mut seen = self.seen.lock().unwrap();
+            open.into_iter().filter(|id| *seen.entry(id.clone()).or_insert(now) < now - max_idle).collect()
+        };
+        for id in &idle {
+            self.lock(id);
+            self.log_admin("idle_lock", id, "");
+            eprintln!("security: account {id} locked after {} hours with no requests; its key left memory", max_idle / 3600);
+        }
+        idle
+    }
+
     pub fn lock(&self, id: &str) -> bool {
         self.routers.write().unwrap().remove(id);
         match self.apps.write().unwrap().remove(id) {
@@ -753,6 +778,7 @@ mod lockout_tests {
         cfg.data_dir = std::env::temp_dir().join(format!("lock{}", util::random_hex(4)));
         let hub = Hub::open(cfg, Box::new(|_| Err("no model".into()))).unwrap();
         let from = |who: &str| CALLER.with(|c| *c.borrow_mut() = who.to_string());
+        assert!(hub.lock_idle(0).is_empty(), "nothing unlocked, nothing to lock");
         from("203.0.113.9");
         for _ in 0..5 {
             hub.failed("dana");

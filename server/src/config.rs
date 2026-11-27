@@ -130,6 +130,13 @@ fn env(k: &str) -> Option<String> {
     std::env::var(k).ok().filter(|v| !v.trim().is_empty())
 }
 
+/// A secret from systemd's credentials folder (`LoadCredential=name:/path` in the unit), so keys need not sit in an
+/// environment file next to the data (security review #9). `None` when not running that way or not set.
+pub fn credential(name: &str) -> Option<String> {
+    let dir = env("CREDENTIALS_DIRECTORY")?;
+    std::fs::read_to_string(std::path::Path::new(&dir).join(name)).ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+}
+
 fn list(k: &str, default: &str) -> Vec<String> {
     env(k).unwrap_or_else(|| default.into()).split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
 }
@@ -182,7 +189,7 @@ impl Config {
                 kind: env("AGENT_MODEL_KIND").unwrap_or_else(|| "openai".into()),
                 base_url: env("AGENT_MODEL_BASE_URL").unwrap_or_else(|| "http://127.0.0.1:11434/v1".into()),
                 name: env("AGENT_MODEL_NAME").unwrap_or_else(|| "llama3.1".into()),
-                api_key: env("AGENT_MODEL_API_KEY"),
+                api_key: env("AGENT_MODEL_API_KEY").or_else(|| credential("model_api_key")),
             },
             limits,
             files_root: env("AGENT_FILES_ROOT").map(PathBuf::from).unwrap_or_else(|| home.join("Documents")),

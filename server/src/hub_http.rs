@@ -404,6 +404,7 @@ async fn dispatch(State(hub): State<H>, mut req: Request) -> Response {
         };
         return with_cors(r, origin);
     };
+    hub.touch(acct);
     if let Ok(v) = HeaderValue::from_str(&format!("Bearer {secret}")) {
         req.headers_mut().insert(header::AUTHORIZATION, v);
     }

@@ -43,8 +43,41 @@ pub fn builtins(app: &App) -> Vec<Profile> {
     catalog(app, false)
 }
 
+/// May this account use the server's own cloud access (the `AGENT_MODEL_API_KEY`/NIM key and the Lumo login)?
+/// Security review #8: shared access means every account's chats go out under one key or one Proton login.
+/// `AGENT_SHARE_CLOUD`: `all` (default), `none`, or a comma list of account ids. The one-owner mode always may.
+/// An account that may not can still add its own keys under Settings, Intelligence.
+pub fn shares_server_cloud(app: &App) -> bool {
+    if app.cfg.server_dir == app.cfg.data_dir {
+        return true;
+    }
+    let me = app.cfg.data_dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    share_rule(&std::env::var("AGENT_SHARE_CLOUD").unwrap_or_default(), &me)
+}
+
+fn share_rule(rule: &str, me: &str) -> bool {
+    match rule.trim() {
+        "" | "all" => true,
+        "none" => false,
+        list => list.split(',').any(|x| x.trim() == me),
+    }
+}
+
+#[cfg(test)]
+mod share_tests {
+    #[test]
+    fn the_share_rule() {
+        assert!(super::share_rule("", "a1"));
+        assert!(super::share_rule("all", "a1"));
+        assert!(!super::share_rule("none", "a1"));
+        assert!(super::share_rule("b2, a1", "a1"));
+        assert!(!super::share_rule("b2", "a1"));
+    }
+}
+
 /// Every profile; `all` = also the cloud ones not added yet.
 fn catalog(app: &App, all: bool) -> Vec<Profile> {
+    let shared = shares_server_cloud(app);
     let lb = local_base();
     let p = |id: &str, label: &str, base: &str, model: &str, key: Option<&str>, local: bool, tier: &'static str| Profile {
         id: id.into(), label: label.into(), base_url: base.into(), model: model.into(), key_secret: key.map(String::from),
@@ -55,18 +88,18 @@ fn catalog(app: &App, all: bool) -> Vec<Profile> {
         p("local", "Qwen 3.5 9B, on your server (medium: general reasoning, complex instructions, everyday planning)", &lb, "assistant-qwen9b", None, true, "default"),
         Profile { warning: Some("Bigger than the server's 8 GB graphics card, so part of it runs on the processor: answers take longer and it uses about 24 GB of memory while it runs."),
             ..p("local-smart", "Qwen3.6 35B-A3B, on your server (smart: deep reasoning, hard decisions, complicated plans)", &lb, "assistant-qwen35b", None, true, "strong") },
-        Profile { key_from_env: true, ..p("nim", "NVIDIA NIM (cloud)", "https://integrate.api.nvidia.com/v1", "nvidia/nemotron-3-ultra-550b-a55b", Some("NIM_API_KEY"), false, "cloud") },
+        Profile { key_from_env: shared, ..p("nim", "NVIDIA NIM (cloud)", "https://integrate.api.nvidia.com/v1", "nvidia/nemotron-3-ultra-550b-a55b", Some("NIM_API_KEY"), false, "cloud") },
         p("gemini", "Google Gemini (cloud)", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.5-flash", Some("GEMINI_API_KEY"), false, "cloud"),
         Profile { key_optional: true, ..p("ovh", "OVH AI Endpoints (cloud, works without a key at a low rate)", "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1", "gpt-oss-120b", Some("OVH_AI_KEY"), false, "cloud") },
     ];
     // Proton Lumo through a local browser bridge, only when one is set (src/lumo.rs).
-    if let Some(u) = crate::lumo::bridge_url() {
+    if let Some(u) = crate::lumo::bridge_url().filter(|_| shared) {
         v.push(Profile { key_optional: true, warning: Some("Slow: each answer is typed into Lumo's web page by a browser on your server. Tools work through written calls, so they are less reliable than on the other models."),
             ..p("lumo", "Proton Lumo, your own account through a browser bridge on your server", &u, "lumo", None, false, "cloud") });
     }
     // The old single-model setting stays usable as its own profile.
     let m = &app.cfg.model;
-    if m.kind == "openai" {
+    if m.kind == "openai" && (shared || m.is_local()) {
         v.push(Profile { key_from_env: true, ..p("env", "Set by AGENT_MODEL_* on the server", &m.base_url, &m.name, None, m.is_local(), if m.is_local() { "default" } else { "cloud" }) });
     }
     // The owner's changes (another model name on a profile).

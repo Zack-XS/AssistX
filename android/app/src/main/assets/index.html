@@ -494,6 +494,43 @@ html[data-resolved=dark] .laddbar{border:1px solid var(--line)}
 .adays button:active{transform:scale(.9)}
 .aseg button{white-space:nowrap;padding:8px 4px}
 html[data-resolved=dark] .group .setrow{border:0}
+/* simpler settings pages: fold-away cards, place chips, health tiles, memory tree */
+.linkbtn{background:none;border:0;padding:6px 0;color:var(--text);font-weight:600;font-size:14px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}
+.linkbtn.bad{color:var(--bad)}
+details.more>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:600}
+details.more>summary::-webkit-details-marker,.mfold>summary::-webkit-details-marker{display:none}
+details.more>summary small{margin-left:auto;color:var(--mute);font-weight:400}
+details.more>summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:rotate(45deg);margin:-4px 4px 0 2px;transition:transform .2s var(--ease)}
+details.more[open]>summary{margin-bottom:10px}details.more[open]>summary::after{transform:rotate(-135deg);margin-top:4px}
+.tag.pick{border:1px solid var(--line);padding:7px 14px;color:var(--text);transition:background-color .2s,color .2s}
+.tag.pick.on{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
+.hgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:4px}
+.htile{background:var(--card);color:var(--text);border-radius:20px;padding:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px;min-width:0}
+html[data-resolved=dark] .htile{border:1px solid var(--line)}
+.htile small{color:var(--mute);font-size:13px}.htile b{font-size:22px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}.htile span{color:var(--mute);font-size:12px}
+.hday{gap:12px}.hday .hd{width:84px;flex:none}.hday .hv{color:var(--mute);font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hbar{flex:1;height:6px;border-radius:3px;background:var(--field);overflow:hidden}.hbar i{display:block;height:100%;background:var(--ink);border-radius:3px}
+.msearch{display:flex;align-items:center;gap:8px;background:var(--field);color:var(--mute);border:1px solid var(--line);border-radius:14px;padding:0 12px;margin-bottom:12px}
+.msearch input{flex:1;border:0;background:none;padding:11px 0;color:var(--text);font:inherit;outline:none}
+.mabout{line-height:1.45}
+.mtree{padding:2px 14px}
+.mfold{border-top:1px solid var(--line)}.mtree>.mfold:first-child{border-top:0}
+.mfold>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 0}
+.mfold>summary .sub{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mfold>summary>svg{color:var(--mute);transition:transform .2s var(--ease);flex:none}
+.mfold[open]>summary>svg{transform:rotate(90deg)}
+.mcount{color:var(--mute);font-size:14px;font-variant-numeric:tabular-nums}
+.mkids{padding:0 0 8px 12px;margin-left:17px;border-left:2px solid var(--line)}
+.mfold.sub{border-top:0}.mfold.sub>summary{padding:8px 0}.mfold.sub .chip{width:30px;height:30px}
+.ment{border-radius:14px;margin:4px 0}
+.mtree>.ment{border-top:1px solid var(--line);border-radius:0;margin:0}.mtree>.ment:first-child{border-top:0}
+.mhead{display:flex;align-items:flex-start;gap:10px;width:100%;text-align:left;background:none;border:0;padding:8px 2px;color:var(--text);font:inherit}
+.mhead b{font-weight:600}.mhead .sub{font-size:14px;margin-top:1px}
+.mpath{color:var(--mute);font-size:12px}
+.mdoubt{flex:none;font-size:12px;color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent);border-radius:999px;padding:2px 8px;margin-top:2px}
+.ment .macts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:0 2px 10px}
+.ment .macts[hidden]{display:none}
+.ment .macts select{background:var(--field);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:6px 8px;max-width:55%}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 #updbar{flex:none;background:var(--ink);color:var(--on-ink);padding:max(8px,env(safe-area-inset-top)) 14px 8px;font-size:14px;z-index:40}
 #updbar .ubrow{display:flex;align-items:center;gap:8px}
@@ -992,7 +1029,7 @@ $("bell").onclick = () => openSub("Needs your attention", subInsights);
 const goPlan = what => Object.assign(() => window.__open(what), { go: true });
 // Settings, in groups. Each group is one card; rows are split by thin lines.
 const GROUPS = [["", ["General", "Voice"]], ["Assistant", ["Intelligence", "Memory", "Mind map", "Automation", "Recipes", "Integrations"]],
-  ["Your day", ["Morning", "Noticing"]], ["Phone", ["Location", "Health", "Computers", "Privacy"]], ["", ["Developer"]]];
+  ["Phone", ["Location", "Health", "Computers", "Privacy"]], ["", ["Noticing", "Developer"]]];
 // Developer settings stay hidden until turned on (tap Version 7 times in General, like Android).
 const devOn = () => localStorage.getItem("devMode") === "1";
 // Old shortcuts to Plan and the technical pages live elsewhere now; they stay searchable here.
@@ -1015,7 +1052,6 @@ const SECTIONS = [
   ["home", "Location", "Where you go and your places", subLocation],
   ["bell", "Noticing", "Leaving home, gym visits, parcels, bills, plans", subNoticing],
   ["heart", "Health", "Steps, sleep and heart rate from this phone", subHealth],
-  ["clock", "Morning", "Morning brief and time-to-leave alerts", subMorning],
   ["folder", "Computers", "Your Mac, Windows or Linux computers", subComputers],
   ["phone", "Devices", "Phones and access tokens", subDevices],
   ["sliders", "Developer", "Server, model, status and tokens", subDeveloper],
@@ -1031,19 +1067,102 @@ async function powerCard() {
       hap("success"); if (subRebuild && $("subTitle").textContent === "General") subRebuild(); if (view === "home") renderHome();
     }));
 }
+// What is inside each page, so search finds a page by the things on it, not just its name.
+const TAGS = {
+  "Setup steps": "permissions battery home screen checklist start",
+  General: "appearance theme dark light open app on feel vibration haptics sounds account sign out update version power off",
+  Status: "parts activity use today usage safety health check working errors",
+  Voice: "phone assistant dictation button speech talk microphone mic wake connection",
+  Integrations: "plugins tools apps connect sign in login oauth tokens keys api autonomy auto ask never google spotify email gmail calendar music",
+  Privacy: "listen capture microphone keep text quiet places delete heard data",
+  Intelligence: "model ai llm brain each job recent runs speed thinking cloud local",
+  Memory: "facts folders remember forget notes confidence",
+  "Mind map": "people places groups friends family relationships graph",
+  Automation: "automations reminders jobs schedule recent actions tasks routines morning brief daily report time to leave leave-now alerts commute traffic",
+  Recipes: "saved steps run again shortcuts macros",
+  Alarms: "alarm wake ring sounds snooze quick alarm",
+  Calendar: "events schedule appointments meetings agenda reminders",
+  Lists: "shopping grocery to-do todo checklist",
+  Location: "gps places visits where map home work now",
+  Noticing: "places phone notifications noticed lately leaving home gym parcels packages bills plans",
+  Health: "steps sleep heart rate fitness last days",
+  Computers: "mac windows linux pc laptop desktop add a computer",
+  Devices: "phones access tokens sessions",
+  Developer: "server connection model status tokens chat show steps tools debug",
+};
+// Plugin names, summaries and tool names, fetched once when search opens. A hit here points to Integrations.
+let plugIdx = null;
+async function loadPlugIdx() {
+  if (plugIdx) return; plugIdx = [];
+  try {
+    const r = await api("GET", "/v1/plugins");
+    plugIdx = (r.items || []).map(p => ({ id: p.id, text: [p.id, p.summary, ...(p.tools || []).flatMap(t => [t.name, t.desc, ...(t.tags || [])])].join(" ") }));
+    if ($("q").value.trim()) renderSettings();
+  } catch (e) { plugIdx = null; }
+}
+// Words split on anything that is not a letter or number.
+const words = s => String(s || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+// How many letter changes turn a into b (stops early once it is over max).
+function edits(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]; let low = i;
+    for (let j = 1; j <= b.length; j++) { cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); low = Math.min(low, cur[j]); }
+    if (low > max) return max + 1; prev = cur;
+  }
+  return prev[b.length];
+}
+// A typed word matches a word if it starts it, or (only when nothing matched that way) is a small typo of it,
+// so "calander" still finds "calendar" but "heart" does not also pull in "heard".
+let fuzzy = false;
+function wordHit(q, list) {
+  const max = !fuzzy ? 0 : q.length >= 7 ? 2 : q.length >= 4 ? 1 : 0;
+  return list.some(w => w.startsWith(q) || (max > 0 && (edits(q, w, max) <= max || (w.length > q.length && edits(q, w.slice(0, q.length), max) <= max))));
+}
+// Every typed word has to match somewhere in the text.
+const allHit = (qs, text) => { const list = words(text); return qs.every(q => wordHit(q, list)); };
+// Why a page matched, for the small line under its title: its own name, what is on it, or a plugin.
+function whyHit(s, qs) {
+  if (allHit(qs, s[1] + " " + s[2])) return s[2];
+  if (allHit(qs, s[1] + " " + s[2] + " " + (TAGS[s[1]] || ""))) {
+    const found = words(TAGS[s[1]]).filter(w => qs.some(q => wordHit(q, [w])));
+    return "Has " + [...new Set(found)].slice(0, 3).join(", ");
+  }
+  if (s[1] === "Integrations" && plugIdx) {
+    const ps = plugIdx.filter(p => allHit(qs, p.text)).map(p => p.id);
+    if (ps.length) return "Plugin: " + ps.slice(0, 3).join(", ");
+  }
+  return null;
+}
 function renderSettings() {
-  const q = $("q").value.toLowerCase();
-  // Searching shows the one-line description too; the plain list is titles only.
+  const raw = $("q").value.trim(), qs = words(raw);
+  if (raw) loadPlugIdx();
+  // Searching shows why each page matched; the plain list is titles only.
+  const why = new Map();
   const row = ([ic, t, d, f]) => h("button", { class: "setrow", type: "button", onclick: ev => f.go ? f() : openSub(t, f, ev.currentTarget) },
-    h("span", { class: "setic" }, icon(ic, 20)), h("span", { class: "grow" }, h("b", { text: t }), q ? h("small", { text: d }) : null), icon("chev", 18));
-  const hit = s => (s[1] !== "Developer" || devOn()) && (q ? (s[1] + " " + s[2]).toLowerCase().includes(q) : !HIDDEN.has(s[1]));
-  const groups = q ? [["Results", SECTIONS.map(s => s[1])]] : GROUPS;
-  $("setBody").replaceChildren(...groups.flatMap(([name, titles]) => {
+    h("span", { class: "setic" }, icon(ic, 20)), h("span", { class: "grow" }, h("b", { text: t }), raw ? h("small", { text: why.get(t) || d }) : null), icon("chev", 18));
+  const hit = s => {
+    if ((s[1] === "Developer" || s[1] === "Noticing") && !devOn()) return false;
+    if (!raw) return !HIDDEN.has(s[1]);
+    const w = qs.length ? whyHit(s, qs) : null; if (w) why.set(s[1], w); return !!w;
+  };
+  fuzzy = false;
+  if (qs.length && !SECTIONS.some(hit)) { fuzzy = true; why.clear(); }
+  // Pages that match by name come first, then ones that match by what is on them.
+  const rank = t => { const s = SECTIONS.find(x => x[1] === t); return allHit(qs, s[1] + " " + s[2]) ? 0 : 1; };
+  const groups = raw ? [["Results", SECTIONS.map(s => s[1]).sort((a, b) => rank(a) - rank(b))]] : GROUPS;
+  const out = groups.flatMap(([name, titles]) => {
     const rows = titles.map(t => SECTIONS.find(s => s[1] === t)).filter(Boolean).filter(hit);
     return rows.length ? [name ? h("div", { class: "sect", text: name }) : h("div", { class: "gap" }), h("div", { class: "group" }, rows.map(row))] : [];
-  }));
+  });
+  // Nothing found: say so, and offer to ask the assistant instead.
+  if (raw && !out.length) out.push(h("div", { class: "gap" }), h("div", { class: "card" },
+    h("div", { class: "empty", text: "No setting matches “" + raw + "”." }),
+    h("button", { class: "pill", type: "button", onclick: () => { show("chat"); $("msg").value = "Where do I change " + raw + "?"; $("msg").focus(); } }, "Ask the assistant")));
+  $("setBody").replaceChildren(...out);
 }
-$("srch").onclick = () => { $("searchbar").hidden = !$("searchbar").hidden; if (!$("searchbar").hidden) $("q").focus(); };
+$("srch").onclick = () => { $("searchbar").hidden = !$("searchbar").hidden; if (!$("searchbar").hidden) { $("q").focus(); loadPlugIdx(); } };
 $("q").oninput = renderSettings;
 
 const capAvail = () => !!(NA && NA.captureState);
@@ -1248,67 +1367,77 @@ async function subNoticing(b) {
   b.append(h("div", { class: "sect", text: "Noticed lately" }), h("div", { class: "card" }, items.length ? items.slice(0, 20).map(i => h("div", { class: "item" }, h("span", { class: "grow" },
     h("div", { class: "t", text: i.kind + ": " + i.title }), h("div", { class: "sub", text: [i.date, i.amount, i.app, (i.at || "").replace("T", " ").slice(0, 16)].filter(Boolean).join(" · ") })))) : h("div", { class: "empty", text: "Nothing yet." })));
 }
+// Privacy: one switch, where it listens, how long text stays, and delete. Counts and manual runs are for developers.
 async function subPrivacy(b) {
   b.append(skel());
-  const st = await api("GET", "/v1/ambient/status"); const s = st.settings || {}; b.replaceChildren();
+  const [st, pl] = await Promise.all([api("GET", "/v1/ambient/status"), api("GET", "/v1/places")]); const s = st.settings || {}; b.replaceChildren();
   const patch = async o => { const r = await api("PATCH", "/v1/ambient/settings", o); if (r.error) alert(r.error.message); subRebuild(); };
-  if (capAvail()) b.append(h("div", { class: "card" }, toggle("Listen on this phone", "Turns speech into text here and sends only the text. A notification shows the whole time.", capOn(), v => NA.setCapture(v))));
+  const places = s.listen_places || [], paused = (s.paused_until || 0) > Date.now() / 1000;
+  const on = capAvail() ? capOn() && !!s.enabled : !!s.enabled;
+  const state = !on ? "Off. Nothing is heard or kept." : paused ? "Paused until " + new Date(s.paused_until * 1000).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) + "."
+    : !places.length ? "On, but no places picked yet, so nothing is kept." : "Listening at " + places.join(", ") + ".";
   b.append(h("div", { class: "card" },
-    h("div", { class: "kv" }, h("span", { text: "Status" }), h("b", { text: st.listening ? "Listening" : "Not listening" })),
+    toggle("Listening", "Speech becomes text on the phone. Audio never leaves it.", on, async v => { if (capAvail()) NA.setCapture(v); await patch({ enabled: v }); }),
+    h("div", { class: "sub", style: "padding-top:8px", text: state }),
+    on ? h("div", { class: "row", style: "gap:6px;margin-top:10px;flex-wrap:wrap" }, paused
+      ? h("button", { class: "pill solid", type: "button", onclick: async () => { await api("POST", "/v1/ambient/resume"); subRebuild(); } }, "Resume")
+      : [30, 60, 240].map(m => h("button", { class: "pill", type: "button", onclick: async () => { await api("POST", "/v1/ambient/pause", { minutes: m }); subRebuild(); } }, "Pause " + (m < 60 ? m + " min" : m / 60 + " h")))) : null));
+  // Where: tap a saved place to listen there. Typed names still work for places not saved yet.
+  const saved = (pl.items || []).map(p => (p.name || "").toLowerCase()).filter(Boolean);
+  const all = [...new Set([...saved, ...places])];
+  const flip = n => patch({ listen_places: places.includes(n) ? places.filter(x => x !== n) : [...places, n] });
+  const inp = h("input", { type: "text", placeholder: "Add a place, like school", "aria-label": "Place to listen at" });
+  b.append(h("div", { class: "sect", text: "Listen only at" }), h("div", { class: "card" },
+    all.length ? h("div", { class: "chips" }, all.map(n => h("button", { class: "tag pick" + (places.includes(n) ? " on" : ""), type: "button", "aria-pressed": String(places.includes(n)), onclick: () => flip(n) }, n))) : null,
+    h("form", { class: "field", style: all.length ? "margin-top:10px" : "", onsubmit: e => { e.preventDefault(); const v = inp.value.trim().toLowerCase(); if (v && !places.includes(v)) patch({ listen_places: [...places, v] }); } }, inp)));
+  const days = h("select", { "aria-label": "Keep text for" }, [...new Set([1, 3, 7, 14, 30, 90, 365, s.retention_days || 7])].sort((x, y) => x - y)
+    .map(d => h("option", { value: d, text: d === 1 ? "1 day" : d + " days", selected: d === s.retention_days })));
+  days.onchange = () => patch({ retention_days: +days.value });
+  const forget = (label, q) => h("button", { class: "pill bad", type: "button", onclick: async () => { if (!confirm("Delete heard text: " + label.toLowerCase() + "? This cannot be undone.")) return; const r = await api("DELETE", "/v1/ambient/chunks?" + q); toast((r.deleted ?? 0) + " deleted"); subRebuild(); } }, label);
+  b.append(h("div", { class: "sect", text: "Your heard text" }), h("div", { class: "card" },
+    h("label", { class: "field" }, h("span", { text: "Keep it for" }), days),
+    h("div", { class: "sub", style: "margin:4px 0 8px", text: "Delete it now:" }),
+    h("div", { class: "row", style: "gap:6px;flex-wrap:wrap" }, forget("Last hour", "last_minutes=60"), forget("Today", "day=" + new Date().toISOString().slice(0, 10)), forget("Everything", "all=true"))));
+  if (devOn()) b.append(h("div", { class: "sect", text: "Developer" }), h("div", { class: "card" },
     h("div", { class: "kv" }, h("span", { text: "Waiting to be looked at" }), h("span", { text: String(st.chunks?.waiting ?? 0) })),
     h("div", { class: "kv" }, h("span", { text: "Stored" }), h("span", { text: String(st.chunks?.total ?? 0) })),
     h("div", { class: "kv" }, h("span", { text: "Picks to review" }), h("span", { text: String(st.picks?.pending ?? 0) })),
-    toggle("Capture on", "Off refuses uploads from the phone", !!s.enabled, v => patch({ enabled: v }))));
-  b.append(h("div", { class: "row", style: "margin-bottom:12px" },
-    [30, 60, 240].map(m => h("button", { class: "pill", type: "button", onclick: async () => { await api("POST", "/v1/ambient/pause", { minutes: m }); subRebuild(); } }, "Pause " + (m < 60 ? m + " min" : m / 60 + " h"))),
-    h("button", { class: "pill solid", type: "button", onclick: async () => { await api("POST", "/v1/ambient/resume"); subRebuild(); } }, "Resume")));
-  b.append(h("div", { class: "sect", text: "Keep text for" }), h("div", { class: "card" }, h("div", { class: "row", style: "justify-content:space-between" },
-    h("button", { class: "pill", type: "button", "aria-label": "Fewer days", onclick: () => patch({ retention_days: Math.max(1, s.retention_days - 1) }) }, "\u2212"),
-    h("b", { text: s.retention_days + " days" }),
-    h("button", { class: "pill", type: "button", "aria-label": "More days", onclick: () => patch({ retention_days: Math.min(365, s.retention_days + 1) }) }, "+"))));
-  const inp = h("input", { type: "text", placeholder: "Add a place, like home", "aria-label": "Quiet place" });
-  b.append(h("div", { class: "sect", text: "Quiet places (nothing kept)" }), h("div", { class: "card" },
-    h("div", { class: "chips", style: "margin-bottom:10px" }, (s.quiet_places || []).map(pl => h("span", { class: "tag" }, pl, h("button", { type: "button", "aria-label": "Remove " + pl, onclick: () => patch({ quiet_places: s.quiet_places.filter(x => x !== pl) }) }, "\u2715")))),
-    h("form", { class: "field", onsubmit: e => { e.preventDefault(); const v = inp.value.trim(); if (v) patch({ quiet_places: [...(s.quiet_places || []), v] }); } }, inp)));
-  b.append(h("div", { class: "sect", text: "Look through it now" }), h("button", { class: "pill", type: "button", onclick: async () => { const r = await api("POST", "/v1/ambient/process"); alert(r.error ? r.error.message : "Started. New picks appear under Needs your attention."); } }, "Process waiting text"));
-  const forget = (label, q) => h("button", { class: "pill bad", type: "button", onclick: async () => { if (!confirm(label + "? This cannot be undone.")) return; const r = await api("DELETE", "/v1/ambient/chunks?" + q); alert((r.deleted ?? 0) + " deleted"); subRebuild(); } }, label);
-  b.append(h("div", { class: "sect", text: "Delete heard text" }), h("div", { class: "row" }, forget("Last hour", "last_minutes=60"), forget("Today", "day=" + new Date().toISOString().slice(0, 10)), forget("Everything", "all=true")));
-  b.append(h("p", { class: "sub", style: "margin-top:14px", text: "The server never receives audio or voice data, only text. Whatever other people say is treated as outside text and is never obeyed. Nothing becomes memory until you keep it." }));
+    h("button", { class: "pill", type: "button", style: "margin-top:8px", onclick: async () => { const r = await api("POST", "/v1/ambient/process"); alert(r.error ? r.error.message : "Started."); } }, "Process waiting text")));
+  b.append(h("p", { class: "sub", style: "margin-top:14px", text: "Only text reaches your server. What other people say is never obeyed. Nothing becomes memory unless it matters." }));
 }
+// Intelligence: which model, and when it may use the cloud. Keys and per-job models fold away; runs and stats are for developers.
 async function subIntelligence(b) {
   b.append(skel());
-  const [c, runs, mdl] = await Promise.all([api("GET", "/v1/config"), api("GET", "/v1/dreaming/runs"), api("GET", "/v1/models")]); b.replaceChildren();
+  const [c, mdl, plug] = await Promise.all([api("GET", "/v1/config"), api("GET", "/v1/models"), api("GET", "/v1/plugins")]); b.replaceChildren();
   if (mdl && mdl.profiles) {
-    // Which model answers. Auto: the small local model for tiny messages, the 9B otherwise; it may ask for the cloud.
     const profs = mdl.profiles;
     const save = async body => { const x = await api("PATCH", "/v1/models", body); if (x.error) alert(x.error.message); else hap("success"); fillChatModel(); subRebuild(); };
-    const opt = p => h("option", { value: p.id, text: p.label + (p.ready ? "" : " (needs a key)") + (p.warning ? " \u26a0" : ""), selected: mdl.mode === p.id });
+    const opt = p => h("option", { value: p.id, text: p.label + (p.ready ? "" : " (needs a key)") + (p.warning ? " ⚠" : ""), selected: mdl.mode === p.id });
     const mode = h("select", { "aria-label": "Model" }, (mdl.modes || []).map(m => h("option", { value: m.id, text: m.label.split(":")[0], selected: mdl.mode === m.id })), profs.map(opt));
     mode.onchange = () => {
       const p = profs.find(x => x.id === mode.value);
       if (p && p.warning && !confirm(p.label + "\n\n" + p.warning + "\n\nUse it anyway?")) { mode.value = mdl.mode; return; }
       save({ mode: mode.value });
     };
-    const modeInfo = (mdl.modes || []).find(m => m.id === mdl.mode);
+    const modeInfo = (mdl.modes || []).find(m => m.id === mdl.mode), cur = profs.find(p => p.id === mdl.mode);
     const cloud = h("select", { "aria-label": "Cloud model" }, profs.filter(p => !p.local).map(p => h("option", { value: p.id, text: p.label + (p.ready ? "" : " (needs a key)"), selected: mdl.cloud === p.id })));
     cloud.onchange = () => save({ cloud: cloud.value });
-    const up = h("select", { "aria-label": "Going to the cloud" }, [["ask", "Ask me first"], ["auto", "Allowed without asking"], ["never", "Never"]].map(([v, t]) => h("option", { value: v, text: t, selected: mdl.cloud_upgrade === v })));
+    const up = h("select", { "aria-label": "Use the cloud" }, [["ask", "Ask me first"], ["auto", "Yes, without asking"], ["never", "Never"]].map(([v, t]) => h("option", { value: v, text: t, selected: mdl.cloud_upgrade === v })));
     up.onchange = () => save({ cloud_upgrade: up.value });
-    const cur = profs.find(p => p.id === mdl.mode);
-    b.append(h("div", { class: "sect", text: "Model" }), h("div", { class: "card" },
-      h("label", { class: "field" }, h("span", { text: "Default for chats" }), mode),
-      h("div", { class: "sub", text: "Each chat can pick its own model from the menu at the top of the chat." }),
+    b.append(h("div", { class: "card" },
+      h("label", { class: "field" }, h("span", { text: "Model" }), mode),
       modeInfo ? h("div", { class: "sub", text: modeInfo.label.split(":").slice(1).join(":").trim() }) : null,
-      cur && cur.warning ? h("div", { class: "sub", style: "color:var(--bad)", text: "\u26a0 " + cur.warning }) : null,
-      h("label", { class: "field" }, h("span", { text: "Cloud model when more is needed" }), cloud),
-      h("label", { class: "field" }, h("span", { text: "Going to the cloud" }), up),
-      h("div", { class: "sub", text: "Keys are kept on your server. Add one for a cloud model:" }),
-      ...profs.filter(p => !p.local && p.key_secret).map(p => h("div", { class: "item" }, h("span", { class: "grow" }, h("div", { class: "t", text: p.label }), h("div", { class: "sub", text: p.ready ? (p.key_optional ? "Ready" : "Key set") : "No key yet" })),
+      cur && cur.warning ? h("div", { class: "sub", style: "color:var(--bad)", text: "⚠ " + cur.warning }) : null,
+      h("label", { class: "field", style: "margin-top:12px" }, h("span", { text: "Use the cloud for hard things" }), up),
+      mdl.cloud_upgrade === "never" ? null : h("label", { class: "field" }, h("span", { text: "Cloud model" }), cloud)));
+    // Folded away: keys for cloud models, and a model for each job.
+    const keyed = profs.filter(p => !p.local && p.key_secret);
+    if (keyed.length) b.append(h("details", { class: "card more" }, h("summary", {}, h("span", { text: "Cloud keys" }), h("small", { text: keyed.filter(p => p.ready).length + " of " + keyed.length + " set" })),
+      h("div", { class: "sub", text: "Kept on your server only." }),
+      keyed.map(p => h("div", { class: "item" }, h("span", { class: "grow" }, h("div", { class: "t", text: p.label }), h("div", { class: "sub", text: p.ready ? (p.key_optional ? "Ready" : "Key set") : "No key yet" })),
         h("button", { class: "pill", type: "button", onclick: async () => {
           const k = prompt("Paste the key for " + p.label + ". It is stored on your server only."); if (!k) return;
-          const x = await api("PUT", "/v1/secrets/" + p.key_secret, { value: k.trim() }); if (x.error) return alert(x.error.message); hap("success"); subRebuild(); } }, p.ready && !p.key_optional ? "Change key" : "Add key")))));
-    // A model per job: faster ones for simple work like Spotify, a better one for memory sorting.
-    const plug = await api("GET", "/v1/plugins");
+          const x = await api("PUT", "/v1/secrets/" + p.key_secret, { value: k.trim() }); if (x.error) return alert(x.error.message); hap("success"); subRebuild(); } }, p.ready && !p.key_optional ? "Change" : "Add key")))));
     const pick = (job, cur) => {
       const s = h("select", { "aria-label": "Model for " + job }, h("option", { value: "", text: "Same as above", selected: !cur }), profs.map(p => h("option", { value: p.id, text: p.label.split(",")[0] + (p.local ? "" : " (cloud)"), selected: cur === p.id })));
       s.onchange = () => save({ tasks: { [job]: s.value || null } });
@@ -1316,19 +1445,28 @@ async function subIntelligence(b) {
     };
     const jobs = [...(mdl.tasks || []).map(t => [t.id, t.label, t.model]),
       ...(plug.items || []).filter(p => p.status === "active" && !["plugin-maker", "memory-tools"].includes(p.id)).map(p => ["plugin:" + p.id, p.id, (mdl.plugin_models || {})[p.id]])];
-    b.append(h("div", { class: "sect", text: "Model for each job" }), h("div", { class: "card" },
-      h("div", { class: "sub", text: "Pick a faster model for simple jobs. A plugin's model takes over once the assistant opens that plugin." }),
+    const custom = jobs.filter(j => j[2]).length;
+    b.append(h("details", { class: "card more" }, h("summary", {}, h("span", { text: "Model for each job" }), h("small", { text: custom ? custom + " changed" : "All the same" })),
+      h("div", { class: "sub", text: "Pick a faster model for simple jobs." }),
       jobs.map(([id, label, cur]) => h("label", { class: "field" }, h("span", { text: label }), pick(id, cur)))));
   }
-  b.append(h("div", { class: "card" },
+  // Memory looks after itself. Just say so.
+  const night = String(c.dreaming_hour ?? 3).padStart(2, "0") + ":00";
+  b.append(h("div", { class: "card" }, h("div", { class: "item", style: "border:0;padding:0" },
+    h("span", { class: "chip" }, icon("brain", 18)),
+    h("span", { class: "grow" }, h("div", { class: "t", text: "Learns in the background" }),
+      h("div", { class: "sub", text: "It sorts what it hears and sees by itself, and only keeps what matters. Tidies up each night at " + night + "." })))));
+  if (!devOn()) return;
+  const runs = await api("GET", "/v1/dreaming/runs");
+  b.append(h("div", { class: "sect", text: "Developer" }), h("div", { class: "card" },
     h("div", { class: "kv" }, h("span", { text: "Model" }), h("b", { text: ((health?.model) || "").replace("openai-compatible:", "") })),
     h("div", { class: "kv" }, h("span", { text: "Tokens per day" }), h("span", { text: String(c.limits?.max_tokens_per_day ?? "") })),
     h("div", { class: "kv" }, h("span", { text: "Sorts memory on its own" }), h("span", { text: c.dream_every_mins ? "every " + c.dream_every_mins + " min when notes wait" : "off" })),
-    h("div", { class: "kv" }, h("span", { text: "Night run" }), h("span", { text: String(c.dreaming_hour).padStart(2, "0") + ":00" }))));
+    h("div", { class: "kv" }, h("span", { text: "Night run" }), h("span", { text: night }))));
   b.append(h("div", { class: "row", style: "margin-bottom:8px" },
     h("button", { class: "pill solid", type: "button", onclick: async () => { const r = await api("POST", "/v1/dreaming/run", { dry_run: false }); alert(r.error ? r.error.message : "Started"); subRebuild(); } }, "Sort memory now"),
     h("button", { class: "pill", type: "button", onclick: async () => { const r = await api("POST", "/v1/dreaming/run", { dry_run: true }); alert(r.error ? r.error.message : "Preview started"); subRebuild(); } }, "Preview only")));
-  b.append(h("div", { class: "sect", text: "Recent runs" }), h("div", { class: "card" }, ((runs.items || []).slice(0, 8)).map(r => h("div", { class: "kv" }, h("span", { text: (r.started || "").replace("T", " ").slice(0, 16) + (r.dry_run ? " (preview)" : "") }), h("span", { text: r.status }))) , (runs.items || []).length ? null : h("div", { class: "empty", text: "No runs yet." })));
+  b.append(h("div", { class: "sect", text: "Recent runs" }), h("div", { class: "card" }, ((runs.items || []).slice(0, 8)).map(r => h("div", { class: "kv" }, h("span", { text: (r.started || "").replace("T", " ").slice(0, 16) + (r.dry_run ? " (preview)" : "") }), h("span", { text: r.status }))), (runs.items || []).length ? null : h("div", { class: "empty", text: "No runs yet." })));
 }
 
 /* ---------- MIND MAP: what memory connects ---------- */
@@ -1509,7 +1647,7 @@ async function subRecipes(b) {
 }
 async function subAutomation(b) {
   b.append(skel());
-  const [jobs, acts] = await Promise.all([api("GET", "/v1/jobs"), api("GET", "/v1/actions?limit=10")]); b.replaceChildren();
+  const [jobs, acts, tr] = await Promise.all([api("GET", "/v1/jobs"), api("GET", "/v1/actions?limit=10"), api("GET", "/v1/travel")]); b.replaceChildren();
   const all = (jobs.items || []).filter(j => j.status !== "cancelled");
   const tasks = all.filter(j => j.kind === "task"), others = all.filter(j => j.kind !== "task" && j.kind !== "alarm" && !j.ring);
   const every = s => !s ? "" : s.on === "notification" ? "When " + (APPS[s.app] || s.app) + " notifies" + (s.contains ? " about \u201c" + s.contains + "\u201d" : "")
@@ -1537,6 +1675,15 @@ async function subAutomation(b) {
         h("button", { class: "pill bad", type: "button", onclick: async () => { if (!confirm("Delete " + (j.name || "this automation") + "?")) return; await api("DELETE", "/v1/jobs/" + j.id); subRebuild(); } }, "Delete")));
   }) : h("div", { class: "empty", text: "None yet. Make one below, or ask: \u201cevery morning at 8, give me a brief\u201d." })));
   b.append(h("button", { class: "pill solid", type: "button", style: "margin:4px 0 12px", onclick: () => openSub("New automation", bb => editAutomation(bb, null)) }, "New automation"));
+  // Leave-now alerts (they used to live on the Morning page).
+  if (tr && !tr.error) {
+    const patchT = async o => { const r = await api("PATCH", "/v1/travel", o); if (r.error) alert(r.error.message); subRebuild(); };
+    const mode = h("select", { "aria-label": "How you travel" }, [["driving", "Driving"], ["walking", "Walking"], ["cycling", "Cycling"]].map(([v, t]) => h("option", { value: v, text: t, selected: tr.mode === v })));
+    mode.onchange = () => patchT({ mode: mode.value });
+    b.append(h("div", { class: "sect", text: "Built in" }), h("div", { class: "card" },
+      toggle("Time to leave", "For events with a place: a nudge " + (tr.buffer_min ?? 10) + " min before you need to go. Needs Location.", !!tr.enabled, v => patchT({ enabled: v })),
+      tr.enabled ? h("label", { class: "field" }, h("span", { text: "How you travel" }), mode) : null));
+  }
   b.append(h("div", { class: "sect", text: "Reminders and jobs" }));
   b.append(h("div", { class: "card" }, others.length ? others.map(j => h("div", { class: "item" }, h("span", { class: "chip" }, icon(j.kind === "system" ? "bolt" : "clock", 18)), h("span", { class: "grow" }, h("div", { class: "t", text: j.name || j.text }), h("div", { class: "sub", text: (j.next_run ? when(j.next_run) : "done") + (j.kind === "system" ? " \u00b7 built in" : "") })),
     j.kind === "system" ? null : h("button", { class: "pill", type: "button", onclick: async () => { await api("DELETE", "/v1/jobs/" + j.id); subRebuild(); } }, "Cancel"))) : h("div", { class: "empty", text: "None." })));
@@ -2152,46 +2299,38 @@ async function subLocation(b) {
 /* ---------- health (Android Health Connect, read on the phone) ---------- */
 const healthState = () => { try { return NA && NA.healthState ? JSON.parse(NA.healthState()) : null; } catch (e) { return null; } };
 window.__healthChanged = () => { if (!$("subpage").hidden && subRebuild) subRebuild(); };
-async function subMorning(b) {
-  b.append(skel());
-  const [s, tr] = await Promise.all([api("GET", "/v1/brief"), api("GET", "/v1/travel")]); b.replaceChildren();
-  const patch = async o => { const r = await api("PATCH", "/v1/brief", o); if (r.error) alert(r.error.message); subRebuild(); };
-  const patchT = async o => { const r = await api("PATCH", "/v1/travel", o); if (r.error) alert(r.error.message); subRebuild(); };
-  const names = { weather: "Weather", calendar: "Today's calendar", sleep: "Last night's sleep", reminders: "Alarms and reminders today", lists: "Open to-dos" };
-  b.append(h("div", { class: "card" }, toggle("Morning brief", "When you wake up (first unlock after the night, a morning alarm turned off, or sleep ending in Health Connect), a short note with your day. Once a day.", !!s.enabled, v => patch({ enabled: v }))));
-  b.append(h("div", { class: "sect", text: "What it says" }), h("div", { class: "card" },
-    Object.keys(names).map(k => toggle(names[k], null, s.parts ? s.parts[k] !== false : true, v => patch({ parts: { [k]: v } })))));
-  const fb = h("input", { type: "time", value: s.fallback || "", "aria-label": "Fixed time" });
-  fb.onchange = () => patch({ fallback: fb.value || null });
-  b.append(h("div", { class: "sect", text: "Fixed time (optional)" }), h("div", { class: "card" },
-    h("label", { class: "field" }, h("span", { text: "Send by this time if the phone has not seen you wake" }), fb),
-    s.fallback ? h("button", { class: "pill", type: "button", onclick: () => patch({ fallback: null }) }, "No fixed time") : null));
-  b.append(h("div", { class: "row", style: "margin-bottom:12px" }, h("button", { class: "pill solid", type: "button", onclick: async () => { const r = await api("POST", "/v1/brief/run"); alert(r.error ? r.error.message : r.result === "brief_off" ? "The morning brief is off." : "On its way. It arrives as a notification in a minute or so."); } }, "Send it now")));
-  const mode = h("select", { "aria-label": "How you travel" }, [["driving", "Driving"], ["walking", "Walking"], ["cycling", "Cycling"]].map(([v, t]) => h("option", { value: v, text: t, selected: tr.mode === v })));
-  mode.onchange = () => patchT({ mode: mode.value });
-  b.append(h("div", { class: "sect", text: "Time to leave" }), h("div", { class: "card" },
-    toggle("Leave-now alerts", "For calendar events with a place: a notification " + (tr.buffer_min ?? 10) + " minutes before you need to leave, from where your phone is.", !!tr.enabled, v => patchT({ enabled: v })),
-    h("label", { class: "field" }, h("span", { text: "How you travel" }), mode)));
-  b.append(h("p", { class: "sub", text: "Travel times come from OpenStreetMap (router.project-osrm.org), without live traffic. Walking and cycling are estimated from the road distance. Needs Location on." }));
-}
-
+// Health: on or off, today in three numbers, and a short week. Every number is for developers.
 async function subHealth(b) {
   b.append(skel());
   const r = await api("GET", "/v1/health/days?limit=7"); b.replaceChildren();
   const st = healthState();
-  if (st) b.append(h("div", { class: "card" }, h("div", { class: "item" },
+  if (st) b.append(h("div", { class: "card" }, h("div", { class: "item", style: "border:0;padding:0" },
     h("span", { class: "chip", style: st.on ? "background:var(--ok);color:#fff" : "" }, icon("heart", 18)),
-    h("span", { class: "grow" }, h("div", { class: "t", text: !st.available ? "Health Connect is not on this phone" : st.on ? "Health is on" : "Health is off" }),
-      h("div", { class: "sub", text: !st.available ? "Install or update Health Connect, then come back." : st.on ? (st.last ? "Last sent " + st.last + ". Sends each time you open the app." : "Waiting for the first send.") : "Turn on to let the assistant know your steps, sleep and heart rate." })),
-    st.available ? h("button", { class: "pill" + (st.on ? "" : " solid"), type: "button", onclick: () => NA.setHealth(!st.on) }, st.on ? "Turn off" : "Turn on") : null)),
-    st.on ? h("div", { class: "card" }, h("div", { class: "item" }, h("span", { class: "grow" }, h("div", { class: "t", text: "Send now" })),
-      h("button", { class: "pill", type: "button", onclick: () => NA.syncHealth() }, "Send"))) : null);
-  const NAMES = { steps: "Steps", distance_m: "Distance (m)", active_kcal: "Active kcal", total_kcal: "Total kcal", sleep_min: "Sleep (min)", resting_hr: "Resting heart rate", avg_hr: "Average heart rate", max_hr: "Top heart rate", weight_kg: "Weight (kg)", exercise_min: "Workout (min)", hydration_ml: "Water (ml)", floors: "Floors" };
-  const days = r.items || [];
-  b.append(h("div", { class: "sect", text: "Last days" }), h("div", { class: "card" }, days.length ? days.map(d => h("div", { class: "item" }, h("span", { class: "grow" },
-    h("div", { class: "t", text: d.day }),
-    h("div", { class: "sub", text: Object.keys(d.metrics).map(k => (NAMES[k] || k) + " " + d.metrics[k]).join(" \u00b7 ") })))) : h("div", { class: "empty", text: "Nothing yet." })));
+    h("span", { class: "grow" }, h("div", { class: "t", text: !st.available ? "Health Connect is missing" : st.on ? "Health is on" : "Health is off" }),
+      h("div", { class: "sub", text: !st.available ? "Install or update Health Connect, then come back." : st.on ? (st.last ? "Updated " + st.last : "Waiting for the first update.") : "Lets the assistant see steps, sleep and heart rate." })),
+    st.available ? h("button", { class: "pill" + (st.on ? "" : " solid"), type: "button", onclick: () => NA.setHealth(!st.on) }, st.on ? "Turn off" : "Turn on") : null),
+    st.on ? h("button", { class: "linkbtn", type: "button", onclick: () => { NA.syncHealth(); toast("Updating…"); } }, "Update now") : null));
+  const days = (r.items || []).slice().sort((x, y) => y.day.localeCompare(x.day));
+  if (!days.length) { b.append(h("div", { class: "card" }, h("div", { class: "empty", text: "Nothing yet. Numbers show up after the first update." }))); return; }
+  const num = n => n == null ? "–" : Math.round(n).toLocaleString();
+  const hrs = m => m == null ? "–" : Math.floor(m / 60) + "h " + String(Math.round(m % 60)).padStart(2, "0") + "m";
+  const t = days[0].metrics || {}, today = days[0].day === ymd(new Date());
+  const tile = (label, value, unit) => h("div", { class: "htile" }, h("small", { text: label }), h("b", { text: value }), unit ? h("span", { text: unit }) : null);
+  b.append(h("div", { class: "sect", text: today ? "Today" : dayLabel(days[0].day) }), h("div", { class: "hgrid" },
+    tile("Steps", num(t.steps)), tile("Sleep", hrs(t.sleep_min)), tile("Resting heart", num(t.resting_hr ?? t.avg_hr), "bpm")));
+  const most = Math.max(1, ...days.map(d => (d.metrics || {}).steps || 0));
+  b.append(h("div", { class: "sect", text: "This week" }), h("div", { class: "card list" }, days.map(d => { const m = d.metrics || {};
+    return h("div", { class: "item hday" }, h("span", { class: "hd", text: dayLabel(d.day) }),
+      h("span", { class: "hbar" }, h("i", { style: "width:" + Math.round(100 * (m.steps || 0) / most) + "%" })),
+      h("span", { class: "hv", text: num(m.steps) + " · " + hrs(m.sleep_min) })); })));
+  if (devOn()) {
+    const NAMES = { steps: "Steps", distance_m: "Distance (m)", active_kcal: "Active kcal", total_kcal: "Total kcal", sleep_min: "Sleep (min)", resting_hr: "Resting heart rate", avg_hr: "Average heart rate", max_hr: "Top heart rate", weight_kg: "Weight (kg)", exercise_min: "Workout (min)", hydration_ml: "Water (ml)", floors: "Floors" };
+    b.append(h("div", { class: "sect", text: "Developer: every number" }), h("div", { class: "card" }, days.map(d => h("div", { class: "item" }, h("span", { class: "grow" },
+      h("div", { class: "t", text: d.day }), h("div", { class: "sub", text: Object.keys(d.metrics || {}).map(k => (NAMES[k] || k) + " " + d.metrics[k]).join(" · ") }))))));
+  }
 }
+const dayLabel = day => { const d = new Date(day + "T12:00"), n = new Date(); const diff = Math.round((new Date(n.getFullYear(), n.getMonth(), n.getDate(), 12) - d) / 864e5);
+  return diff === 0 ? "Today" : diff === 1 ? "Yesterday" : d.toLocaleDateString(undefined, { weekday: "short", day: "numeric" }); };
 
 /* ---------- computers ---------- */
 async function subComputers(b) {
@@ -2269,42 +2408,65 @@ async function subInsights(b) {
 }
 
 /* ---------- memory tree (inside the Memory page) ---------- */
-function entryRow(e, folders, reload) {
+// One remembered fact: title and summary. Tap it for move and delete. "Not sure" shows when it is doubtful.
+function entryRow(e, folders, reload, showPath) {
   const sel = h("select", { "aria-label": "Move " + e.title + " to folder" }, (folders.includes(e.topic_path) ? folders : [e.topic_path, ...folders]).map(f => h("option", { value: f, text: f, selected: f === e.topic_path })));
-  sel.onchange = async () => { await api("PATCH", "/v1/memory/" + e.id, { topic_path: sel.value }); reload(); };
-  return h("div", { class: "mem" }, h("b", { text: e.title }), h("div", { text: e.summary }),
-    h("div", { class: "meta" }, bar(e.confidence), h("span", { text: e.confidence.toFixed(2) + " \u00b7 " + e.source_trust + (e.status !== "current" ? " \u00b7 " + e.status : "") })),
-    h("div", { class: "macts" }, sel, h("button", { class: "pill bad", type: "button", "aria-label": "Delete " + e.title, onclick: async () => { if (!confirm("Delete \u201c" + e.title + "\u201d from memory?")) return; await api("DELETE", "/v1/memory/" + e.id); reload(); } }, "Delete")));
+  sel.onchange = async () => { await api("PATCH", "/v1/memory/" + e.id, { topic_path: sel.value }); hap("success"); reload(); };
+  const doubt = e.status === "disputed" ? "Disputed" : e.confidence < 0.5 ? "Not sure" : null;
+  const acts = h("div", { class: "macts", hidden: true }, h("span", { class: "sub", text: "Folder" }), sel,
+    h("button", { class: "pill bad", type: "button", "aria-label": "Delete " + e.title, onclick: async () => { if (!confirm("Forget “" + e.title + "”?")) return; await api("DELETE", "/v1/memory/" + e.id); reload(); } }, "Forget"),
+    devOn() ? h("span", { class: "sub", text: e.confidence.toFixed(2) + " · " + e.source_trust }) : null);
+  const row = h("div", { class: "ment" },
+    h("button", { class: "mhead", type: "button", "aria-expanded": "false", onclick: () => { acts.hidden = !acts.hidden; row.querySelector(".mhead").setAttribute("aria-expanded", String(!acts.hidden)); } },
+      h("span", { class: "grow" }, h("b", { text: e.title }), h("div", { class: "sub", text: e.summary }), showPath ? h("small", { class: "mpath", text: e.topic_path }) : null),
+      doubt ? h("span", { class: "mdoubt", text: doubt }) : null),
+    acts);
+  return row;
 }
-function folderNode(path, byParent, entriesBy, info, folders, reload) {
-  const f = info[path] || {};
-  return h("details", { class: "fold", open: (f.files_including_subfolders || 0) > 0 },
-    h("summary", {}, h("b", { text: path.split("/").pop() + "/" }), h("small", { class: "sub", text: " " + (f.files_including_subfolders ?? 0) + " files" }), f.average_confidence != null ? bar(f.average_confidence) : null, f.description ? h("small", { class: "sub", text: " \u2014 " + f.description }) : null),
-    (byParent[path] || []).map(k => folderNode(k, byParent, entriesBy, info, folders, reload)), (entriesBy[path] || []).map(e => entryRow(e, folders, reload)));
+function folderNode(path, byParent, entriesBy, info, folders, reload, depth = 0) {
+  const f = info[path] || {}, n = f.files_including_subfolders ?? 0;
+  const d = h("details", { class: "mfold" + (depth ? " sub" : "") },
+    h("summary", {}, h("span", { class: "chip" }, icon("folder", 18)),
+      h("span", { class: "grow" }, h("b", { text: path.split("/").pop() }), f.description ? h("div", { class: "sub", text: f.description }) : null),
+      h("span", { class: "mcount", text: String(n) }), icon("chev", 16)),
+    h("div", { class: "mkids" }, (byParent[path] || []).map(k => folderNode(k, byParent, entriesBy, info, folders, reload, depth + 1)), (entriesBy[path] || []).map(e => entryRow(e, folders, reload)),
+      !n ? h("div", { class: "empty", text: "Empty." }) : null));
+  return d;
 }
 async function loadMem(body) {
-  body.textContent = "Loading\u2026";
+  if (!body.children.length) body.append(skel());
   const reload = () => loadMem(body);
   try {
     const [core, mem, tree] = await Promise.all([api("GET", "/v1/memory/core"), api("GET", "/v1/memory?limit=200"), api("GET", "/v1/memory/folders")]);
     const items = tree.items || [], info = {}, byParent = {}, entriesBy = {};
     for (const f of items) { info[f.folder] = f; const par = f.folder.includes("/") ? f.folder.slice(0, f.folder.lastIndexOf("/")) : ""; (byParent[par] ||= []).push(f.folder); }
-    for (const e of (mem.items || []).filter(e => e.status === "current" || e.status === "disputed")) (entriesBy[e.topic_path] ||= []).push(e);
+    const live = (mem.items || []).filter(e => e.status === "current" || e.status === "disputed");
+    for (const e of live) (entriesBy[e.topic_path] ||= []).push(e);
     const folders = items.map(f => f.folder);
+    const q = h("input", { type: "search", placeholder: "Search " + live.length + " things it remembers", "aria-label": "Search memory" });
+    const tree_ = h("div", { class: "card list mtree" }, (byParent[""] || []).length ? (byParent[""] || []).map(r => folderNode(r, byParent, entriesBy, info, folders, reload)) : h("div", { class: "empty", text: "Nothing yet. It fills in as you talk." }));
+    const found = h("div", { class: "card list mtree", hidden: true });
+    q.oninput = () => {
+      const w = q.value.trim().toLowerCase();
+      tree_.hidden = !!w; found.hidden = !w; if (!w) return;
+      const hits = live.filter(e => (e.title + " " + e.summary + " " + e.topic_path).toLowerCase().includes(w));
+      found.replaceChildren(...(hits.length ? hits.slice(0, 50).map(e => entryRow(e, folders, reload, true)) : [h("div", { class: "empty", text: "Nothing matches." })]));
+    };
+    const aboutTxt = (core.text || "").trim();
     body.replaceChildren(
-      h("div", { class: "sect", text: "Basic facts" }), h("div", { class: "card", style: "white-space:pre-wrap", text: core.text || "(none yet)" }),
-      h("div", { class: "row", style: "justify-content:space-between;margin:14px 4px 6px" }, h("div", { class: "sect", style: "margin:0", text: "Folders" }),
-        h("button", { class: "pill", type: "button", onclick: async () => { const path = prompt("Folder path, for example School/math"); if (!path) return; const description = prompt("Short description (optional)") || ""; const r = await api("POST", "/v1/memory/folders", { path, description }); if (r.error) alert(r.error.message); reload(); } }, "+ New folder")),
-      h("div", { class: "card" }, (byParent[""] || []).map(r => folderNode(r, byParent, entriesBy, info, folders, reload))),
-      h("div", { class: "sect", text: "Start over" }),
-      h("div", { class: "card" }, h("p", { class: "sub", style: "margin:0 0 8px", text: "Deletes every memory, folder and basic fact. Your chats, calendar, alarms and places stay. This cannot be undone." }),
-        h("button", { class: "pill bad", type: "button", onclick: async () => {
-          if (!confirm("Delete ALL memory? This cannot be undone.")) return;
-          if ((prompt("Type DELETE to confirm") || "").trim() !== "DELETE") return;
-          const r = await api("POST", "/v1/memory/clear", { confirm: "DELETE ALL MEMORY" });
-          alert(r.error ? r.error.message : r.cleared + " entries deleted. Memory is empty."); reload();
-        } }, "Clear all memory")));
-  } catch (err) { body.textContent = "Could not load memory."; }
+      h("div", { class: "msearch" }, icon("search", 18), q),
+      h("div", { class: "card mabout" }, h("div", { class: "row", style: "justify-content:space-between;margin-bottom:6px" }, h("b", { text: "About you" }), h("small", { class: "sub", text: "Always in mind" })),
+        h("div", { class: aboutTxt ? "" : "empty", style: "white-space:pre-wrap", text: aboutTxt || "Nothing yet." })),
+      h("div", { class: "row", style: "justify-content:space-between;align-items:center;margin:18px 4px 8px" }, h("div", { class: "sect", style: "margin:0", text: "Folders" }),
+        h("button", { class: "linkbtn", type: "button", onclick: async () => { const path = prompt("Folder name, like School/math"); if (!path) return; const description = prompt("What goes in it? (optional)") || ""; const r = await api("POST", "/v1/memory/folders", { path, description }); if (r.error) alert(r.error.message); reload(); } }, "New folder")),
+      tree_, found,
+      h("button", { class: "linkbtn bad", type: "button", style: "margin:18px 4px 4px", onclick: async () => {
+        if (!confirm("Forget everything?\n\nDeletes every memory, folder and fact about you. Chats, calendar, alarms and places stay. This cannot be undone.")) return;
+        if ((prompt("Type DELETE to confirm") || "").trim() !== "DELETE") return;
+        const r = await api("POST", "/v1/memory/clear", { confirm: "DELETE ALL MEMORY" });
+        alert(r.error ? r.error.message : r.cleared + " entries deleted. Memory is empty."); reload();
+      } }, "Forget everything"));
+  } catch (err) { body.replaceChildren(h("div", { class: "empty", text: "Could not load memory." })); }
 }
 
 /* ---------- ASSISTANT: markdown, messages, process, streaming ---------- */

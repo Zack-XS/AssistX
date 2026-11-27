@@ -52,10 +52,12 @@ On Android these map to `SpringForce` (or Compose `spring()`). On the web, use t
 - **Row to page:** a tapped row grows into its page (Settings rows, a list). A page closed another way still slides out.
 - **No flicker (`settle()`):** a screen swaps content only when it changed. A refresh with the same data does nothing. A changed refresh swaps with no entrance. A tab waits up to 300 ms for its content, then plays the entrance once. Home gathers its top cards before it draws, so nothing pops in later.
 - **List tick:** the round check fills, the text is crossed out, then the row slides to Done.
-- **Ringing alarm:** the bell shakes on the top card.
 - **Mind map:** branches grow in when it opens. Tapping a name flies to it.
 - **Toast:** rises in, fades out after about 3 s.
 - **Docs site and home page:** sections rise 16 px and fade in as they scroll into view (`dur-page`, `ease-out`, 40 ms apart). Moving between pages fades the old page out in `dur-quick` and the new one in with `dur-base`.
+- **Theme change:** a cross-fade with view t- **Ringing alarm:** the bell shakes on the top card.
+ransitions, `ease-in-out`.
+- **Docs site and home page:** no scroll or page-load animation. Content is just there. Only the theme switch eases between light and dark.
 - **Haptics** go with motion: a click on press, a confirm when an answer finishes. See [Haptics](haptics.md).
 
 ## Reduced motion

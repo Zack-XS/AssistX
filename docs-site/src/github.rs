@@ -173,7 +173,8 @@ pub fn parse(text: &str) -> Data {
             notes: s(r, "body")
                 .lines()
                 .map(|l| l.trim().trim_start_matches(['-', '*']).trim().to_string())
-                .filter(|l| !l.is_empty() && !l.starts_with('#'))
+                // Skip headings and table rows; only plain lines read well as notes.
+                .filter(|l| !l.is_empty() && !l.starts_with('#') && !l.starts_with('|'))
                 .take(4)
                 .collect(),
             apk: r.get("apk").and_then(Value::as_str).filter(|u| safe_url(u)).map(str::to_string),

@@ -32,3 +32,16 @@ buttons, bubbles, cards, a sheet and a toast. The `.md` pages stay plain.
 
 `cargo test -j1` runs golden tests for each check, plus the front matter and
 secret scanners.
+
+## Screenshots
+
+The home page and the design pages show real screenshots of the app page
+(`android/app/src/main/assets/index.html`). They live in
+`assets/screens/light/` and `assets/screens/dark/` with the same names:
+`home`, `chat`, `calendar`, `list`, `alarms` (`.png`, 390×844 at 2x).
+
+To retake them: run the server with `AGENT_MODEL_KIND=mock`,
+`AGENT_SINGLE_USER=1` and `AGENT_ALLOWED_ORIGINS` set to where you serve the
+page, add sample events, lists and alarms through the API, then open the page
+at a 390×844 phone size in light and dark and screenshot each tab. Use sample
+data only, never real chats.

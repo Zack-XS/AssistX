@@ -12,7 +12,7 @@ New here? Read [What AssistX is](overview/what-is-assistx.md), then [Getting sta
 
 ## Top rule
 
-**All backend code is Rust: server, API, plugins, tools, tests, and build tools like the docs site and the token generator. The Android app stays Kotlin; the app's web page stays HTML/CSS/JS.** See [Code style](contributing/code-style.md) rule 1.
+All backend code is Rust: server, API, plugins, tools, tests, and build tools like the docs site and the token generator. The Android app stays Kotlin; the app's web page stays HTML/CSS/JS. See [Code style](contributing/code-style.md) rule 1.
 
 ## [Overview](overview/README.md)
 

@@ -574,6 +574,97 @@ html[data-resolved=dark] .htile{border:1px solid var(--line)}
 .mm.grow .br,.mm.grow .tw{stroke-dasharray:1;stroke-dashoffset:1;animation:mmgrow .42s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:var(--d,0s)}
 .mm.grow .n{opacity:0;animation:mmin .32s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:var(--d,0s)}
 @keyframes mmgrow{to{stroke-dashoffset:0}}@keyframes mmin{to{opacity:1}}}
+/* ---------- room to breathe: one spacing pass over every screen (docs/design/spacing-and-layout.md) ---------- */
+/* Screen edges, headers and the gaps between blocks. */
+.top{padding:max(28px,env(safe-area-inset-top)) 22px 14px}
+.scroll{padding:4px 20px 28px}
+#subhead{padding:14px 14px 10px}
+#subBody{padding:8px 20px 32px}
+#planSeg{margin:0 20px 16px}
+#searchbar{padding:0 20px 12px}
+.sect{margin:30px 6px 10px}
+#subBody>.sect:first-child,#setBody>.sect:first-child{margin-top:8px}
+.lhead{margin:28px 6px 10px}
+/* Text: a little more line height, and a real gap between a title and the line under it. */
+body{line-height:1.5}
+.sub{line-height:1.5}
+.item .sub,.ltext .sub,.mhead .sub,.mfold>summary .sub,.setrow small,.cx-perm .sub{display:block;margin-top:3px}
+.setrow small{line-height:1.45}
+.date{margin:8px 6px 0}.greet{margin:4px 6px 6px}.lead{margin:0 6px 24px;line-height:1.45}
+/* Cards: more padding inside, more space between. */
+.card{padding:20px 22px;margin:0 0 16px}
+.cardhead{margin-bottom:14px;gap:12px}
+.card>:last-child{margin-bottom:0}
+.card .row{gap:10px}
+.card .row+.row,.card .sub+.row,.card p+.row,.card .row+.sub{margin-top:14px}
+.card p{margin:0 0 12px}
+/* Cards made of rows: the rows carry their own padding, so the card keeps a thin edge top and bottom. */
+.card.list{padding:4px 22px}
+#subBody .card{padding:6px 22px}
+#subBody .card:not(:has(>:is(.tog,.kv,.item,.linkrow,.litem,.arow,.mfold,.ment,.tapkv):first-child)){padding-top:20px}
+#subBody .card:not(:has(>:is(.tog,.kv,.item,.linkrow,.litem,.arow,.mfold,.ment,.tapkv):last-child)){padding-bottom:20px}
+/* Rows. */
+.item{padding:14px 0;gap:14px}
+.card.list .item,#subBody .card>.item{padding:16px 0}
+.tog,.kv{padding:16px 0;gap:16px}
+#subBody .card>.tog,#subBody .card>.kv{padding:16px 0}
+.linkrow{padding:16px 0}
+.group{margin:0 0 8px}
+.group .setrow{padding:14px 18px;min-height:64px;gap:16px}
+.group .setrow+.setrow::before{left:68px}
+.setrow{padding:18px 18px;margin:0 0 12px}
+.chip{width:38px;height:38px}
+/* Lists. */
+.ltext{padding:15px 0}
+.litem{gap:14px}
+.lprog{margin:4px 6px 14px}
+.laddbar{margin:0 0 16px;padding:8px 8px 8px 18px}
+.lempty{padding:36px 0 28px;gap:8px}
+.lbar{margin-top:9px}
+/* Alarms. */
+.arow{padding:16px 18px}
+.arow+.arow::before,.alarms .ladd::before{left:18px}
+.asub{margin-top:3px}
+.anext .anext-in{margin:4px 0 6px}
+.quick{gap:8px;flex-wrap:wrap;overflow:visible}
+.card .sub+.field,.card p.sub+.field{margin-top:16px}
+.card .row:not(:first-child){margin-top:14px}
+/* Forms. */
+.field{margin:0 0 18px}
+.field span{margin-bottom:8px}
+.field input,.field select{padding:12px 14px}
+.seg{padding:4px;gap:4px}.seg button{padding:10px 8px}
+.chips{gap:8px}
+details.more[open]>summary{margin-bottom:16px}
+details.more>summary{min-height:28px}
+.tag.pick{padding:8px 16px}
+/* Memory and health. */
+.msearch{margin-bottom:16px}
+.mtree{padding:4px 18px}
+.mfold>summary{padding:15px 0;gap:14px}
+.mhead{padding:12px 2px;gap:12px}
+.ment .macts{gap:10px;padding:2px 2px 14px}
+.mkids{padding:0 0 10px 14px}
+.hgrid{gap:12px;margin-bottom:8px}
+.htile{padding:16px;gap:4px}
+.mem{padding:14px 16px;margin:8px 0}
+/* Chat. */
+#chatScroll{padding:0 20px}
+#log{gap:16px;padding:10px 0 24px}
+.me,.bot{padding:12px 16px;line-height:1.5}
+.bot p{margin:0 0 10px}.bot ul,.bot ol{margin:0 0 10px}.bot li+li{margin-top:4px}
+.turn>summary{padding:9px 14px}
+.steps{padding:8px 14px 12px;gap:10px}
+.apr{padding:16px;margin:0 0 12px}
+#cards{padding:0 20px}
+.starts{gap:10px}.start{padding:14px 16px}
+#hello p{margin:0 0 24px}
+#composer{padding:8px 16px 12px}
+/* Sign-in and setup. */
+#connect .cx-perm{padding:16px 0;gap:14px}
+#connect .cx-step{padding:12px 0}
+/* Notes under a card line up with the section labels, not the screen edge. */
+#subBody>p.sub,#subBody>div.sub{margin:4px 6px 16px}
 </style></head>
 <body>
 <div id="app">
@@ -1000,7 +1091,7 @@ async function renderHome() {
   if (view !== "home") return;
   if (sc) sc.id = "setupcard";
   const off = pw && pw.on === false ? h("div", { class: "card", id: "offcard" }, h("div", { class: "cardhead" }, icon("bolt", 22), h("h3", { class: "grow", text: "AssistX is off" })),
-    h("p", { class: "sub", style: "margin:0 0 8px", text: "Nothing is running. Alarms already set on this phone still ring." }),
+    h("p", { class: "sub", style: "margin:0 0 14px", text: "Nothing is running. Alarms already set on this phone still ring." }),
     h("button", { class: "pill solid", type: "button", onclick: async () => { await api("PUT", "/v1/power", { on: true }); renderHome(); } }, "Turn on")) : null;
   settle(body, [
     h("div", { class: "date", text: now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }) }),
@@ -1014,12 +1105,12 @@ async function renderHome() {
     h("div", { class: "card" },
       h("div", { class: "cardhead" }, icon("calendar", 22), h("h3", { class: "grow", text: "Upcoming" }), h("button", { class: "link", type: "button", onclick: () => window.__open("calendar") }, "Open plan", icon("chev", 16))),
       up.length ? up.map(upRow) : h("div", { class: "empty", text: "Nothing coming up." }),
-      h("div", { class: "row", style: "margin-top:10px" },
+      h("div", { class: "row", style: "margin-top:14px" },
         h("button", { class: "pill ic", type: "button", onclick: () => window.__open("new-event") }, icon("plus", 16), " Event"),
         h("button", { class: "pill ic", type: "button", onclick: () => window.__open("new-alarm") }, icon("clock", 16), " Alarm"))),
     h("div", { class: "card" },
       h("div", { class: "cardhead" }, icon("bulb", 22), h("h3", { class: "grow", text: "Noticed" }), h("span", { class: "sub", text: ins.length + " insight" + (ins.length === 1 ? "" : "s") })),
-      ins.length ? h("p", { style: "margin:4px 0 8px", text: ins[0].text }) : h("div", { class: "empty", text: "Nothing needs your attention." }),
+      ins.length ? h("p", { style: "margin:14px 0 10px", text: ins[0].text }) : h("div", { class: "empty", text: "Nothing needs your attention." }),
       ins.length ? h("button", { class: "link", type: "button", style: "color:var(--text);font-weight:600", onclick: () => openSub("Needs your attention", subInsights) }, "Review insight", icon("chev", 16)) : null)]);
 
 }
@@ -1195,8 +1286,8 @@ function updCard(u) {
   const ready = u.state === "ready";
   return h("div", { class: "card" },
     h("div", { class: "cardhead" }, icon("bolt", 22), h("h3", { class: "grow", text: ready ? "Update ready" : u.state === "downloading" ? "Downloading update" : u.state === "error" ? "Update problem" : "Update available" }), h("span", { class: "sub", text: u.latest.name })),
-    u.latest.notes ? h("p", { class: "sub", style: "margin:0 0 8px", text: u.latest.notes }) : null,
-    u.message ? h("p", { class: "sub", style: "margin:0 0 8px", text: u.message }) : null,
+    u.latest.notes ? h("p", { class: "sub", style: "margin:0 0 14px", text: u.latest.notes }) : null,
+    u.message ? h("p", { class: "sub", style: "margin:0 0 14px", text: u.message }) : null,
     h("div", { class: "row" },
       ready ? h("button", { class: "pill solid", type: "button", onclick: () => NA.installUpdate() }, "Install and restart") : null,
       u.state !== "downloading" && !ready ? h("button", { class: "pill", type: "button", onclick: () => NA.checkUpdate() }, u.state === "error" ? "Try again" : "Download") : null));
@@ -1273,12 +1364,12 @@ function subVoice(b) {
       vs.wake && !vs.overlay ? h("div", { class: "item" }, h("span", { class: "grow" }, h("div", { class: "t", text: "Open right away" }),
         h("div", { class: "sub", text: "Opens AssistX at once, not as a notification." })),
         h("button", { class: "pill solid", type: "button", onclick: () => NA.openOverlaySettings() }, "Allow")) : null,
-      h("button", { class: "pill solid", type: "button", style: "margin-top:8px", onclick: () => NA.talk() }, "Try it now")));
+      h("button", { class: "pill solid", type: "button", style: "margin-top:12px", onclick: () => NA.talk() }, "Try it now")));
   }
   b.append(h("div", { class: "card" },
     toggle("Dictation button", nativeMic ? "Speak instead of typing. Stays on this phone." : SR ? "Speak instead of typing." : "This browser has no speech input.", opt("dictation", true) && !!(SR || nativeMic), v => { setOpt("dictation", v); applyOpts(); }),
-    h("label", { class: "field", style: "margin-top:8px" }, h("span", { text: "Language" }), h("input", { type: "text", value: localStorage.getItem("lang") || navigator.language || "en-US", onchange: e => localStorage.setItem("lang", e.target.value.trim()) }))));
-  b.append(h("p", { class: "sub", style: "margin:10px 4px", text: "All-day listening is in Privacy." }));
+    h("label", { class: "field", style: "margin-top:12px" }, h("span", { text: "Language" }), h("input", { type: "text", value: localStorage.getItem("lang") || navigator.language || "en-US", onchange: e => localStorage.setItem("lang", e.target.value.trim()) }))));
+  b.append(h("p", { class: "sub", style: "margin:14px 6px", text: "All-day listening is in Privacy." }));
 }
 const OAUTH = { spotify: { name: "Spotify", site: "developer.spotify.com/dashboard", note: "Controlling playback needs Spotify Premium." },
   "google-health": { name: "Google Health", site: "console.cloud.google.com", note: "Turn on the Google Health API, make an OAuth client, and paste its Client ID and Client Secret." },
@@ -1288,7 +1379,7 @@ function oauthBlock(prov, st) {
   const redirect = NA && NA.openUrl ? "app.assistant://" + prov : location.origin + "/";
   const cid = h("input", { type: "text", placeholder: "Client ID", value: st.client_id || "", autocomplete: "off", "aria-label": "Client ID" });
   const csec = st.needs_secret ? h("input", { type: "password", placeholder: "Client Secret", autocomplete: "off", "aria-label": "Client Secret" }) : null;
-  const missing = st.connected && (st.missing_scopes || []).length ? h("div", { class: "sub", style: "padding:6px 0", text: "Some permissions were not allowed. Connect again and tick every box." }) : null;
+  const missing = st.connected && (st.missing_scopes || []).length ? h("div", { class: "sub", style: "padding:10px 0", text: "Some permissions were not allowed. Connect again and tick every box." }) : null;
   const connect = async () => {
     const r = await api("POST", "/v1/oauth/" + prov + "/start", { client_id: cid.value.trim(), redirect_uri: redirect, client_secret: csec ? csec.value.trim() : "" });
     if (r.error) return alert(r.error.message);
@@ -1296,13 +1387,13 @@ function oauthBlock(prov, st) {
     if (NA && NA.openUrl) NA.openUrl(r.url); else location.href = r.url;
   };
   return [
-    h("div", { class: "sect", style: "margin:12px 0 4px", text: "Connection" }),
+    h("div", { class: "sect", style: "margin:16px 0 8px", text: "Connection" }),
     h("div", { class: "kv" }, h("span", { text: info.name }), h("b", { text: st.connected ? "\u2713 Connected" : "Not connected" })),
-    st.connected ? null : h("div", { class: "sub", style: "padding:6px 0", text: "One-time setup: go to " + info.site + ", make an app, copy its Client ID, and add this Redirect URI to the app. " + info.note }),
+    st.connected ? null : h("div", { class: "sub", style: "padding:10px 0", text: "One-time setup: go to " + info.site + ", make an app, copy its Client ID, and add this Redirect URI to the app. " + info.note }),
     st.connected ? null : h("div", { class: "secret", text: redirect }),
     missing,
-    h("label", { class: "field", style: "margin-top:8px" }, h("span", { text: "Client ID" }), cid),
-    csec ? h("label", { class: "field", style: "margin-top:8px" }, h("span", { text: "Client Secret" }), csec) : null,
+    h("label", { class: "field", style: "margin-top:12px" }, h("span", { text: "Client ID" }), cid),
+    csec ? h("label", { class: "field", style: "margin-top:12px" }, h("span", { text: "Client Secret" }), csec) : null,
     h("div", { class: "row" },
       h("button", { class: "pill solid", type: "button", onclick: connect }, st.connected ? "Connect again" : "Connect " + info.name),
       st.connected ? h("button", { class: "pill bad", type: "button", onclick: async () => { if (!confirm("Disconnect " + info.name + "?")) return; await api("DELETE", "/v1/oauth/" + prov); subRebuild(); } }, "Disconnect") : null),
@@ -1337,7 +1428,7 @@ async function subIntegrations(b) {
     const connection = prov ? oauthBlock(prov, await api("GET", "/v1/oauth/" + prov)) : [];
     const wanted = ((p.needs && p.needs.secrets) || []).filter(n => !prov || !n.startsWith(prov.toUpperCase() + "_"));
     if (wanted.length || prov) any = true;
-    const tokens = wanted.length ? [h("div", { class: "sect", style: "margin:12px 0 4px", text: "Access tokens" }), ...wanted.map(name => {
+    const tokens = wanted.length ? [h("div", { class: "sect", style: "margin:16px 0 8px", text: "Access tokens" }), ...wanted.map(name => {
       const input = h("input", { type: "password", placeholder: have.has(name) ? "Paste a new value to replace it" : "Paste the value", autocomplete: "off", "aria-label": name });
       return h("div", { class: "field" },
         h("span", {}, h("b", { text: name }), "  ", have.has(name) ? "\u2713 set " + have.get(name).slice(0, 10) : "not set"),
@@ -1378,8 +1469,8 @@ async function subPrivacy(b) {
     : !places.length ? "On, but no places picked yet, so nothing is kept." : "Listening at " + places.join(", ") + ".";
   b.append(h("div", { class: "card" },
     toggle("Listening", "Speech becomes text on the phone. Audio never leaves it.", on, async v => { if (capAvail()) NA.setCapture(v); await patch({ enabled: v }); }),
-    h("div", { class: "sub", style: "padding-top:8px", text: state }),
-    on ? h("div", { class: "row", style: "gap:6px;margin-top:10px;flex-wrap:wrap" }, paused
+    h("div", { class: "sub", style: "padding-top:12px", text: state }),
+    on ? h("div", { class: "row", style: "gap:10px;margin-top:14px;flex-wrap:wrap" }, paused
       ? h("button", { class: "pill solid", type: "button", onclick: async () => { await api("POST", "/v1/ambient/resume"); subRebuild(); } }, "Resume")
       : [30, 60, 240].map(m => h("button", { class: "pill", type: "button", onclick: async () => { await api("POST", "/v1/ambient/pause", { minutes: m }); subRebuild(); } }, "Pause " + (m < 60 ? m + " min" : m / 60 + " h")))) : null));
   // Where: tap a saved place to listen there. Typed names still work for places not saved yet.
@@ -1396,13 +1487,13 @@ async function subPrivacy(b) {
   const forget = (label, q) => h("button", { class: "pill bad", type: "button", onclick: async () => { if (!confirm("Delete heard text: " + label.toLowerCase() + "? This cannot be undone.")) return; const r = await api("DELETE", "/v1/ambient/chunks?" + q); toast((r.deleted ?? 0) + " deleted"); subRebuild(); } }, label);
   b.append(h("div", { class: "sect", text: "Your heard text" }), h("div", { class: "card" },
     h("label", { class: "field" }, h("span", { text: "Keep it for" }), days),
-    h("div", { class: "sub", style: "margin:4px 0 8px", text: "Delete it now:" }),
-    h("div", { class: "row", style: "gap:6px;flex-wrap:wrap" }, forget("Last hour", "last_minutes=60"), forget("Today", "day=" + new Date().toISOString().slice(0, 10)), forget("Everything", "all=true"))));
+    h("div", { class: "sub", style: "margin:14px 0 10px", text: "Delete it now:" }),
+    h("div", { class: "row", style: "gap:10px;flex-wrap:wrap" }, forget("Last hour", "last_minutes=60"), forget("Today", "day=" + new Date().toISOString().slice(0, 10)), forget("Everything", "all=true"))));
   if (devOn()) b.append(h("div", { class: "sect", text: "Developer" }), h("div", { class: "card" },
     h("div", { class: "kv" }, h("span", { text: "Waiting to be looked at" }), h("span", { text: String(st.chunks?.waiting ?? 0) })),
     h("div", { class: "kv" }, h("span", { text: "Stored" }), h("span", { text: String(st.chunks?.total ?? 0) })),
     h("div", { class: "kv" }, h("span", { text: "Picks to review" }), h("span", { text: String(st.picks?.pending ?? 0) })),
-    h("button", { class: "pill", type: "button", style: "margin-top:8px", onclick: async () => { const r = await api("POST", "/v1/ambient/process"); alert(r.error ? r.error.message : "Started."); } }, "Process waiting text")));
+    h("button", { class: "pill", type: "button", style: "margin-top:12px", onclick: async () => { const r = await api("POST", "/v1/ambient/process"); alert(r.error ? r.error.message : "Started."); } }, "Process waiting text")));
   b.append(h("p", { class: "sub", style: "margin-top:14px", text: "Only text reaches your server. What other people say is never obeyed. Nothing becomes memory unless it matters." }));
 }
 // Intelligence: which model, and when it may use the cloud. Keys and per-job models fold away; runs and stats are for developers.
@@ -1428,7 +1519,7 @@ async function subIntelligence(b) {
       h("label", { class: "field" }, h("span", { text: "Model" }), mode),
       modeInfo ? h("div", { class: "sub", text: modeInfo.label.split(":").slice(1).join(":").trim() }) : null,
       cur && cur.warning ? h("div", { class: "sub", style: "color:var(--bad)", text: "⚠ " + cur.warning }) : null,
-      h("label", { class: "field", style: "margin-top:12px" }, h("span", { text: "Use the cloud for hard things" }), up),
+      h("label", { class: "field", style: "margin-top:20px" }, h("span", { text: "Use the cloud for hard things" }), up),
       mdl.cloud_upgrade === "never" ? null : h("label", { class: "field" }, h("span", { text: "Cloud model" }), cloud)));
     // Folded away: keys for cloud models, and a model for each job.
     const keyed = profs.filter(p => !p.local && p.key_secret);
@@ -1474,7 +1565,7 @@ async function subIntelligence(b) {
 // Dashed lines are the links memory found between them. Drag to move, pinch or scroll to zoom, tap to look closer.
 function subMind(b) {
   const box = h("div", { class: "card", style: "padding:12px 14px" }, skel());
-  const info = h("div", { class: "card", style: "margin-top:10px" }, h("div", { class: "sub", text: "Tap anything to see what it links to. Tap a branch to fold it." }));
+  const info = h("div", { class: "card", style: "margin-top:14px" }, h("div", { class: "sub", text: "Tap anything to see what it links to. Tap a branch to fold it." }));
   b.append(box, info);
   api("GET", "/v1/memory/graph").then(g => {
     if (g.error) return box.replaceChildren(h("div", { class: "empty", text: g.error.message }));
@@ -1619,10 +1710,10 @@ function mindDraw(box, info, ns, ls) {
     info.replaceChildren(
       h("div", { class: "mmkind", text: one[n.kind] + (n.files ? " · " + n.files + (n.files === 1 ? " note" : " notes") : "") }),
       h("h3", { style: "margin:2px 0 0;font-size:20px", text: n.label }),
-      n.summary ? h("p", { style: "margin:6px 0 0", text: n.summary }) : null,
+      n.summary ? h("p", { style: "margin:10px 0 0", text: n.summary }) : null,
       mine.length ? h("div", { class: "mmlinks" }, mine.map(e => { const o = e.a === n ? e.b : e.a;
         return h("button", { class: "pill", type: "button", onclick: () => pick(o, true) }, o.label, h("small", { text: e.why })); }))
-        : h("div", { class: "sub", style: "margin-top:6px", text: "No links yet." }));
+        : h("div", { class: "sub", style: "margin-top:10px", text: "No links yet." }));
   }
 
   box.replaceChildren(wrap);
@@ -1666,15 +1757,15 @@ async function subAutomation(b) {
       h("span", { class: "grow", style: "min-width:60%" }, h("div", { class: "t", text: (j.name || j.text) + (paused ? " (paused)" : "") }),
         j.description ? h("div", { class: "sub", text: j.description }) : null,
         h("div", { class: "sub", text: every(j.schedule) + (j.next_run ? " \u00b7 next " + when(j.next_run) : "") + " \u00b7 ran " + (j.runs || 0) + "\u00d7" + (j.schedule && j.schedule.model ? " \u00b7 " + j.schedule.model : "") + (j.schedule && j.schedule.quiet ? " \u00b7 quiet" : "") }),
-        j.last_result ? h("div", { class: "sub", style: "margin-top:2px", text: "Last: " + j.last_result.slice(0, 140) }) : null),
-      h("div", { class: "row", style: "width:100%;margin-top:6px;gap:6px" },
+        j.last_result ? h("div", { class: "sub", style: "margin-top:4px", text: "Last: " + j.last_result.slice(0, 140) }) : null),
+      h("div", { class: "row", style: "width:100%;margin-top:10px;gap:10px" },
         h("button", { class: "pill", type: "button", onclick: async () => { const x = await api("POST", "/v1/jobs/" + j.id + "/run"); if (x.error) return alert(x.error.message); hap("success"); alert("Started. The report will show here when it is done."); } }, "Run now"),
         h("button", { class: "pill", type: "button", onclick: () => openSub(j.name || "Automation", bb => editAutomation(bb, j)) }, "Edit"),
         h("button", { class: "pill", type: "button", onclick: async () => { await api("POST", "/v1/jobs/" + j.id + (paused ? "/resume" : "/pause")); subRebuild(); } }, paused ? "Resume" : "Pause"),
         j.last_thread ? h("button", { class: "pill", type: "button", onclick: () => { closeSubSoft && closeSubSoft(); openThread(j.last_thread); show("chat"); } }, "Report") : null,
         h("button", { class: "pill bad", type: "button", onclick: async () => { if (!confirm("Delete " + (j.name || "this automation") + "?")) return; await api("DELETE", "/v1/jobs/" + j.id); subRebuild(); } }, "Delete")));
   }) : h("div", { class: "empty", text: "None yet. Make one below, or ask: \u201cevery morning at 8, give me a brief\u201d." })));
-  b.append(h("button", { class: "pill solid", type: "button", style: "margin:4px 0 12px", onclick: () => openSub("New automation", bb => editAutomation(bb, null)) }, "New automation"));
+  b.append(h("button", { class: "pill solid", type: "button", style: "margin:8px 0 16px", onclick: () => openSub("New automation", bb => editAutomation(bb, null)) }, "New automation"));
   // Leave-now alerts (they used to live on the Morning page).
   if (tr && !tr.error) {
     const patchT = async o => { const r = await api("PATCH", "/v1/travel", o); if (r.error) alert(r.error.message); subRebuild(); };
@@ -1727,11 +1818,11 @@ async function editAutomation(b, j) {
   b.append(h("div", { class: "card" },
     h("label", { class: "field" }, h("span", { text: "Name" }), name),
     h("label", { class: "field" }, h("span", { text: "What to do" }), text),
-    j ? null : h("div", { class: "row", style: "flex-wrap:wrap;gap:6px;margin:4px 0 8px" }, examples.map(e => h("button", { class: "pill", type: "button", onclick: () => { text.value = e; } }, e.split(":")[0].slice(0, 28) + "\u2026"))),
+    j ? null : h("div", { class: "row", style: "flex-wrap:wrap;gap:10px;margin:14px 0 10px" }, examples.map(e => h("button", { class: "pill", type: "button", onclick: () => { text.value = e; } }, e.split(":")[0].slice(0, 28) + "\u2026"))),
     h("label", { class: "field" }, h("span", { text: "When" }), kind), box,
     h("label", { class: "field" }, h("span", { text: "Model" }), model),
     h("label", { class: "field" }, h("span", { text: "Notifications" }), quiet),
-    h("button", { class: "pill solid", type: "button", style: "margin-top:10px", onclick: async () => {
+    h("button", { class: "pill solid", type: "button", style: "margin-top:14px", onclick: async () => {
       if (!text.value.trim()) return alert("Say what the assistant should do.");
       const body = { name: name.value.trim() || null, text: text.value.trim(), model: model.value, quiet: quiet.value === "1" };
       if (kind.value === "minutes") body.every_minutes = +mins.value;
@@ -1817,7 +1908,7 @@ async function setupCard() {
   const L = await setupItems(true), done = L.filter(i => i.done).length;
   if (done === L.length) return null;
   return h("div", { class: "card" }, h("div", { class: "cardhead" }, icon("check", 24), h("h3", { class: "grow", text: "Finish setting up" }), h("span", { class: "sub", text: done + " of " + L.length })),
-    h("p", { class: "sub", style: "margin:0 0 8px", text: L.filter(i => !i.done && !i.optional).length ? "A few things need a tap so everything works properly." : "Only optional things are left." }),
+    h("p", { class: "sub", style: "margin:0 0 14px", text: L.filter(i => !i.done && !i.optional).length ? "A few things need a tap so everything works properly." : "Only optional things are left." }),
     h("button", { class: "pill solid", type: "button", onclick: () => openSub("Setup steps", subSetup) }, "Open setup steps"));
 }
 async function subSetup(b) {
@@ -1828,7 +1919,7 @@ async function subSetup(b) {
     h("div", { class: "setupbar" }, h("i", { style: "width:" + pct + "%" }))));
   const row = i => h("div", { class: "item" + (i.done ? " done" : "") }, h("span", { class: "chip" }, icon(i.done ? "check" : "clock", 18)),
     h("span", { class: "grow" }, h("div", { class: "t", text: i.label }), h("div", { class: "sub", text: i.skipped ? "Skipped" : i.hint })),
-    i.done ? null : h("span", { class: "row", style: "gap:6px" },
+    i.done ? null : h("span", { class: "row", style: "gap:10px" },
       i.optional ? h("button", { class: "pill", type: "button", onclick: () => { const s = setupSkipped(); s.add(i.id); localStorage.setItem("setupSkipped", JSON.stringify([...s])); subRebuild(); } }, "Skip") : null,
       h("button", { class: "pill solid", type: "button", onclick: async () => { await i.fix(); setTimeout(() => subRebuild(), 600); } }, i.fixText || "Fix")));
   const isPerm = i => PERMS.some(p => p.id === i.id);
@@ -1936,7 +2027,7 @@ async function planCalendar(body, gen) {
         h("button", { class: "iconbtn", type: "button", "aria-label": "Next month", onclick: () => move(1) }, icon("chev", 20))), grid);
     const dayEvs = byDay[calSel] || [], dayRem = remBy[calSel] || [];
     // One day of something that repeats can be skipped without touching the other days; a skipped one stays visible, dimmed, with a way back.
-    const withAction = (main, label, fn, dim) => h("div", { style: "display:flex;align-items:center;gap:6px" + (dim ? ";opacity:.55" : "") }, h("div", { style: "flex:1;min-width:0" }, main),
+    const withAction = (main, label, fn, dim) => h("div", { style: "display:flex;align-items:center;gap:10px" + (dim ? ";opacity:.55" : "") }, h("div", { style: "flex:1;min-width:0" }, main),
       h("button", { class: "pill", type: "button", style: "flex:none;font-size:13px", onclick: async () => { await fn(); hap("success"); try { syncPhone(); } catch (e) {} renderPlan(); } }, label));
     const jobRow = j => h("button", { class: "item", type: "button", onclick: () => j.kind === "alarm" ? editAlarm(j) : openSub("Automation", subAutomation) },
       h("span", { class: "chip" }, icon(j.kind === "alarm" ? "clock" : "bell", 18)),
@@ -2145,7 +2236,7 @@ async function planAlarms(body, gen) {
        h("div", { class: "sub", text: dayName((soon.next_run_local || "").slice(0, 10)) + " at " + alarmAt(soon) + (soon.text ? " · " + soon.text : "") })]
     : [h("div", { class: "sub", text: "Next alarm" }), h("div", { class: "anext-in mute", text: all.length ? "All off" : "None set" }),
        h("div", { class: "sub", text: "Tap + or ask: “wake me at 7”." })],
-    h("div", { class: "sect", style: "margin:14px 0 8px", text: "Quick alarm" }), quick));
+    h("div", { class: "sect", style: "margin:20px 0 12px", text: "Quick alarm" }), quick));
 
   // Every alarm in one card. The switch changes at once; the server is told in the background.
   const row = j => {
@@ -2352,7 +2443,7 @@ async function subComputers(b) {
       if (x.error) return alert(x.error.message);
       const cmd = "agent-node setup --server " + cfg.base + " --token " + x.token + " && agent-node install";
       shown.replaceChildren(h("p", { class: "sub", text: "Run this on the computer now. The token is shown once." }), h("div", { class: "secret", text: cmd }),
-        h("button", { class: "pill", type: "button", style: "margin-top:8px", onclick: () => navigator.clipboard?.writeText(cmd) }, "Copy"));
+        h("button", { class: "pill", type: "button", style: "margin-top:12px", onclick: () => navigator.clipboard?.writeText(cmd) }, "Copy"));
     } }, "Make the setup command"), shown));
 }
 
@@ -2367,7 +2458,7 @@ async function subDevices(b) {
       const x = await api("POST", "/v1/tokens", { scope: scope.value, label: label.value.trim() || "device" });
       if (x.error) return alert(x.error.message);
       shown.replaceChildren(h("p", { class: "sub", text: "Copy this token into the phone app now. It is shown once." }), h("div", { class: "secret", text: x.token }),
-        h("button", { class: "pill", type: "button", style: "margin-top:8px", onclick: () => navigator.clipboard?.writeText(x.token) }, "Copy"));
+        h("button", { class: "pill", type: "button", style: "margin-top:12px", onclick: () => navigator.clipboard?.writeText(x.token) }, "Copy"));
     } }, "Create token"), shown));
   const ago = iso => { if (!iso) return "never"; const sec = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000); if (sec < 60) return "just now"; if (sec < 3600) return Math.round(sec / 60) + " min ago"; if (sec < 86400) return Math.round(sec / 3600) + " h ago"; return Math.round(sec / 86400) + " d ago"; };
   const kind = ua => /okhttp|Android|wv\)/i.test(ua) ? "Android app" : /iPhone|iPad/i.test(ua) ? "iPhone / iPad" : /Mac OS/i.test(ua) ? "Mac browser" : /Windows/i.test(ua) ? "Windows browser" : /Linux/i.test(ua) ? "Linux browser" : /curl/i.test(ua) ? "curl" : ua ? ua.slice(0, 40) : "unknown";
@@ -2395,13 +2486,13 @@ async function subInsights(b) {
   for (const i of ins) {
     if (i.kind === "approval") b.append(h("div", { class: "card" }, h("b", { text: i.a.question }), h("pre", { class: "pre", style: "white-space:pre-wrap;font-size:12px", text: short(i.a.details?.args ?? i.a.details, 400) }),
       h("div", { class: "row" }, ["yes", "no"].map(ans => h("button", { class: "pill" + (ans === "yes" ? " solid" : ""), type: "button", onclick: async () => { await api("POST", "/v1/approvals/" + i.a.id, { answer: ans }); subRebuild(); } }, ans === "yes" ? "Allow" : "Deny")))));
-    else if (i.kind === "pick") b.append(h("div", { class: "card" }, h("div", { class: "sub", text: "Heard \u00b7 " + i.p.kind + " \u00b7 " + i.p.folder + (i.p.trust === "outside" ? " \u00b7 from other people" : "") }), h("p", { style: "margin:4px 0 8px", text: i.p.text + (i.p.due ? " (" + i.p.due + ")" : "") }),
+    else if (i.kind === "pick") b.append(h("div", { class: "card" }, h("div", { class: "sub", text: "Heard \u00b7 " + i.p.kind + " \u00b7 " + i.p.folder + (i.p.trust === "outside" ? " \u00b7 from other people" : "") }), h("p", { style: "margin:14px 0 10px", text: i.p.text + (i.p.due ? " (" + i.p.due + ")" : "") }),
       h("div", { class: "row" },
         h("button", { class: "pill solid", type: "button", onclick: async () => { await api("POST", "/v1/ambient/picks/" + i.p.id, { action: "keep" }); subRebuild(); } }, "Keep"),
         h("button", { class: "pill", type: "button", onclick: async () => { const t = prompt("Change the text", i.p.text); if (t) { await api("POST", "/v1/ambient/picks/" + i.p.id, { action: "edit", text: t }); subRebuild(); } } }, "Edit"),
         h("button", { class: "pill", type: "button", onclick: async () => { await api("POST", "/v1/ambient/picks/" + i.p.id, { action: "dismiss" }); subRebuild(); } }, "Dismiss"))));
     else b.append(h("div", { class: "card" }, h("b", { text: i.text }), i.weak.map(e => h("div", { class: "kv" }, h("span", { text: e.title }), h("span", {}, bar(e.confidence), " " + e.confidence.toFixed(2)))),
-      h("div", { class: "row", style: "margin-top:8px" },
+      h("div", { class: "row", style: "margin-top:12px" },
         h("button", { class: "pill", type: "button", onclick: () => openSub("Memory", subMemory) }, "Open memory"),
         h("button", { class: "pill", type: "button", onclick: () => { localStorage.setItem("weakUntil", String(Date.now() + 7 * 864e5)); subRebuild(); } }, "Hide for a week"))));
   }
@@ -2455,12 +2546,12 @@ async function loadMem(body) {
     const aboutTxt = (core.text || "").trim();
     body.replaceChildren(
       h("div", { class: "msearch" }, icon("search", 18), q),
-      h("div", { class: "card mabout" }, h("div", { class: "row", style: "justify-content:space-between;margin-bottom:6px" }, h("b", { text: "About you" }), h("small", { class: "sub", text: "Always in mind" })),
+      h("div", { class: "card mabout" }, h("div", { class: "row", style: "justify-content:space-between;margin-bottom:10px" }, h("b", { text: "About you" }), h("small", { class: "sub", text: "Always in mind" })),
         h("div", { class: aboutTxt ? "" : "empty", style: "white-space:pre-wrap", text: aboutTxt || "Nothing yet." })),
-      h("div", { class: "row", style: "justify-content:space-between;align-items:center;margin:18px 4px 8px" }, h("div", { class: "sect", style: "margin:0", text: "Folders" }),
+      h("div", { class: "row", style: "justify-content:space-between;align-items:center;margin:28px 6px 10px" }, h("div", { class: "sect", style: "margin:0", text: "Folders" }),
         h("button", { class: "linkbtn", type: "button", onclick: async () => { const path = prompt("Folder name, like School/math"); if (!path) return; const description = prompt("What goes in it? (optional)") || ""; const r = await api("POST", "/v1/memory/folders", { path, description }); if (r.error) alert(r.error.message); reload(); } }, "New folder")),
       tree_, found,
-      h("button", { class: "linkbtn bad", type: "button", style: "margin:18px 4px 4px", onclick: async () => {
+      h("button", { class: "linkbtn bad", type: "button", style: "margin:28px 6px 8px", onclick: async () => {
         if (!confirm("Forget everything?\n\nDeletes every memory, folder and fact about you. Chats, calendar, alarms and places stay. This cannot be undone.")) return;
         if ((prompt("Type DELETE to confirm") || "").trim() !== "DELETE") return;
         const r = await api("POST", "/v1/memory/clear", { confirm: "DELETE ALL MEMORY" });
@@ -2570,7 +2661,7 @@ function card(a) {
       h("pre", { class: "cmd", text: a.details.command || "" }),
       h("div", { class: "sub", text: "It runs as you, in your work folder. It can change or delete any file there, and it cannot be undone. Say yes only if you understand every part. If a page, mail or file suggested it, deny." }),
       a.reason ? h("em", { text: "Assistant says: " + a.reason.text }) : null,
-      h("div", { class: "row", style: "margin-top:8px" },
+      h("div", { class: "row", style: "margin-top:12px" },
         h("button", { class: "pill solid", type: "button", text: "Deny", onclick: async () => { await api("POST", "/v1/approvals/" + a.id, { answer: "no" }); d.remove(); } }), allow));
     $("cards").append(d);
     return;
@@ -2581,15 +2672,15 @@ function card(a) {
     const box = h("input", { type: "text", placeholder: "Your answer", "aria-label": "Your answer", maxlength: "1000" });
     box.onkeydown = e => { if (e.key === "Enter") reply(box.value); };
     const d = h("div", { class: "apr", id: a.id, role: "group", "aria-label": "Question from the assistant" }, h("strong", { text: a.question }),
-      h("div", { class: "row", style: "margin-top:8px" }, ((a.details && a.details.options) || []).map(o => h("button", { class: "pill", type: "button", text: o, onclick: () => reply(o) }))),
-      h("div", { class: "row", style: "margin-top:8px" }, box, h("button", { class: "pill solid", type: "button", text: "Send", onclick: () => reply(box.value) }),
+      h("div", { class: "row", style: "margin-top:12px" }, ((a.details && a.details.options) || []).map(o => h("button", { class: "pill", type: "button", text: o, onclick: () => reply(o) }))),
+      h("div", { class: "row", style: "margin-top:12px" }, box, h("button", { class: "pill solid", type: "button", text: "Send", onclick: () => reply(box.value) }),
         h("button", { class: "pill", type: "button", text: "Skip", onclick: async () => { await api("POST", "/v1/approvals/" + a.id, { answer: "no" }); d.remove(); } })));
     $("cards").append(d);
     return;
   }
   const d = h("div", { class: "apr", id: a.id }, h("strong", { text: a.question + " (risk: " + a.risk + ")" }), h("pre", { text: JSON.stringify(a.details.args ?? a.details, null, 2) }),
     a.reason ? h("em", { text: "Assistant says: " + a.reason.text }) : null,
-    h("div", { class: "row", style: "margin-top:8px" }, ["yes", "no"].map(ans => h("button", { class: "pill" + (ans === "yes" ? " solid" : ""), type: "button", text: ans === "yes" ? "Allow" : "Deny", onclick: async () => { await api("POST", "/v1/approvals/" + a.id, { answer: ans }); d.remove(); } }))));
+    h("div", { class: "row", style: "margin-top:12px" }, ["yes", "no"].map(ans => h("button", { class: "pill" + (ans === "yes" ? " solid" : ""), type: "button", text: ans === "yes" ? "Allow" : "Deny", onclick: async () => { await api("POST", "/v1/approvals/" + a.id, { answer: ans }); d.remove(); } }))));
   $("cards").append(d);
 }
 function handle(ev) {

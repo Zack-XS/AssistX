@@ -1,6 +1,6 @@
 ---
 title: Spacing and layout
-description: Compact spacing, corner sizes, the grid and layouts from phone to desktop.
+description: Roomy spacing, corner sizes, the grid and layouts from phone to desktop.
 order: 4
 ---
 
@@ -8,7 +8,21 @@ order: 4
 
 ## Spacing
 
-A 4 px base. Compact: most gaps are 8, 12 or 16.
+A 4 px base. Roomy, not compact: nothing should feel crammed. Most gaps are 12, 16 or 20.
+
+The page uses these values (Nov 2026 spacing pass):
+
+| Where | Value |
+|---|---|
+| Screen side margin | 20 |
+| Card padding | 20 top and bottom, 22 sides |
+| Gap between cards | 16 |
+| One row in a card or list (toggle, value, item, link) | 16 above and below; settings rows at least 64 tall |
+| Section label | 30 above, 10 below |
+| Title to the line under it | 3 |
+| Label to its input | 8; between fields 18 |
+| Chat bubbles | 12 × 16 inside, 16 apart |
+| Body line height | 1.5 |
 
 | Token | Value | Use |
 |---|---|---|

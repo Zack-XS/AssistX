@@ -432,6 +432,10 @@ button:active,.setrow:active,.item:active,.start:active{transform:none}
   #subpage.noanim,#subpage.noanim #subBody>*{animation:none!important}
   #views.under,#views.back{animation-duration:.3s}
 }
+/* no-flicker swaps (issue #8) */
+.view.pending{opacity:0}
+.scroll.quiet>*{animation:none!important}
+@media (prefers-reduced-motion:no-preference){.scroll.enter>*{animation:rise .32s var(--emph-in) both!important}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 #updbar{flex:none;background:var(--ink);color:var(--on-ink);padding:max(8px,env(safe-area-inset-top)) 14px 8px;font-size:14px;z-index:40}
 #updbar .ubrow{display:flex;align-items:center;gap:8px}
@@ -534,6 +538,20 @@ function toast(text, bad) {
   box.append(t); setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 260); }, 2800);
 }
 // While something loads: soft grey lines that shimmer, instead of the word "Loading".
+// Put new content into a screen without flicker (issue #8):
+// - same markup as what's shown: leave the screen alone (refreshes every minute and after closing a page);
+// - different, and the screen already had real content: swap with no entrance animation ("quiet");
+// - while a tab is still getting ready ("pending"), or on a Plan tab switch ("enter"), the content animates in once.
+function settle(body, nodes) {
+  const frag = document.createDocumentFragment(); frag.append(...nodes);
+  const box = document.createElement("div"); box.append(frag.cloneNode(true));
+  if (box.innerHTML === body.innerHTML) return false;
+  const v = body.closest(".view"), had = body.children.length && !body.querySelector(":scope>.skel");
+  if (body.dataset.enter) { delete body.dataset.enter; body.classList.remove("quiet", "enter"); void body.offsetWidth; body.classList.add("enter"); setTimeout(() => body.classList.remove("enter"), 450); }
+  else if (had && !(v && v.classList.contains("pending"))) body.classList.add("quiet");
+  body.replaceChildren(frag);
+  return true;
+}
 const skel = (n = 3) => h("div", { class: "card skel", "aria-busy": "true", "aria-label": "Loading" }, Array.from({ length: n }, (_, i) => h("i", { style: "width:" + [92, 74, 58, 80, 66][i % 5] + "%" })));
 const ICONS = {
   heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
@@ -708,9 +726,13 @@ function show(v) {
   $("app").style.setProperty("--dx", (dir >= 0 ? 36 : -36) + "px"); view = v;
   for (const s of document.querySelectorAll(".view")) s.classList.toggle("on", s.id === "v-" + v);
   for (const b of document.querySelectorAll("#tabs button")) { if (b.dataset.view === v) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); }
-  const nv = $("v-" + v); nv.classList.remove("fresh"); void nv.offsetWidth; nv.classList.add("fresh");
-  clearTimeout(nv._t); nv._t = setTimeout(() => nv.classList.remove("fresh"), 700);
-  if (v === "home") renderHome(); if (v === "plan") renderPlan(); if (v === "settings") renderSettings();
+  const nv = $("v-" + v), body = nv.querySelector(".scroll");
+  nv.classList.remove("fresh"); if (body) body.classList.remove("quiet", "enter");
+  nv.classList.add("pending"); // hidden for a moment, so old content never shows and then blinks away
+  const r = v === "home" ? renderHome() : v === "plan" ? renderPlan() : (v === "settings" ? renderSettings() : null);
+  const go = () => { if (view !== v || !nv.classList.contains("pending")) return; nv.classList.remove("pending"); void nv.offsetWidth; nv.classList.add("fresh");
+    clearTimeout(nv._t); nv._t = setTimeout(() => nv.classList.remove("fresh"), 700); };
+  Promise.race([Promise.resolve(r).catch(() => {}), new Promise(z => setTimeout(z, 300))]).then(go);
 }
 let subRebuild = null;
 const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -775,6 +797,7 @@ function closeSubSoft() {
     tr.finished.finally(() => { row.style.viewTransitionName = t.style.viewTransitionName = ""; document.documentElement.classList.remove("vt-back"); });
     return;
   }
+  sp.classList.remove("noanim"); // opened by the row transform but closed from elsewhere: still slide out
   const v = $("views"); v.classList.remove("under"); v.classList.add("back"); setTimeout(() => v.classList.remove("back"), 420);
   sp.classList.add("out"); setTimeout(() => { sp.classList.remove("out"); closeSub(); }, 210);
 }
@@ -815,9 +838,9 @@ async function renderHome() {
   let d; try { d = await gather(); } catch (e) { return; }
   if (view !== "home") return;
   if (d.down) {
-    body.replaceChildren(h("div", { class: "card", style: "margin-top:24px" }, h("h3", { text: "Can\u2019t reach the server" }),
+    settle(body, [h("div", { class: "card", style: "margin-top:24px" }, h("h3", { text: "Can\u2019t reach the server" }),
       h("p", { class: "sub", text: "Check that this phone is on the same network as " + cfg.base + ", or open the connection settings." }),
-      h("div", { class: "row" }, h("button", { class: "pill solid", type: "button", onclick: renderHome }, "Try again"), h("button", { class: "pill", type: "button", onclick: () => openSub("General", subGeneral) }, "Connection"))));
+      h("div", { class: "row" }, h("button", { class: "pill solid", type: "button", onclick: renderHome }, "Try again"), h("button", { class: "pill", type: "button", onclick: () => openSub("General", subGeneral) }, "Connection")))]);
     return;
   }
   const now = new Date(), hr = now.getHours();
@@ -843,10 +866,19 @@ async function renderHome() {
   ring.innerHTML = '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="var(--field)" stroke-width="9"/><circle cx="50" cy="50" r="42" fill="none" stroke="var(--ink)" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (pct ? (C * pct / 100).toFixed(1) : 0) + " " + C.toFixed(1) + '"' + (pct ? '' : ' opacity="0"') + '/></svg>';
   ring.append(h("div", { class: "pct", text: pct + "%" }));
   const cap = d.cap || {};
-  body.replaceChildren(
+  // Everything Home shows is gathered first and swapped in once, so cards never pop in afterwards (issue #8).
+  const [sc, pw] = await Promise.all([setupCard().catch(() => null), api("GET", "/v1/power").catch(() => null)]);
+  if (view !== "home") return;
+  if (sc) sc.id = "setupcard";
+  const off = pw && pw.on === false ? h("div", { class: "card", id: "offcard" }, h("div", { class: "cardhead" }, icon("bolt", 22), h("h3", { class: "grow", text: "AssistX is off" })),
+    h("p", { class: "sub", style: "margin:0 0 8px", text: "Nothing is running. Alarms already set on this phone still ring." }),
+    h("button", { class: "pill solid", type: "button", onclick: async () => { await api("PUT", "/v1/power", { on: true }); renderHome(); } }, "Turn on")) : null;
+  settle(body, [
     h("div", { class: "date", text: now.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }) }),
     h("div", { class: "greet", text: hr < 12 ? "Good morning." : hr < 18 ? "Good afternoon." : "Good evening." }),
+    off,
     h("p", { class: "lead", text: "Here\u2019s your day at a glance." }),
+    sc, updCard(upd()),
     h("div", { class: "card" },
       h("div", { class: "cardhead" }, icon("check", 24), h("h3", { class: "grow", text: "Today\u2019s overview" }), h("button", { class: "link", type: "button", onclick: () => openSub("Automation", subAutomation) }, "View all", icon("chev", 16))),
       h("div", { class: "overview" }, h("div", {}, h("div", { class: "big", text: total ? done + " of " + total : "0" }), h("div", { class: "sub", text: total ? "Tasks completed" : "Nothing scheduled today" })), ring)),
@@ -859,12 +891,8 @@ async function renderHome() {
     h("div", { class: "card" },
       h("div", { class: "cardhead" }, icon("bulb", 22), h("h3", { class: "grow", text: "Noticed" }), h("span", { class: "sub", text: ins.length + " insight" + (ins.length === 1 ? "" : "s") })),
       ins.length ? h("p", { style: "margin:4px 0 8px", text: ins[0].text }) : h("div", { class: "empty", text: "Nothing needs your attention." }),
-      ins.length ? h("button", { class: "link", type: "button", style: "color:var(--text);font-weight:600", onclick: () => openSub("Needs your attention", subInsights) }, "Review insight", icon("chev", 16)) : null));
-  const uc = updCard(upd()); if (uc) body.insertBefore(uc, body.children[3] || null);
-  setupCard().then(c => { if (c && view === "home" && !$("setupcard")) { c.id = "setupcard"; body.insertBefore(c, body.children[3] || null); } }).catch(() => {});
-  api("GET", "/v1/power").then(p => { if (p && p.on === false && view === "home" && !$("offcard")) body.insertBefore(h("div", { class: "card", id: "offcard" }, h("div", { class: "cardhead" }, icon("bolt", 22), h("h3", { class: "grow", text: "AssistX is off" })),
-    h("p", { class: "sub", style: "margin:0 0 8px", text: "Nothing is running. Alarms already set on this phone still ring." }),
-    h("button", { class: "pill solid", type: "button", onclick: async () => { await api("PUT", "/v1/power", { on: true }); renderHome(); } }, "Turn on")), body.children[2] || null); }).catch(() => {});
+      ins.length ? h("button", { class: "link", type: "button", style: "color:var(--text);font-weight:600", onclick: () => openSub("Needs your attention", subInsights) }, "Review insight", icon("chev", 16)) : null)]);
+
 }
 $("bell").onclick = () => openSub("Needs your attention", subInsights);
 
@@ -913,7 +941,8 @@ async function powerCard() {
 }
 function renderSettings() {
   const q = $("q").value.toLowerCase();
-  powerCard().then(c => { const old = $("powercard"); if (old) old.remove(); $("setBody").prepend(c); });
+  const keep = $("powercard");
+  powerCard().then(c => { const old = $("powercard"); if (old && old.outerHTML === c.outerHTML) return; if (old) old.replaceWith(c); else $("setBody").prepend(c); });
   // Searching shows the one-line description too; the plain list is titles only.
   const row = ([ic, t, d, f]) => h("button", { class: "setrow", type: "button", onclick: ev => f.go ? f() : openSub(t, f, ev.currentTarget) },
     h("span", { class: "setic" }, icon(ic, 20)), h("span", { class: "grow" }, h("b", { text: t }), q ? h("small", { text: d }) : null), icon("chev", 18));
@@ -923,6 +952,7 @@ function renderSettings() {
     const rows = titles.map(t => SECTIONS.find(s => s[1] === t)).filter(Boolean).filter(hit);
     return rows.length ? [name ? h("div", { class: "sect", text: name }) : h("div", { class: "gap" }), h("div", { class: "group" }, rows.map(row))] : [];
   }));
+  if (keep && !$("powercard")) $("setBody").prepend(keep);
 }
 $("srch").onclick = () => { $("searchbar").hidden = !$("searchbar").hidden; if (!$("searchbar").hidden) $("q").focus(); };
 $("q").oninput = renderSettings;
@@ -1357,7 +1387,7 @@ async function editAutomation(b, j) {
       if (j && (kind.value === "notification") === (s.on === "notification")) x = await api("PATCH", "/v1/jobs/" + j.id, body);
       else { if (j) await api("DELETE", "/v1/jobs/" + j.id); x = await api("POST", "/v1/jobs", { kind: kind.value === "notification" ? "task_on_notification" : "task", ...body }); }
       if (x.error) return alert(x.error.message);
-      hap("success"); try { NA && NA.syncNotify && NA.syncNotify(); } catch (e) {} closeSubSoft ? closeSubSoft() : null; openSub("Automation", subAutomation);
+      hap("success"); try { NA && NA.syncNotify && NA.syncNotify(); } catch (e) {} openSub("Automation", subAutomation);
     } }, j ? "Save" : "Create")));
 }
 /* ---------- status ---------- */
@@ -1483,7 +1513,7 @@ let calMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1), cal
 for (const bt of $("planSeg").children) bt.onclick = () => setPlanTab(bt.dataset.p);
 $("planAdd").append(icon("plus", 24));
 $("planAdd").onclick = () => planTab === "cal" ? editEvent(null, calSel) : planTab === "list" ? newList() : editAlarm(null);
-function setPlanTab(p) { planTab = p; localStorage.setItem("planTab", p); $("planBody").replaceChildren(); renderPlan(); }
+function setPlanTab(p) { planTab = p; localStorage.setItem("planTab", p); $("planBody").dataset.enter = "1"; renderPlan(); }
 // The phone app opens these from its home-screen shortcuts.
 window.__open = what => {
   if (what === "calendar" || what === "new-event") { planTab = "cal"; show("plan"); if (what === "new-event") editEvent(null, calSel); }
@@ -1498,7 +1528,7 @@ async function renderPlan() {
   if (!body.children.length) body.append(skel());
   const gen = ++planGen;
   try { await (planTab === "cal" ? planCalendar : planTab === "list" ? planLists : planAlarms)(body, gen); }
-  catch (e) { if (gen === planGen) body.replaceChildren(h("div", { class: "card" }, h("div", { class: "empty", text: "Could not load. Check the connection." }), h("button", { class: "pill", type: "button", onclick: renderPlan }, "Try again"))); }
+  catch (e) { if (gen === planGen) settle(body, [h("div", { class: "card" }, h("div", { class: "empty", text: "Could not load. Check the connection." }), h("button", { class: "pill", type: "button", onclick: renderPlan }, "Try again"))]); }
 }
 
 /* calendar: a month you can swipe, the chosen day's plans, then what comes next */
@@ -1568,7 +1598,7 @@ async function planCalendar(body, gen) {
       h("div", { class: "cardhead" }, h("h3", { class: "grow", text: dayName(calSel) }), h("button", { class: "link", type: "button", onclick: () => editEvent(null, calSel) }, icon("plus", 16), "Add")),
       rows.length ? rows : h("div", { class: "empty", text: "Nothing planned. Tap Add, or ask the assistant." }));
     const next = evs.filter(e => !e.skipped && e.start.slice(0, 10) > calSel).slice(0, 6);
-    body.replaceChildren(month, dayCard, next.length ? h("div", { class: "sect", text: "Coming up" }) : null, next.length ? h("div", { class: "card" }, next.map(e => evRow(e, true))) : null);
+    settle(body, [month, dayCard, next.length ? h("div", { class: "sect", text: "Coming up" }) : null, next.length ? h("div", { class: "card" }, next.map(e => evRow(e, true))) : null]);
   };
   draw();
 }
@@ -1633,7 +1663,7 @@ async function planLists(body, gen) {
     h("span", { class: "grow" }, h("div", { class: "t", text: l.name }), h("div", { class: "sub", text: l.open + " to do" + (l.done ? " · " + l.done + " done" : "") })), icon("chev", 18)))));
   const missing = ["Shopping", "To-do"].filter(n => !all.some(l => l.name === n));
   if (missing.length) out.push(h("div", { class: "quick", style: "margin:4px 0 14px" }, missing.map(n => h("button", { class: "pill", type: "button", onclick: () => newList(n) }, icon("plus", 16), n))));
-  body.replaceChildren(...out);
+  settle(body, out);
 }
 async function newList(name) {
   name = name || (prompt("Name of the new list", "") || "").trim(); if (!name) return;
@@ -1734,7 +1764,7 @@ async function planAlarms(body, gen) {
     h("span", { class: "grow" }, h("div", { class: "t", text: j.text }), h("div", { class: "sub", text: (j.next_run ? when(j.next_run) : "") + (j.event_id ? " · from an event" : "") })),
     j.event_id ? h("button", { class: "pill", type: "button", onclick: () => editEvent(j.event_id) }, "Event") : h("button", { class: "pill bad", type: "button", onclick: async () => { await api("DELETE", "/v1/jobs/" + j.id); syncPhone(); renderPlan(); } }, "Delete")))));
   out.push(h("button", { class: "setrow", type: "button", style: "margin-top:12px", onclick: () => openSub("Sounds", subSounds) }, icon("bell", 24), h("span", { class: "grow" }, h("b", { text: "Sounds" }), h("small", { text: "Built-in sounds and your own" })), icon("chev", 20)));
-  body.replaceChildren(...out);
+  settle(body, out);
 }
 function editAlarm(j) {
   openSub(j ? "Edit alarm" : "New alarm", async b => {

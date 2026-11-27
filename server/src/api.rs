@@ -884,7 +884,7 @@ async fn make_memory_folder(State(app): State<AppState>, Json(b): Json<Value>) -
 }
 
 async fn memory_core(State(app): State<AppState>) -> ApiResult {
-    ok(json!({ "text": crate::memory::read_core(&app.cfg.data_dir) }))
+    ok(json!({ "text": crate::memory::read_core(&app.db) }))
 }
 
 async fn memory_index(State(app): State<AppState>) -> ApiResult {

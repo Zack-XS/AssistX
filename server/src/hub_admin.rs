@@ -25,7 +25,7 @@ fn meta(c: &Connection, k: &str) -> Option<String> {
 }
 
 /// Same length, every byte looked at: no early exit that tells a guesser how close they were.
-fn same(a: &str, b: &str) -> bool {
+pub(crate) fn same(a: &str, b: &str) -> bool {
     a.len() == b.len() && a.bytes().zip(b.bytes()).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
 }
 

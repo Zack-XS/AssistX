@@ -464,3 +464,37 @@ async fn the_first_admin_login_is_made_with_the_one_time_setup_code() {
     assert!(hub.ensure_admin_setup().is_none());
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn security_review_fixes_hold() {
+    let t = T::new("secfix");
+    // #16: the server token is kept as Argon2id, never as a fast SHA-256.
+    let c = rusqlite::Connection::open(t.dir.join("server.db")).unwrap();
+    let stored: Vec<String> = c.prepare("SELECT key FROM meta WHERE key LIKE 'token_%'").unwrap().query_map([], |r| r.get(0)).unwrap().flatten().collect();
+    assert_eq!(stored, vec!["token_argon".to_string()], "only the slow hash is stored");
+    drop(c);
+
+    // #12: a new passphrase ends every sign-in token at once.
+    let (tok, _) = t.make("dana", "dana's first passphrase").await;
+    assert_eq!(t.call("GET", "/v1/threads", Some(&tok), None).await.0, StatusCode::OK);
+    let (c, v) = t.srv("/v1/server/passphrase", json!({ "username": "dana", "old": "dana's first passphrase", "new": "dana's second passphrase" })).await;
+    assert_eq!(c, StatusCode::OK, "{v}");
+    assert_eq!(t.call("GET", "/v1/threads", Some(&tok), None).await.0, StatusCode::UNAUTHORIZED, "the old sign-in is over");
+
+    // #3, #4: plain copies left by older versions are moved into the database and deleted on unlock.
+    let id = tok.split_once('.').unwrap().0.to_string();
+    let acct = t.dir.join("accounts").join(&id);
+    std::fs::create_dir_all(acct.join("memory/People")).unwrap();
+    std::fs::write(acct.join("memory/core.md"), "Dana likes tea.\n").unwrap();
+    std::fs::write(acct.join("memory/People/x.md"), "secret").unwrap();
+    std::fs::create_dir_all(acct.join("reports")).unwrap();
+    std::fs::write(acct.join("reports/rep_old.json"), json!({ "id": "rep_old", "created": "2026-01-01T00:00:00Z", "auto": false, "thread": {} }).to_string()).unwrap();
+    assert!(t.hub.lock(&id));
+    let (c, v) = t.srv("/v1/server/login", json!({ "username": "dana", "passphrase": "dana's second passphrase" })).await;
+    assert_eq!(c, StatusCode::OK, "{v}");
+    let tok = v["token"].as_str().unwrap().to_string();
+    assert!(!acct.join("memory").exists(), "no plain memory folder");
+    assert!(!acct.join("reports").exists(), "no plain reports folder");
+    let (_, reps) = t.call("GET", "/v1/reports", Some(&tok), None).await;
+    assert_eq!(reps["items"][0]["id"], "rep_old", "the old report moved into the database");
+}

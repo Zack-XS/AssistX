@@ -204,6 +204,9 @@ impl App {
             shutdown: AtomicBool::new(false),
         });
         memory::normalize_topics(&app.db);
+        // Plain files left by older versions (security review #3, #4): move them into the database, then delete them.
+        memory::remove_plain_copies(&app.db, &app.cfg.data_dir);
+        reports::move_into_db(&app);
         // Which model wrote each reply (shown under a message on the page).
         let _ = app.db.lock().execute("ALTER TABLE messages ADD COLUMN model TEXT", []);
         scheduler::migrate(&app.db);
@@ -309,12 +312,12 @@ impl App {
         self.files_dirty.store(true, Ordering::Relaxed);
     }
 
-    /// Refresh the readable copy of memory (`data/memory/<Folder>/*.md`) if anything changed.
+    /// Rebuild the basic facts if memory changed. No plain copy of memory is written to disk any more (security
+    /// review #3): everything stays in the encrypted database; an export makes a readable copy on request.
     pub fn sync_memory_files(&self) {
         if self.files_dirty.swap(false, Ordering::Relaxed) {
-            memory::sync_folders(&self.cfg.data_dir, &memory::all_current(&self.db), &memory::folder_rows(&self.db));
-            // The basic-facts file is built from the entries by code, so keep it in step with them.
-            let _ = memory::write_core(&self.cfg.data_dir, &dreaming::build_core(self));
+            // The basic facts are built from the entries by code, so keep them in step with them.
+            let _ = memory::write_core(&self.db, &dreaming::build_core(self));
         }
     }
 

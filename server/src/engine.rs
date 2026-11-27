@@ -150,7 +150,7 @@ fn build_request(app: &App, thread: &str, mode: &Mode, live: bool, mind: bool) -
     match mode {
         Mode::Normal => {
             let mut mem_index = app.memory_index();
-            if app.cfg.memory_core && !memory::read_core(&app.cfg.data_dir).trim().is_empty() {
+            if app.cfg.memory_core && !memory::read_core(&app.db).trim().is_empty() {
                 // The basic facts are one directory entry, not part of the prompt.
                 mem_index = format!("- core: basic facts about the user (load: core)\n{mem_index}");
             }
@@ -798,7 +798,7 @@ impl Turn {
             if !self.app.cfg.memory_core {
                 return Ok(("Basic facts are turned off.".into(), "core"));
             }
-            let facts = memory::read_core(&self.app.cfg.data_dir);
+            let facts = memory::read_core(&self.app.db);
             return Ok((if facts.trim().is_empty() { "There are no basic facts yet.".into() } else { facts }, "core"));
         }
         if id_arg == "recent" {

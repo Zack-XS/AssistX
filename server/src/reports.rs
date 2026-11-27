@@ -1,5 +1,7 @@
-//! Chat reports: the user taps "Send log" on a chat and the core writes everything about it to one
-//! file, `data/reports/<id>.json`, for a person (or a coding assistant) to review later.
+//! Chat reports: the user taps "Send log" on a chat and the core saves everything about it as one
+//! JSON record in the encrypted database (table `reports`), for a person (or a coding assistant) to
+//! review later through `GET /v1/reports/{id}`. Older versions wrote plain `data/reports/<id>.json`
+//! files; `move_into_db` moves those in and deletes them (security review #4).
 //!
 //! A report holds the chat's messages exactly as the model saw them (tool calls, tool results with
 //! their `[core] RESULT` lines), every turn with its status and error, the action log, approvals,
@@ -12,8 +14,39 @@ use serde_json::{Value, json};
 
 pub const MAX_KEEP: usize = 200;
 
+/// Where older versions kept reports as plain files.
 fn dir(app: &App) -> std::path::PathBuf {
     app.cfg.data_dir.join("reports")
+}
+
+pub const SCHEMA: &str = "CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, created TEXT NOT NULL, auto INTEGER NOT NULL DEFAULT 0, body TEXT NOT NULL);";
+
+fn store(app: &App, id: &str, created: &str, auto: bool, body: &str) -> Result<(), String> {
+    let c = app.db.lock();
+    c.execute_batch(SCHEMA).map_err(|e| e.to_string())?;
+    c.execute("INSERT OR REPLACE INTO reports (id, created, auto, body) VALUES (?1, ?2, ?3, ?4)", params![id, created, auto as i64, body]).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Plain report files from older versions: copy each into the database, then delete the folder.
+pub fn move_into_db(app: &App) {
+    let d = dir(app);
+    if !d.exists() {
+        return;
+    }
+    let mut moved = 0;
+    for e in std::fs::read_dir(&d).into_iter().flatten().flatten() {
+        let Ok(text) = std::fs::read_to_string(e.path()) else { continue };
+        let Ok(v) = serde_json::from_str::<Value>(&text) else { continue };
+        let (Some(id), Some(created)) = (v["id"].as_str(), v["created"].as_str()) else { continue };
+        if store(app, id, created, v["auto"] == true, &text).is_ok() {
+            moved += 1;
+        }
+    }
+    match std::fs::remove_dir_all(&d) {
+        Ok(()) => eprintln!("security: moved {moved} plain report file(s) into the encrypted database and removed {}", d.display()),
+        Err(e) => eprintln!("security: could not remove {}: {e}", d.display()),
+    }
 }
 
 fn rows(app: &App, sql: &str, thread: &str, f: impl Fn(&rusqlite::Row) -> rusqlite::Result<Value>) -> Vec<Value> {
@@ -73,30 +106,22 @@ fn save(app: &App, thread: &str, note: &str, by: &str, auto: bool) -> Result<Val
         "thread": t, "counts": counts, "turns": turns, "messages": messages, "actions": actions, "approvals": approvals, "events": events,
     });
     let text = util::scrub(&serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?, &app.secret_words());
-    let d = dir(app);
-    std::fs::create_dir_all(&d).map_err(|e| e.to_string())?;
-    let path = d.join(format!("{id}.json"));
-    std::fs::write(&path, text).map_err(|e| e.to_string())?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-    }
+    store(app, &id, &created, auto, &text)?;
     prune(app);
     Ok(json!({ "id": id, "created": created, "thread_id": thread, "auto": auto, "counts": counts }))
 }
 
 /// Newest first: `{id, created, thread_id, title, note, auto, counts}` for each saved report. `only_auto` keeps the core's own.
 pub fn list(app: &App, only_auto: bool) -> Vec<Value> {
-    let mut out: Vec<Value> = std::fs::read_dir(dir(app)).into_iter().flatten().flatten()
-        .filter(|e| e.file_name().to_string_lossy().ends_with(".json"))
-        .filter_map(|e| std::fs::read_to_string(e.path()).ok())
-        .filter_map(|s| serde_json::from_str::<Value>(&s).ok())
-        .filter(|r| !only_auto || r["auto"] == true)
+    let c = app.db.lock();
+    let _ = c.execute_batch(SCHEMA);
+    let Ok(mut st) = c.prepare("SELECT body FROM reports WHERE (?1 = 0 OR auto = 1) ORDER BY created DESC") else { return vec![] };
+    st.query_map([only_auto as i64], |r| r.get::<_, String>(0))
+        .map(|x| x.flatten().filter_map(|s| serde_json::from_str::<Value>(&s).ok()).collect::<Vec<_>>())
+        .unwrap_or_default()
+        .into_iter()
         .map(|r| json!({ "id": r["id"], "created": r["created"], "thread_id": r["thread"]["id"], "title": r["thread"]["title"], "note": r["note"], "auto": r["auto"] == true, "counts": r["counts"] }))
-        .collect();
-    out.sort_by(|a, b| b["created"].as_str().cmp(&a["created"].as_str()));
-    out
+        .collect()
 }
 
 /// One report in full. The id must look like one of ours (no paths).
@@ -104,20 +129,12 @@ pub fn get(app: &App, id: &str) -> Option<Value> {
     if !id.starts_with("rep_") || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
         return None;
     }
-    std::fs::read_to_string(dir(app).join(format!("{id}.json"))).ok().and_then(|s| serde_json::from_str(&s).ok())
+    let c = app.db.lock();
+    let _ = c.execute_batch(SCHEMA);
+    c.query_row("SELECT body FROM reports WHERE id = ?1", [id], |r| r.get::<_, String>(0)).ok().and_then(|s| serde_json::from_str(&s).ok())
 }
 
 /// Keep the newest `MAX_KEEP`.
 fn prune(app: &App) {
-    let mut files: Vec<_> = std::fs::read_dir(dir(app)).into_iter().flatten().flatten()
-        .filter(|e| e.file_name().to_string_lossy().starts_with("rep_"))
-        .filter_map(|e| Some((e.metadata().ok()?.modified().ok()?, e.path())))
-        .collect();
-    if files.len() <= MAX_KEEP {
-        return;
-    }
-    files.sort();
-    for (_, p) in &files[..files.len() - MAX_KEEP] {
-        let _ = std::fs::remove_file(p);
-    }
+    let _ = app.db.lock().execute("DELETE FROM reports WHERE id NOT IN (SELECT id FROM reports ORDER BY created DESC LIMIT ?1)", [MAX_KEEP as i64]);
 }

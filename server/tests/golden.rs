@@ -872,7 +872,7 @@ fn search_memory_finds_unsorted_notes_and_tool_events_are_emitted() {
 #[test]
 fn prompt_hands_over_no_user_facts_only_a_directory() {
     let s = start("directory_only", json!([]));
-    agent_core::memory::write_core(&s.app.cfg.data_dir, "The user lives in Lisbon and hates mornings.\n").unwrap();
+    agent_core::memory::write_core(&s.app.db, "The user lives in Lisbon and hates mornings.\n").unwrap();
     let (code, _) = s.call("POST", "/v1/memory", Some(json!({ "title": "Dentist", "summary": "Dentist visit on Tuesday at 9", "topic_path": "health/dentist" })));
     assert_eq!(code, 201);
     s.mock.push(&[
@@ -945,7 +945,7 @@ fn dreaming_runs_by_itself_when_notes_wait() {
 #[test]
 fn memory_switches_turn_off_core_and_recent_lines() {
     let s = start_with("switches", json!([]), |c| { c.memory_core = false; c.memory_recent = false; });
-    agent_core::memory::write_core(&s.app.cfg.data_dir, "The user lives in Lisbon.\n").unwrap();
+    agent_core::memory::write_core(&s.app.db, "The user lives in Lisbon.\n").unwrap();
     let a = s.thread();
     let t1 = s.send(&a, "hello");
     s.wait_turn(&t1, &["done"]);

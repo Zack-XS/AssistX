@@ -37,6 +37,33 @@ pub struct Hub {
     pub(crate) admin_sessions: Mutex<HashMap<String, (i64, i64)>>,
     /// The hash of the one-time admin setup code, while no admin login exists.
     pub(crate) admin_setup: Mutex<Option<String>>,
+    /// (stored Argon2id value, SHA-256 of the token) once the token has passed the slow check, so later requests stay
+    /// fast. Tied to the stored value: a new server password set from the CLI ends it at once.
+    sac_ok: Mutex<Option<(String, String)>>,
+}
+
+/// The server token kept as Argon2id (`salt:hash`, hex), never as a fast hash (security review #16).
+/// Lighter settings than an account passphrase (19 MiB, 2 passes): it is checked on server routes.
+pub(crate) fn sac_hash(token: &str, salt: &str) -> String {
+    use argon2::{Algorithm, Argon2, Params, Version};
+    let mut out = [0u8; 32];
+    let ok = Params::new(19 * 1024, 2, 1, Some(32))
+        .ok()
+        .and_then(|p| Argon2::new(Algorithm::Argon2id, Version::V0x13, p).hash_password_into(token.as_bytes(), salt.as_bytes(), &mut out).ok());
+    if ok.is_none() {
+        return String::new();
+    }
+    format!("{salt}:{}", vault::to_hex(&out))
+}
+
+fn sac_store(c: &Connection, token: &str) -> Result<(), String> {
+    let h = sac_hash(token, &util::random_hex(16));
+    if h.is_empty() {
+        return Err("could not hash the server token".into());
+    }
+    c.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('token_argon', ?1)", [h]).map_err(|e| e.to_string())?;
+    c.execute("DELETE FROM meta WHERE key = 'token_hash'", []).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 /// How long an invite code works.
@@ -72,8 +99,15 @@ pub(crate) fn open_schema(c: &Connection) -> Result<(), String> {
 /// An invite code people can read out and type: 12 letters and digits in groups of 4, without 0/O and 1/I/L.
 pub(crate) fn invite_code() -> String {
     const ABC: &[u8] = b"23456789ABCDEFGHJKMNPQRSTUVWXYZ";
-    let raw = vault::random_key();
-    let chars: Vec<char> = raw.iter().take(12).map(|b| ABC[*b as usize % ABC.len()] as char).collect();
+    // Only bytes below 31 * 8 = 248 are used, so every letter is equally likely (security review #29).
+    let mut chars: Vec<char> = Vec::with_capacity(12);
+    while chars.len() < 12 {
+        for b in vault::random_key() {
+            if (b as usize) < ABC.len() * 8 && chars.len() < 12 {
+                chars.push(ABC[b as usize % ABC.len()] as char);
+            }
+        }
+    }
     chars.chunks(4).map(|c| c.iter().collect::<String>()).collect::<Vec<_>>().join("-")
 }
 
@@ -111,13 +145,13 @@ impl Hub {
         open_schema(&c)?;
         let mut cfg = cfg;
         cfg.server_dir = cfg.data_dir.clone();
-        Ok(Arc::new(Hub { cfg, sdb: Mutex::new(c), apps: Default::default(), routers: Default::default(), fails: Default::default(), models, guesses: Default::default(), started: util::unix_now(), admin_sessions: Default::default(), admin_setup: Default::default() }))
+        Ok(Arc::new(Hub { cfg, sdb: Mutex::new(c), apps: Default::default(), routers: Default::default(), fails: Default::default(), models, guesses: Default::default(), started: util::unix_now(), admin_sessions: Default::default(), admin_setup: Default::default(), sac_ok: Default::default() }))
     }
 
     /// The server token: made once. It keeps the old owner token's text when there was one (so a phone that
     /// knew it can still connect); otherwise a new one is written to `server.token` (mode 0600). Returns where, when new.
     pub fn ensure_server_token(&self) -> Result<Option<PathBuf>, String> {
-        let have: Option<String> = self.sdb.lock().unwrap().query_row("SELECT value FROM meta WHERE key = 'token_hash'", [], |r| r.get(0)).optional().map_err(|e| e.to_string())?;
+        let have: Option<String> = self.sdb.lock().unwrap().query_row("SELECT value FROM meta WHERE key IN ('token_hash', 'token_argon') LIMIT 1", [], |r| r.get(0)).optional().map_err(|e| e.to_string())?;
         if have.is_some() {
             return Ok(None);
         }
@@ -135,7 +169,7 @@ impl Hub {
                 (t, Some(p))
             }
         };
-        self.sdb.lock().unwrap().execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('token_hash', ?1)", [util::sha256_hex(token.as_bytes())]).map_err(|e| e.to_string())?;
+        sac_store(&self.sdb.lock().unwrap(), &token)?;
         Ok(path)
     }
 
@@ -148,7 +182,7 @@ impl Hub {
         }
         let c = Connection::open(data_dir.join("server.db")).map_err(|e| format!("server database: {e}"))?;
         open_schema(&c)?;
-        c.execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('token_hash', ?1)", [util::sha256_hex(new.as_bytes())]).map_err(|e| e.to_string())?;
+        sac_store(&c, new)?;
         let _ = std::fs::remove_file(data_dir.join("server.token"));
         Ok(())
     }
@@ -183,9 +217,34 @@ impl Hub {
         self.guesses.lock().unwrap().remove(who);
     }
 
+    /// Check the server token. The first right answer after a start pays for Argon2id; later ones compare a cached
+    /// SHA-256. An old fast hash (`token_hash`) is checked once and then replaced by the slow one.
     pub(crate) fn server_token_ok(&self, token: &str) -> bool {
-        let h: Option<String> = self.sdb.lock().unwrap().query_row("SELECT value FROM meta WHERE key = 'token_hash'", [], |r| r.get(0)).ok();
-        h.is_some_and(|h| h == util::sha256_hex(token.as_bytes()))
+        let quick = util::sha256_hex(token.as_bytes());
+        let (argon, old): (Option<String>, Option<String>) = {
+            let c = self.sdb.lock().unwrap();
+            let get = |k: &str| c.query_row("SELECT value FROM meta WHERE key = ?1", [k], |r| r.get::<_, String>(0)).ok();
+            (get("token_argon"), get("token_hash"))
+        };
+        if let (Some(a), Some((ca, cq))) = (&argon, self.sac_ok.lock().unwrap().as_ref())
+            && a == ca
+        {
+            return crate::hub_admin::same(cq, &quick);
+        }
+        let ok = match (argon, old) {
+            (Some(a), _) => a.split_once(':').is_some_and(|(salt, _)| crate::hub_admin::same(&sac_hash(token, salt), &a)),
+            (None, Some(h)) if crate::hub_admin::same(&h, &quick) => {
+                if sac_store(&self.sdb.lock().unwrap(), token).is_ok() {
+                    eprintln!("security: the server token is now kept as Argon2id instead of SHA-256");
+                }
+                true
+            }
+            _ => false,
+        };
+        if ok && let Ok(a) = self.sdb.lock().unwrap().query_row("SELECT value FROM meta WHERE key = 'token_argon'", [], |r| r.get::<_, String>(0)) {
+            *self.sac_ok.lock().unwrap() = Some((a, quick));
+        }
+        ok
     }
 
     fn row(&self, username: &str) -> Option<Row> {
@@ -428,7 +487,7 @@ impl Hub {
     fn finish_login(&self, id: &str, username: &str, key: &[u8; 32], label: &str, enroll: bool) -> Result<Value, String> {
         let app = self.unlock(id, key)?;
         let device = if enroll { Some(self.enroll_device(id, key, label)?) } else { None };
-        let (tid, secret) = crate::auth::create_token(&app.db, crate::auth::Scope::Owner, if label.is_empty() { "app" } else { label });
+        let (tid, secret) = crate::auth::create_token_ttl(&app.db, crate::auth::Scope::Owner, if label.is_empty() { "app" } else { label }, Some(crate::auth::SIGN_IN_TTL_SECS));
         let _ = self.sdb.lock().unwrap().execute("UPDATE accounts SET last_login = ?1 WHERE id = ?2", params![util::now_iso(), id]);
         Ok(json!({ "account": id, "username": username, "token": format!("{id}.{secret}"), "token_id": tid, "device": device }))
     }
@@ -495,6 +554,7 @@ impl Hub {
         })?;
         let key: [u8; 32] = data.try_into().map_err(|_| "damaged key".to_string())?;
         self.rewrap(&id, &key, new_passphrase)?;
+        self.end_sign_ins(&id);
         self.log_admin("recover", &id, &username);
         self.revoke_devices(&id); // a lost passphrase may mean a lost phone: remembered phones must sign in again
         self.fails.lock().unwrap().remove(&username);
@@ -510,7 +570,25 @@ impl Hub {
         }
         let key = self.open_with_passphrase(&id, old, salt.as_deref(), wp.as_deref()).inspect_err(|_| self.failed(&username))?;
         self.rewrap(&id, &key, new)?;
-        Ok(json!({ "ok": true }))
+        let ended = self.end_sign_ins(&id);
+        Ok(json!({ "ok": true, "signed_out": ended }))
+    }
+
+    /// A new passphrase ends every sign-in token of the account (security review #12): a thief who had one is out.
+    /// The account must be unlocked to reach its tokens; when locked, nothing is running and the old tokens only
+    /// work again after an unlock, so they are ended on that unlock instead (`pending_sign_out`).
+    fn end_sign_ins(&self, id: &str) -> usize {
+        match self.app_of(id) {
+            Some(app) => {
+                let n = crate::auth::revoke_sign_in_tokens(&app.db);
+                eprintln!("security: passphrase changed for account {id}: ended {n} sign-in token(s)");
+                n
+            }
+            None => {
+                let _ = self.sdb.lock().unwrap().execute("INSERT OR REPLACE INTO meta (key, value) VALUES (?1, '1')", [format!("pending_sign_out:{id}")]);
+                0
+            }
+        }
     }
 
     fn rewrap(&self, id: &str, key: &[u8; 32], passphrase: &str) -> Result<(), String> {
@@ -526,6 +604,11 @@ impl Hub {
         }
         let model = (self.models)(&self.cfg)?;
         let app = build_account(&self.cfg, id, key, model)?;
+        let pending = format!("pending_sign_out:{id}");
+        if self.sdb.lock().unwrap().execute("DELETE FROM meta WHERE key = ?1", [&pending]).unwrap_or(0) > 0 {
+            let n = crate::auth::revoke_sign_in_tokens(&app.db);
+            eprintln!("security: account {id} unlocked after a passphrase change: ended {n} old sign-in token(s)");
+        }
         app.spawn_housekeeping();
         self.routers.write().unwrap().insert(id.to_string(), crate::api::router(app.clone()));
         self.apps.write().unwrap().insert(id.to_string(), app.clone());

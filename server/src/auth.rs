@@ -52,41 +52,56 @@ pub struct Caller {
 
 /// Older databases get the "last seen" columns (an existing column is not an error).
 pub fn upgrade_tokens(c: &rusqlite::Connection) {
-    for col in ["last_seen TEXT", "user_agent TEXT NOT NULL DEFAULT ''", "uses INTEGER NOT NULL DEFAULT 0"] {
+    // `expires` (unix seconds, NULL = never) and `ttl` (seconds a sign-in token stays good after its last use).
+    for col in ["last_seen TEXT", "user_agent TEXT NOT NULL DEFAULT ''", "uses INTEGER NOT NULL DEFAULT 0", "expires INTEGER", "ttl INTEGER"] {
         let _ = c.execute(&format!("ALTER TABLE tokens ADD COLUMN {col}"), []);
     }
 }
 
 /// Note that a token was just used: when, by what, how many requests. At most one write
 /// every 20 seconds per token, so busy polling stays cheap.
+/// A sign-in token that has a `ttl` slides: each use pushes its end out to `ttl` seconds from now.
 pub fn touch_token(db: &Db, id: &str, user_agent: &str) {
     let now = util::now_iso();
     let cutoff = util::iso(util::unix_now() - 20);
     let ua: String = user_agent.chars().take(160).collect();
     let _ = db.lock().execute(
-        "UPDATE tokens SET last_seen = ?1, user_agent = ?2, uses = uses + 1 WHERE id = ?3 AND (last_seen IS NULL OR last_seen < ?4)",
-        params![now, ua, id, cutoff],
+        "UPDATE tokens SET last_seen = ?1, user_agent = ?2, uses = uses + 1, expires = CASE WHEN ttl IS NULL THEN expires ELSE ?5 + ttl END WHERE id = ?3 AND (last_seen IS NULL OR last_seen < ?4)",
+        params![now, ua, id, cutoff, util::unix_now()],
     );
 }
 
-/// Only the hash is stored. Plain text is shown once.
+/// How long a token made by signing in stays good without being used (security review #12).
+pub const SIGN_IN_TTL_SECS: i64 = 30 * 24 * 3600;
+
+/// Only the hash is stored. Plain text is shown once. The token never ends by itself (CLI and owner-made tokens).
 pub fn create_token(db: &Db, scope: Scope, label: &str) -> (String, String) {
+    create_token_ttl(db, scope, label, None)
+}
+
+/// The same, with a sliding lifetime: unused for `ttl` seconds, the token stops working.
+pub fn create_token_ttl(db: &Db, scope: Scope, label: &str, ttl: Option<i64>) -> (String, String) {
     let plain = format!("tok_{}", util::random_hex(32));
     let id = util::new_id("tkn");
     db.lock()
         .execute(
-            "INSERT INTO tokens (id, hash, scope, label, created) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![id, util::sha256_hex(plain.as_bytes()), scope.as_str(), label, util::now_iso()],
+            "INSERT INTO tokens (id, hash, scope, label, created, ttl, expires) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![id, util::sha256_hex(plain.as_bytes()), scope.as_str(), label, util::now_iso(), ttl, ttl.map(|t| util::unix_now() + t)],
         )
         .expect("insert token");
     (id, plain)
+}
+
+/// End every sign-in token (those with a lifetime) at once, for example after a passphrase change. Returns how many.
+pub fn revoke_sign_in_tokens(db: &Db) -> usize {
+    db.lock().execute("UPDATE tokens SET revoked = 1 WHERE ttl IS NOT NULL AND revoked = 0", []).unwrap_or(0)
 }
 
 pub fn check_token(db: &Db, plain: &str) -> Option<Caller> {
     // Lookup is by hash of the secret, so timing does not leak the stored value.
     let hash = util::sha256_hex(plain.as_bytes());
     db.lock()
-        .query_row("SELECT id, scope, label FROM tokens WHERE hash = ?1 AND revoked = 0", [hash], |r| {
+        .query_row("SELECT id, scope, label FROM tokens WHERE hash = ?1 AND revoked = 0 AND (expires IS NULL OR expires > ?2)", params![hash, util::unix_now()], |r| {
             Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?))
         })
         .optional()
@@ -138,4 +153,30 @@ pub fn list_tokens(db: &Db) -> Vec<TokenInfo> {
 
 pub fn revoke_token(db: &Db, id: &str) -> bool {
     db.lock().execute("UPDATE tokens SET revoked = 1 WHERE id = ?1", [id]).map(|n| n > 0).unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sign_in_tokens_end_and_slide() {
+        let db = Db::open_memory().unwrap();
+        let (_, forever) = create_token(&db, Scope::Owner, "cli");
+        let (id, signed_in) = create_token_ttl(&db, Scope::Owner, "phone", Some(SIGN_IN_TTL_SECS));
+        assert!(check_token(&db, &forever).is_some());
+        assert!(check_token(&db, &signed_in).is_some());
+        // Pretend the token went unused past its lifetime.
+        db.lock().execute("UPDATE tokens SET expires = ?1 WHERE id = ?2", params![util::unix_now() - 1, id]).unwrap();
+        assert!(check_token(&db, &signed_in).is_none(), "an expired sign-in token is refused");
+        // A use slides the end out again (touch is what the API calls on every request).
+        db.lock().execute("UPDATE tokens SET expires = ?1, last_seen = NULL WHERE id = ?2", params![util::unix_now() + 5, id]).unwrap();
+        touch_token(&db, &id, "test");
+        let exp: i64 = db.lock().query_row("SELECT expires FROM tokens WHERE id = ?1", [&id], |r| r.get(0)).unwrap();
+        assert!(exp > util::unix_now() + SIGN_IN_TTL_SECS - 60, "touch slides the lifetime");
+        // A passphrase change ends sign-in tokens but keeps tokens made on purpose.
+        assert_eq!(revoke_sign_in_tokens(&db), 1);
+        assert!(check_token(&db, &signed_in).is_none());
+        assert!(check_token(&db, &forever).is_some());
+    }
 }

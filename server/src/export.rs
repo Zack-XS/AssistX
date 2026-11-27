@@ -105,7 +105,7 @@ pub fn export_zip(app: &App) -> Vec<u8> {
         let md = format!("# {}\n\n{}\n\n{}\n\n---\n```json\n{}\n```\n", e.title, e.summary, e.detail, serde_json::to_string_pretty(e).unwrap_or_default());
         z.add(&format!("memory/{}/{}.md", e.topic_path, e.id), md.as_bytes());
     }
-    z.add("memory/core.md", memory::read_core(&app.cfg.data_dir).as_bytes());
+    z.add("memory/core.md", memory::read_core(&app.db).as_bytes());
     z.add("memory/index.md", memory::index_for(&app.db, &memory::all_current(&app.db), None).join("\n").as_bytes());
     for (name, sql) in [
         ("threads", "SELECT id, title, kind, created, archived FROM threads"),

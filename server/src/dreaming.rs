@@ -423,7 +423,7 @@ pub fn finish(app: &Arc<App>, run_id: &str, dry: bool, ok: bool) {
         let max_n: i64 = c.query_row("SELECT COALESCE(MAX(n), 0) FROM messages", [], |r| r.get(0)).unwrap_or(0);
         let _ = c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('dreaming_last_n', ?1)", [max_n.to_string()]);
         drop(c);
-        let _ = memory::write_core(&app.cfg.data_dir, &core);
+        let _ = memory::write_core(&app.db, &core);
         app.force_index();
     }
     let (changes, questions): (String, String) = app.db.lock()
@@ -509,7 +509,7 @@ pub fn forget(app: &App, id: &str) -> Option<Value> {
     for rid in &removed_entries {
         app.unload_everywhere(&format!("mem:{rid}"));
     }
-    let _ = memory::write_core(&app.cfg.data_dir, &build_core(app));
+    let _ = memory::write_core(&app.db, &build_core(app));
     app.force_index();
     Some(json!({
         "forgotten": removed_entries, "raw_messages_removed": sources.len(),
@@ -528,7 +528,7 @@ pub fn clear_all(app: &App) -> Value {
             let _ = c.execute(&format!("DELETE FROM {t}"), []);
         }
     }
-    let _ = memory::write_core(&app.cfg.data_dir, "");
+    let _ = memory::write_core(&app.db, "");
     app.force_index();
     json!({ "cleared": n, "note": "Memory is empty. Chats, calendar, alarms and places are unchanged. Dreaming only reads chats from now on." })
 }

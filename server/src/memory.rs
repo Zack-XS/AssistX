@@ -604,16 +604,36 @@ pub fn mark_notes_done(db: &Db, ids: &[String]) {
 
 pub const CORE_WORD_CAP: usize = 800;
 
+/// Where older versions kept the basic facts as a plain file. Only read once, to move it into the database.
 pub fn core_path(data_dir: &std::path::Path) -> std::path::PathBuf {
     data_dir.join("memory").join("core.md")
 }
 
-pub fn read_core(data_dir: &std::path::Path) -> String {
-    std::fs::read_to_string(core_path(data_dir)).unwrap_or_default()
+/// The basic facts. They live in the encrypted database (`meta.memory_core`), never in a plain file.
+pub fn read_core(db: &crate::db::Db) -> String {
+    db.lock().query_row("SELECT value FROM meta WHERE key = 'memory_core'", [], |r| r.get(0)).unwrap_or_default()
+}
+
+/// Older versions wrote plain copies of memory to `<data>/memory/`. Move the basic facts into the database (when the
+/// database has none yet) and delete the whole folder: the database is the source, the files were only a copy.
+pub fn remove_plain_copies(db: &crate::db::Db, data_dir: &std::path::Path) {
+    let dir = data_dir.join("memory");
+    if !dir.exists() {
+        return;
+    }
+    if read_core(db).trim().is_empty()
+        && let Ok(old) = std::fs::read_to_string(core_path(data_dir))
+    {
+        let _ = write_core(db, &old);
+    }
+    match std::fs::remove_dir_all(&dir) {
+        Ok(()) => eprintln!("security: removed the plain memory copy at {}", dir.display()),
+        Err(e) => eprintln!("security: could not remove the plain memory copy at {}: {e}", dir.display()),
+    }
 }
 
 /// Write core facts, cut at the hard cap.
-pub fn write_core(data_dir: &std::path::Path, text: &str) -> std::io::Result<()> {
+pub fn write_core(db: &crate::db::Db, text: &str) -> std::io::Result<()> {
     let words: Vec<&str> = text.split_whitespace().collect();
     let body = if words.len() > CORE_WORD_CAP {
         // Keep whole lines while under the cap.
@@ -630,8 +650,10 @@ pub fn write_core(data_dir: &std::path::Path, text: &str) -> std::io::Result<()>
     } else {
         text.to_string()
     };
-    std::fs::create_dir_all(core_path(data_dir).parent().unwrap())?;
-    std::fs::write(core_path(data_dir), body)
+    db.lock()
+        .execute("INSERT OR REPLACE INTO meta (key, value) VALUES ('memory_core', ?1)", [body])
+        .map(|_| ())
+        .map_err(std::io::Error::other)
 }
 
 pub const TOP_LEVEL_LINES: usize = 80;

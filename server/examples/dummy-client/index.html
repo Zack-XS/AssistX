@@ -410,7 +410,8 @@ button:active,.setrow:active,.item:active,.start:active{transform:none}
      the page shows at its real size inside the growing box. */
   ::view-transition-group(sub-card){background:var(--card);border-radius:20px;overflow:hidden;animation-duration:.5s;animation-timing-function:cubic-bezier(.2,0,0,1)}
   html.vt-back::view-transition-group(sub-card),html.vt-back::view-transition-group(sub-title){animation-duration:.38s}
-  ::view-transition-old(root),::view-transition-new(root){animation:none}
+  ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+  /* Theme switch: the old look stays whole underneath while the new one opens over it, so no edge of either shows. */
   ::view-transition-image-pair(sub-card){isolation:auto}
   ::view-transition-old(sub-card),::view-transition-new(sub-card){width:auto;height:auto;inset:0 auto auto 0;object-fit:none;mix-blend-mode:normal}
   /* Fade through inside the card: the old content leaves in the first 30%, the new arrives after. */
@@ -688,12 +689,10 @@ function applyThemeSplit() {
   const vt = document.startViewTransition(swap);
   vt.finished.finally(nativeBars);
   vt.ready.then(() => {
+    setTimeout(nativeBars, 320); // the phone's status and navigation bars switch halfway, not after
     document.documentElement.animate(
       { clipPath: ["inset(0 50% 0 50%)", "inset(0 0 0 0)"] },
       { duration: 650, easing: "cubic-bezier(.7,0,.2,1)", pseudoElement: "::view-transition-new(root)" });
-    document.documentElement.animate(
-      { transform: ["scale(1)", "scale(.96)"], opacity: [1, .5] },
-      { duration: 650, easing: "ease-in", fill: "forwards", pseudoElement: "::view-transition-old(root)" });
   }).catch(() => {});
 }
 
@@ -726,7 +725,8 @@ function openSub(title, build, from) {
       from.style.viewTransitionName = t.style.viewTransitionName = "";
       openSubNow(title, build); sp.style.viewTransitionName = "sub-card"; $("subTitle").style.viewTransitionName = "sub-title";
     });
-    tr.ready.then(() => vtShape(true)).catch(() => {});
+    let shaped = []; tr.ready.then(() => { shaped = vtShape(true); }).catch(() => {});
+    tr.finished.finally(() => shaped.forEach(a => a.cancel()));
     // Done: the page keeps still (no second slide), and its rows have already risen inside the growing card.
     tr.finished.finally(() => { sp.style.viewTransitionName = $("subTitle").style.viewTransitionName = ""; sp.classList.add("noanim"); sp.classList.remove("vt"); });
     return;
@@ -740,10 +740,12 @@ function vtShape(open) {
   const card = getComputedStyle(d).getPropertyValue("--card").trim() || "#fff", page = getComputedStyle(d).getPropertyValue("--page").trim() || "#fafafa";
   const lift = "0 0 0 1px rgba(0,0,0,.06), 0 18px 48px rgba(0,0,0,.14)", flat = "0 0 0 1px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04)";
   const k = (a, b) => open ? [a, b] : [b, a];
-  d.animate({ borderRadius: k("20px", "0px"), backgroundColor: k(card, page), boxShadow: open ? [flat, lift, "none"] : ["none", lift, flat] },
-    { duration: dur, easing, fill: "both", pseudoElement: "::view-transition-group(sub-card)" });
+  // Returned so the caller can end them: "fill: both" would otherwise keep shaping every later transition
+  // (it made the theme switch show the old look shrunk and dim).
+  return [d.animate({ borderRadius: k("20px", "0px"), backgroundColor: k(card, page), boxShadow: open ? [flat, lift, "none"] : ["none", lift, flat] },
+    { duration: dur, easing, fill: "both", pseudoElement: "::view-transition-group(sub-card)" }),
   d.animate({ opacity: k(1, .25), transform: k("scale(1)", "scale(.94)") },
-    { duration: dur, easing, fill: "both", pseudoElement: open ? "::view-transition-old(root)" : "::view-transition-new(root)" });
+    { duration: dur, easing, fill: "both", pseudoElement: open ? "::view-transition-old(root)" : "::view-transition-new(root)" })];
 }
 function openSubNow(title, build) {
   $("subTitle").textContent = title; const sp = $("subpage"); const was = sp.hidden; sp.hidden = false;
@@ -768,7 +770,8 @@ function closeSubSoft() {
       sp.style.viewTransitionName = $("subTitle").style.viewTransitionName = ""; closeSub(); sp.classList.remove("vt");
       row.style.viewTransitionName = "sub-card"; t.style.viewTransitionName = "sub-title";
     });
-    tr.ready.then(() => vtShape(false)).catch(() => {});
+    let shaped = []; tr.ready.then(() => { shaped = vtShape(false); }).catch(() => {});
+    tr.finished.finally(() => shaped.forEach(a => a.cancel()));
     tr.finished.finally(() => { row.style.viewTransitionName = t.style.viewTransitionName = ""; document.documentElement.classList.remove("vt-back"); });
     return;
   }

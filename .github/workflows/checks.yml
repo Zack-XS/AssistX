@@ -1,11 +1,11 @@
-# Checks for every PR and every push to main, beta and production.
+# Checks for every PR and every push to production.
 # See docs/contributing/branches.md.
 name: checks
 
 on:
   pull_request:
   push:
-    branches: [main, beta, production]
+    branches: [production]
   workflow_call:
 
 permissions:

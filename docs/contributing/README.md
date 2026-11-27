@@ -11,7 +11,7 @@ order: 8
 - [Code style](code-style.md): the hard rules for code.
 - [Testing](testing.md): golden tests, model tests, smoke test.
 - [Change flow](pr-flow.md): how a change goes in, and pull request etiquette.
-- [Branches](branches.md): main, beta and production.
+- [Branches](branches.md): one branch, production.
 - [Private data](../security/private-data.md): never commit it, tests included.
 - [Logging](../quality/logging.md): every change adds logs.
 

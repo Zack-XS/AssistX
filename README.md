@@ -40,7 +40,7 @@ Most AI chat apps are a smart text box. You ask, it answers, it forgets. AssistX
 - **Real safety work.** Sandboxing, prompt-injection defense, encryption and approvals, all in code.
 - **Docs first.** Every part has a plain page in [`docs/`](docs/README.md). You won't guess.
 - **Quick feedback.** Golden tests run whole conversations against a mock model. No API key needed.
-- **Your work ships.** Merged changes go out through `beta` to everyone on `production`.
+- **Your work ships.** Merged changes go out to everyone on `production`.
 
 ## Benefits over other open-source assistants
 
@@ -83,6 +83,6 @@ git config core.hooksPath .githooks
 - All backend code is Rust. The app is Kotlin; its page is HTML/CSS/JS.
 - Never commit private data, tests included.
 - Every change adds a test and logs.
-- Every change goes in by pull request: `main` -> `beta` -> `production`.
+- Every change goes in by pull request into `production`.
 
 Security problems: see [Reporting](docs/security/reporting.md). Don't open a public issue.

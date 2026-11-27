@@ -911,20 +911,103 @@ async function powerCard() {
       hap("success"); renderSettings(); if (view === "home") renderHome();
     }));
 }
+// What is inside each page, so search finds a page by the things on it, not just its name.
+const TAGS = {
+  "Setup steps": "permissions battery home screen checklist start",
+  General: "appearance theme dark light open app on feel vibration haptics sounds account sign out update version power off",
+  Status: "parts activity use today usage safety health check working errors",
+  Voice: "phone assistant dictation button speech talk microphone mic wake connection",
+  Integrations: "plugins tools apps connect sign in login oauth tokens keys api autonomy auto ask never google spotify email gmail calendar music",
+  Privacy: "listen capture microphone keep text quiet places delete heard data",
+  Intelligence: "model ai llm brain each job recent runs speed thinking cloud local",
+  Memory: "facts folders remember forget notes confidence",
+  "Mind map": "people places groups friends family relationships graph",
+  Automation: "automations reminders jobs schedule recent actions tasks routines",
+  Recipes: "saved steps run again shortcuts macros",
+  Alarms: "alarm wake ring sounds snooze quick alarm",
+  Calendar: "events schedule appointments meetings agenda reminders",
+  Lists: "shopping grocery to-do todo checklist",
+  Location: "gps places visits where map home work now",
+  Noticing: "places phone notifications noticed lately leaving home gym parcels packages bills plans",
+  Health: "steps sleep heart rate fitness last days",
+  Morning: "morning brief what it says fixed time time to leave leave-now alerts commute traffic",
+  Computers: "mac windows linux pc laptop desktop add a computer",
+  Devices: "phones access tokens sessions",
+  Developer: "server connection model status tokens chat show steps tools debug",
+};
+// Plugin names, summaries and tool names, fetched once when search opens. A hit here points to Integrations.
+let plugIdx = null;
+async function loadPlugIdx() {
+  if (plugIdx) return; plugIdx = [];
+  try {
+    const r = await api("GET", "/v1/plugins");
+    plugIdx = (r.items || []).map(p => ({ id: p.id, text: [p.id, p.summary, ...(p.tools || []).flatMap(t => [t.name, t.desc, ...(t.tags || [])])].join(" ") }));
+    if ($("q").value.trim()) renderSettings();
+  } catch (e) { plugIdx = null; }
+}
+// Words split on anything that is not a letter or number.
+const words = s => String(s || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+// How many letter changes turn a into b (stops early once it is over max).
+function edits(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]; let low = i;
+    for (let j = 1; j <= b.length; j++) { cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); low = Math.min(low, cur[j]); }
+    if (low > max) return max + 1; prev = cur;
+  }
+  return prev[b.length];
+}
+// A typed word matches a word if it starts it, or (only when nothing matched that way) is a small typo of it,
+// so "calander" still finds "calendar" but "heart" does not also pull in "heard".
+let fuzzy = false;
+function wordHit(q, list) {
+  const max = !fuzzy ? 0 : q.length >= 7 ? 2 : q.length >= 4 ? 1 : 0;
+  return list.some(w => w.startsWith(q) || (max > 0 && (edits(q, w, max) <= max || (w.length > q.length && edits(q, w.slice(0, q.length), max) <= max))));
+}
+// Every typed word has to match somewhere in the text.
+const allHit = (qs, text) => { const list = words(text); return qs.every(q => wordHit(q, list)); };
+// Why a page matched, for the small line under its title: its own name, what is on it, or a plugin.
+function whyHit(s, qs) {
+  if (allHit(qs, s[1] + " " + s[2])) return s[2];
+  if (allHit(qs, s[1] + " " + s[2] + " " + (TAGS[s[1]] || ""))) {
+    const found = words(TAGS[s[1]]).filter(w => qs.some(q => wordHit(q, [w])));
+    return "Has " + [...new Set(found)].slice(0, 3).join(", ");
+  }
+  if (s[1] === "Integrations" && plugIdx) {
+    const ps = plugIdx.filter(p => allHit(qs, p.text)).map(p => p.id);
+    if (ps.length) return "Plugin: " + ps.slice(0, 3).join(", ");
+  }
+  return null;
+}
 function renderSettings() {
-  const q = $("q").value.toLowerCase();
-  powerCard().then(c => { const old = $("powercard"); if (old) old.remove(); $("setBody").prepend(c); });
-  // Searching shows the one-line description too; the plain list is titles only.
+  const raw = $("q").value.trim(), qs = words(raw);
+  if (raw) loadPlugIdx();
+  // Searching shows why each page matched; the plain list is titles only.
+  const why = new Map();
   const row = ([ic, t, d, f]) => h("button", { class: "setrow", type: "button", onclick: ev => f.go ? f() : openSub(t, f, ev.currentTarget) },
-    h("span", { class: "setic" }, icon(ic, 20)), h("span", { class: "grow" }, h("b", { text: t }), q ? h("small", { text: d }) : null), icon("chev", 18));
-  const hit = s => (s[1] !== "Developer" || devOn()) && (q ? (s[1] + " " + s[2]).toLowerCase().includes(q) : !HIDDEN.has(s[1]));
-  const groups = q ? [["Results", SECTIONS.map(s => s[1])]] : GROUPS;
-  $("setBody").replaceChildren(...groups.flatMap(([name, titles]) => {
+    h("span", { class: "setic" }, icon(ic, 20)), h("span", { class: "grow" }, h("b", { text: t }), raw ? h("small", { text: why.get(t) || d }) : null), icon("chev", 18));
+  const hit = s => {
+    if (s[1] === "Developer" && !devOn()) return false;
+    if (!raw) return !HIDDEN.has(s[1]);
+    const w = qs.length ? whyHit(s, qs) : null; if (w) why.set(s[1], w); return !!w;
+  };
+  fuzzy = false;
+  if (qs.length && !SECTIONS.some(hit)) { fuzzy = true; why.clear(); }
+  // Pages that match by name come first, then ones that match by what is on them.
+  const rank = t => { const s = SECTIONS.find(x => x[1] === t); return allHit(qs, s[1] + " " + s[2]) ? 0 : 1; };
+  const groups = raw ? [["Results", SECTIONS.map(s => s[1]).sort((a, b) => rank(a) - rank(b))]] : GROUPS;
+  const out = groups.flatMap(([name, titles]) => {
     const rows = titles.map(t => SECTIONS.find(s => s[1] === t)).filter(Boolean).filter(hit);
     return rows.length ? [name ? h("div", { class: "sect", text: name }) : h("div", { class: "gap" }), h("div", { class: "group" }, rows.map(row))] : [];
-  }));
+  });
+  // Nothing found: say so, and offer to ask the assistant instead.
+  if (raw && !out.length) out.push(h("div", { class: "gap" }), h("div", { class: "card" },
+    h("div", { class: "empty", text: "No setting matches “" + raw + "”." }),
+    h("button", { class: "pill", type: "button", onclick: () => { show("chat"); $("msg").value = "Where do I change " + raw + "?"; $("msg").focus(); } }, "Ask the assistant")));
+  $("setBody").replaceChildren(...out);
 }
-$("srch").onclick = () => { $("searchbar").hidden = !$("searchbar").hidden; if (!$("searchbar").hidden) $("q").focus(); };
+$("srch").onclick = () => { $("searchbar").hidden = !$("searchbar").hidden; if (!$("searchbar").hidden) { $("q").focus(); loadPlugIdx(); } };
 $("q").oninput = renderSettings;
 
 const capAvail = () => !!(NA && NA.captureState);

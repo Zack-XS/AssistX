@@ -124,18 +124,22 @@ impl Db {
 
 /// The key as SQLCipher wants it: a passphrase from the environment, or raw hex from `db.key`.
 fn db_key(path: &Path) -> Result<String, String> {
-    key_from("AGENT_DB_KEY", &path.with_file_name("db.key"))
+    key_from("AGENT_DB_KEY", &key_file(path, "db.key"))
 }
 
 /// Where a key file lives: systemd's credentials folder (`LoadCredential=`), else `AGENT_KEY_DIR`, else beside the
 /// database. A key kept apart from `data/` means a copy of `data/` alone cannot be opened (security review #10).
 fn key_file(path: &Path, name: &str) -> std::path::PathBuf {
-    for var in ["CREDENTIALS_DIRECTORY", "AGENT_KEY_DIR"] {
-        if let Ok(d) = std::env::var(var)
-            && !d.trim().is_empty()
-        {
-            return Path::new(d.trim()).join(name);
-        }
+    // The credentials folder is read-only and holds only what the unit lists: use it only when the key is there.
+    if let Ok(d) = std::env::var("CREDENTIALS_DIRECTORY")
+        && Path::new(d.trim()).join(name).is_file()
+    {
+        return Path::new(d.trim()).join(name);
+    }
+    if let Ok(d) = std::env::var("AGENT_KEY_DIR")
+        && !d.trim().is_empty()
+    {
+        return Path::new(d.trim()).join(name);
     }
     path.with_file_name(name)
 }

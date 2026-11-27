@@ -436,6 +436,42 @@ button:active,.setrow:active,.item:active,.start:active{transform:none}
 .view.pending{opacity:0}
 .scroll.quiet>*{animation:none!important}
 @media (prefers-reduced-motion:no-preference){.scroll.enter>*{animation:rise .32s var(--emph-in) both!important}}
+/* lists */
+.lbar{display:block;height:4px;border-radius:2px;background:var(--field);overflow:hidden;margin-top:7px;max-width:140px}
+.lbar i{display:block;height:100%;background:var(--ok);border-radius:2px;transition:width .5s var(--emph)}
+.lbar.wide{max-width:none;flex:1;margin:0}
+.lcount{min-width:26px;height:24px;padding:0 8px;border-radius:12px;background:var(--field);display:grid;place-items:center;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--mute)}
+.ladd b{font-weight:500;color:var(--mute)}
+.lempty{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;padding:26px 0 18px}
+.lempty b{font-size:17px}.setic.big{width:56px;height:56px;border-radius:16px;margin-bottom:6px}
+.laddbar{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:18px;padding:6px 6px 6px 16px;box-shadow:var(--shadow);margin:0 0 12px}
+html[data-resolved=dark] .laddbar{border:1px solid var(--line)}
+.laddbar input{flex:1;min-width:0;border:0;background:none;padding:10px 0;font:inherit;color:var(--text);outline:0}
+.ladd-btn{width:40px;height:40px;border-radius:12px;border:0;background:var(--ink);color:var(--on-ink);display:grid;place-items:center;flex:none;transition:transform .3s var(--spring)}
+.ladd-btn:active{transform:scale(.92)}
+.lprog{display:flex;align-items:center;gap:12px;margin:0 4px 10px}
+.lprog .sub{font-size:13px;white-space:nowrap}
+.litem{display:flex;align-items:center;gap:10px;padding:4px 0;border-top:1px solid var(--line);animation:litemin .3s var(--emph-in) both}
+.card.list .litem:first-child{border-top:0}
+@keyframes litemin{from{opacity:0;transform:translateY(-4px)}}
+.scroll.quiet .litem,#subBody .litem:not(.ticking){animation:none}
+.lcheck{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);background:none;display:grid;place-items:center;flex:none;color:transparent;transition:background-color .2s var(--emph),border-color .2s,color .2s,transform .3s var(--spring)}
+.lcheck:active{transform:scale(.88)}
+.litem.done .lcheck{background:var(--ok);border-color:var(--ok);color:#fff}
+.card>.linkrow:first-child{border-top:0}
+.lcheck svg{stroke-width:3}
+.ltext{flex:1;display:flex;flex-direction:column;align-items:flex-start;text-align:left;background:none;border:0;padding:10px 0;font:inherit;color:inherit;min-width:0}
+.ltext .t{transition:color .2s,opacity .2s}
+.litem.done .ltext .t{opacity:.5;text-decoration:line-through}
+.ltext .sub{font-size:13px;margin-top:1px}
+.lx{width:34px;height:34px;color:var(--mute);opacity:.7}
+.lhead{display:flex;justify-content:space-between;align-items:center;margin:14px 4px 6px}
+.lhead .link{color:var(--mute);font-weight:500;gap:4px}
+.lchev{display:inline-grid;transition:transform .25s var(--emph)}.lchev.open{transform:rotate(90deg)}
+.litem.ticking .lcheck{animation:checkpop .4s var(--spring)}
+.litem.ticking{animation:tickout .42s var(--emph-out) .2s forwards}
+@keyframes checkpop{40%{transform:scale(1.18)}}
+@keyframes tickout{to{opacity:0;transform:translateX(12px)}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 #updbar{flex:none;background:var(--ink);color:var(--on-ink);padding:max(8px,env(safe-area-inset-top)) 14px 8px;font-size:14px;z-index:40}
 #updbar .ubrow{display:flex;align-items:center;gap:8px}
@@ -579,6 +615,7 @@ const ICONS = {
   list: '<path d="M11 6h10"/><path d="M11 12h10"/><path d="M11 18h10"/><path d="m3 6 1.5 1.5L7 5"/><path d="m3 12 1.5 1.5L7 11"/><path d="m3 18 1.5 1.5L7 17"/>',
   share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/>',
   box: '<rect x="4" y="4" width="16" height="16" rx="4"/>',
+  tick: '<path d="M20 6 9 17l-5-5"/>',
 };
 function icon(name, size = 22) {
   const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -899,14 +936,14 @@ $("bell").onclick = () => openSub("Needs your attention", subInsights);
 /* ---------- SETTINGS ---------- */
 const goPlan = what => Object.assign(() => window.__open(what), { go: true });
 // Settings, in groups. Each group is one card; rows are split by thin lines.
-const GROUPS = [["", ["Set up AssistX", "General", "Voice"]], ["Assistant", ["Intelligence", "Memory", "Mind map", "Automation", "Recipes", "Integrations"]],
+const GROUPS = [["", ["General", "Voice"]], ["Assistant", ["Intelligence", "Memory", "Mind map", "Automation", "Recipes", "Integrations"]],
   ["Your day", ["Morning", "Noticing"]], ["Phone", ["Location", "Health", "Computers", "Privacy"]], ["", ["Developer"]]];
 // Developer settings stay hidden until turned on (tap Version 7 times in General, like Android).
 const devOn = () => localStorage.getItem("devMode") === "1";
 // Old shortcuts to Plan and the technical pages live elsewhere now; they stay searchable here.
-const HIDDEN = new Set(["Alarms", "Calendar", "Lists", "Status", "Devices"]);
+const HIDDEN = new Set(["Setup steps", "Alarms", "Calendar", "Lists", "Status", "Devices"]);
 const SECTIONS = [
-  ["check", "Set up AssistX", "A checklist: permissions, battery, Home", subSetup],
+  ["check", "Setup steps", "In General: permissions, battery, Home", subSetup],
   ["sliders", "General", "Appearance, connection, and more", subGeneral],
   ["bolt", "Status", "Is everything working?", subStatus],
   ["mic", "Voice", "Dictation and speech", subVoice],
@@ -933,28 +970,109 @@ async function powerCard() {
   let on = true; try { on = (await api("GET", "/v1/power")).on !== false; } catch (e) {}
   return h("div", { class: "card", id: "powercard" },
     toggle("AssistX is " + (on ? "on" : "off"), on ? "Off stops everything." : "Everything is stopped. Phone alarms still ring.", on, async v => {
-      if (!v && !confirm("Turn AssistX off completely?\n\nNothing will think or run, and reminders and reports will not fire until you turn it on.")) { renderSettings(); return; }
+      if (!v && !confirm("Turn AssistX off completely?\n\nNothing will think or run, and reminders and reports will not fire until you turn it on.")) { if (subRebuild) subRebuild(); return; }
       const r = await api("PUT", "/v1/power", { on: v });
       if (r.error) alert(r.error.message);
-      hap("success"); renderSettings(); if (view === "home") renderHome();
+      hap("success"); if (subRebuild && $("subTitle").textContent === "General") subRebuild(); if (view === "home") renderHome();
     }));
 }
+// What is inside each page, so search finds a page by the things on it, not just its name.
+const TAGS = {
+  "Setup steps": "permissions battery home screen checklist start",
+  General: "appearance theme dark light open app on feel vibration haptics sounds account sign out update version power off",
+  Status: "parts activity use today usage safety health check working errors",
+  Voice: "phone assistant dictation button speech talk microphone mic wake connection",
+  Integrations: "plugins tools apps connect sign in login oauth tokens keys api autonomy auto ask never google spotify email gmail calendar music",
+  Privacy: "listen capture microphone keep text quiet places delete heard data",
+  Intelligence: "model ai llm brain each job recent runs speed thinking cloud local",
+  Memory: "facts folders remember forget notes confidence",
+  "Mind map": "people places groups friends family relationships graph",
+  Automation: "automations reminders jobs schedule recent actions tasks routines",
+  Recipes: "saved steps run again shortcuts macros",
+  Alarms: "alarm wake ring sounds snooze quick alarm",
+  Calendar: "events schedule appointments meetings agenda reminders",
+  Lists: "shopping grocery to-do todo checklist",
+  Location: "gps places visits where map home work now",
+  Noticing: "places phone notifications noticed lately leaving home gym parcels packages bills plans",
+  Health: "steps sleep heart rate fitness last days",
+  Morning: "morning brief what it says fixed time time to leave leave-now alerts commute traffic",
+  Computers: "mac windows linux pc laptop desktop add a computer",
+  Devices: "phones access tokens sessions",
+  Developer: "server connection model status tokens chat show steps tools debug",
+};
+// Plugin names, summaries and tool names, fetched once when search opens. A hit here points to Integrations.
+let plugIdx = null;
+async function loadPlugIdx() {
+  if (plugIdx) return; plugIdx = [];
+  try {
+    const r = await api("GET", "/v1/plugins");
+    plugIdx = (r.items || []).map(p => ({ id: p.id, text: [p.id, p.summary, ...(p.tools || []).flatMap(t => [t.name, t.desc, ...(t.tags || [])])].join(" ") }));
+    if ($("q").value.trim()) renderSettings();
+  } catch (e) { plugIdx = null; }
+}
+// Words split on anything that is not a letter or number.
+const words = s => String(s || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+// How many letter changes turn a into b (stops early once it is over max).
+function edits(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]; let low = i;
+    for (let j = 1; j <= b.length; j++) { cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); low = Math.min(low, cur[j]); }
+    if (low > max) return max + 1; prev = cur;
+  }
+  return prev[b.length];
+}
+// A typed word matches a word if it starts it, or (only when nothing matched that way) is a small typo of it,
+// so "calander" still finds "calendar" but "heart" does not also pull in "heard".
+let fuzzy = false;
+function wordHit(q, list) {
+  const max = !fuzzy ? 0 : q.length >= 7 ? 2 : q.length >= 4 ? 1 : 0;
+  return list.some(w => w.startsWith(q) || (max > 0 && (edits(q, w, max) <= max || (w.length > q.length && edits(q, w.slice(0, q.length), max) <= max))));
+}
+// Every typed word has to match somewhere in the text.
+const allHit = (qs, text) => { const list = words(text); return qs.every(q => wordHit(q, list)); };
+// Why a page matched, for the small line under its title: its own name, what is on it, or a plugin.
+function whyHit(s, qs) {
+  if (allHit(qs, s[1] + " " + s[2])) return s[2];
+  if (allHit(qs, s[1] + " " + s[2] + " " + (TAGS[s[1]] || ""))) {
+    const found = words(TAGS[s[1]]).filter(w => qs.some(q => wordHit(q, [w])));
+    return "Has " + [...new Set(found)].slice(0, 3).join(", ");
+  }
+  if (s[1] === "Integrations" && plugIdx) {
+    const ps = plugIdx.filter(p => allHit(qs, p.text)).map(p => p.id);
+    if (ps.length) return "Plugin: " + ps.slice(0, 3).join(", ");
+  }
+  return null;
+}
 function renderSettings() {
-  const q = $("q").value.toLowerCase();
-  const keep = $("powercard");
-  powerCard().then(c => { const old = $("powercard"); if (old && old.outerHTML === c.outerHTML) return; if (old) old.replaceWith(c); else $("setBody").prepend(c); });
-  // Searching shows the one-line description too; the plain list is titles only.
+  const raw = $("q").value.trim(), qs = words(raw);
+  if (raw) loadPlugIdx();
+  // Searching shows why each page matched; the plain list is titles only.
+  const why = new Map();
   const row = ([ic, t, d, f]) => h("button", { class: "setrow", type: "button", onclick: ev => f.go ? f() : openSub(t, f, ev.currentTarget) },
-    h("span", { class: "setic" }, icon(ic, 20)), h("span", { class: "grow" }, h("b", { text: t }), q ? h("small", { text: d }) : null), icon("chev", 18));
-  const hit = s => (s[1] !== "Developer" || devOn()) && (q ? (s[1] + " " + s[2]).toLowerCase().includes(q) : !HIDDEN.has(s[1]));
-  const groups = q ? [["Results", SECTIONS.map(s => s[1])]] : GROUPS;
-  $("setBody").replaceChildren(...groups.flatMap(([name, titles]) => {
+    h("span", { class: "setic" }, icon(ic, 20)), h("span", { class: "grow" }, h("b", { text: t }), raw ? h("small", { text: why.get(t) || d }) : null), icon("chev", 18));
+  const hit = s => {
+    if (s[1] === "Developer" && !devOn()) return false;
+    if (!raw) return !HIDDEN.has(s[1]);
+    const w = qs.length ? whyHit(s, qs) : null; if (w) why.set(s[1], w); return !!w;
+  };
+  fuzzy = false;
+  if (qs.length && !SECTIONS.some(hit)) { fuzzy = true; why.clear(); }
+  // Pages that match by name come first, then ones that match by what is on them.
+  const rank = t => { const s = SECTIONS.find(x => x[1] === t); return allHit(qs, s[1] + " " + s[2]) ? 0 : 1; };
+  const groups = raw ? [["Results", SECTIONS.map(s => s[1]).sort((a, b) => rank(a) - rank(b))]] : GROUPS;
+  const out = groups.flatMap(([name, titles]) => {
     const rows = titles.map(t => SECTIONS.find(s => s[1] === t)).filter(Boolean).filter(hit);
     return rows.length ? [name ? h("div", { class: "sect", text: name }) : h("div", { class: "gap" }), h("div", { class: "group" }, rows.map(row))] : [];
-  }));
-  if (keep && !$("powercard")) $("setBody").prepend(keep);
+  });
+  // Nothing found: say so, and offer to ask the assistant instead.
+  if (raw && !out.length) out.push(h("div", { class: "gap" }), h("div", { class: "card" },
+    h("div", { class: "empty", text: "No setting matches “" + raw + "”." }),
+    h("button", { class: "pill", type: "button", onclick: () => { show("chat"); $("msg").value = "Where do I change " + raw + "?"; $("msg").focus(); } }, "Ask the assistant")));
+  $("setBody").replaceChildren(...out);
 }
-$("srch").onclick = () => { $("searchbar").hidden = !$("searchbar").hidden; if (!$("searchbar").hidden) $("q").focus(); };
+$("srch").onclick = () => { $("searchbar").hidden = !$("searchbar").hidden; if (!$("searchbar").hidden) { $("q").focus(); loadPlugIdx(); } };
 $("q").oninput = renderSettings;
 
 const capAvail = () => !!(NA && NA.captureState);
@@ -1014,6 +1132,10 @@ function toggle(label, hint, on, change) {
 }
 function subGeneral(b) { subGeneralMain(b); appUpdates(b); }
 function subGeneralMain(b) {
+  const slot = h("div", { class: "card", id: "powercard" }, h("div", { class: "sub", text: "Checking\u2026" }));
+  b.append(slot); powerCard().then(c => slot.replaceWith(c));
+  b.append(h("div", { class: "group", style: "margin-top:12px" }, h("button", { class: "setrow", type: "button", onclick: ev => openSub("Setup steps", subSetup, ev.currentTarget) },
+    h("span", { class: "setic" }, icon("check", 20)), h("span", { class: "grow" }, h("b", { text: "Setup steps" }), h("small", { text: "Permissions, battery, Home" })), icon("chev", 18))));
   const pick = localStorage.getItem("theme") || "system";
   b.append(h("div", { class: "sect", text: "Appearance" }), h("div", { class: "seg", role: "group", "aria-label": "Theme" },
     ["light", "dark", "system"].map(t => h("button", { type: "button", "aria-pressed": String(pick === t), text: t[0].toUpperCase() + t.slice(1), onclick: () => { localStorage.setItem("theme", t); applyThemeSplit(); } }))));
@@ -1417,7 +1539,7 @@ async function subStatus(b) {
     row("Tool sandbox", String(o.sandbox || "?"), o.sandbox === "unavailable"),
     row("Server time", String(o.timezone || ""))));
   b.append(h("div", { class: "row", style: "margin-top:12px" }, h("button", { class: "pill", type: "button", onclick: () => subRebuild() }, "Check again"),
-    h("button", { class: "pill", type: "button", onclick: () => openSub("Set up AssistX", subSetup) }, "Setup checklist")));
+    h("button", { class: "pill", type: "button", onclick: () => openSub("Setup steps", subSetup) }, "Setup steps")));
 }
 
 /* ---------- first-run checklist ---------- */
@@ -1434,7 +1556,7 @@ async function setupItems(light) {
   const localReady = models && (models.profiles || []).some(p => p.local && p.ready);
   const L = [];
   L.push({ id: "server", label: "Connected to your server", hint: "The phone can reach it.", ok: !!(models && !models.error), fix: () => openSub("General", subGeneral), fixText: "Connection" });
-  L.push({ id: "power", label: "AssistX is switched on", hint: "The master switch in Settings.", ok: !power || power.on !== false, fix: async () => { await api("PUT", "/v1/power", { on: true }); }, fixText: "Turn on" });
+  L.push({ id: "power", label: "AssistX is switched on", hint: "The switch in Settings, General.", ok: !power || power.on !== false, fix: async () => { await api("PUT", "/v1/power", { on: true }); }, fixText: "Turn on" });
   L.push({ id: "models", label: "A model is ready", hint: status && !status.ok ? "Open Status to see what is down." : "A model on your server answers.", ok: !!localReady && (!status || status.ok), fix: () => openSub("Status", subStatus), fixText: "Status" });
   if (nat) {
     L.push({ id: "notifications", label: "Notifications allowed", hint: whyOf("notifications"), ok: !!st.notifications, fix: need("notifications"), fixText: "Allow" });
@@ -1464,7 +1586,7 @@ async function setupCard() {
   if (done === L.length) return null;
   return h("div", { class: "card" }, h("div", { class: "cardhead" }, icon("check", 24), h("h3", { class: "grow", text: "Finish setting up" }), h("span", { class: "sub", text: done + " of " + L.length })),
     h("p", { class: "sub", style: "margin:0 0 8px", text: L.filter(i => !i.done && !i.optional).length ? "A few things need a tap so everything works properly." : "Only optional things are left." }),
-    h("button", { class: "pill solid", type: "button", onclick: () => openSub("Set up AssistX", subSetup) }, "Open checklist"));
+    h("button", { class: "pill solid", type: "button", onclick: () => openSub("Setup steps", subSetup) }, "Open setup steps"));
 }
 async function subSetup(b) {
   b.append(skel());
@@ -1483,7 +1605,7 @@ async function subSetup(b) {
   b.append(h("div", { class: "row", style: "margin-top:12px" }, h("button", { class: "pill", type: "button", onclick: () => subRebuild() }, "Check again"),
     h("button", { class: "pill", type: "button", onclick: () => openSub("Status", subStatus) }, "Status")));
 }
-window.__setupChanged = () => { if (window.__permsRefresh) window.__permsRefresh(); if (!$("subpage").hidden && $("subTitle").textContent === "Set up AssistX" && subRebuild) subRebuild(); };
+window.__setupChanged = () => { if (window.__permsRefresh) window.__permsRefresh(); if (!$("subpage").hidden && $("subTitle").textContent === "Setup steps" && subRebuild) subRebuild(); };
 
 /* ---------- alarms and sounds ---------- */
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -1657,12 +1779,16 @@ async function planLists(body, gen) {
   const r = await api("GET", "/v1/lists");
   if (gen !== planGen) return;
   const all = r.lists || [], out = [];
-  if (!all.length) out.push(h("div", { class: "card" }, h("div", { class: "empty", text: "No lists yet. Tap + to make one, or ask: “add milk to my shopping list”." })));
-  else out.push(h("div", { class: "card" }, all.map(l => h("button", { class: "item", type: "button", onclick: () => openList(l.id, l.name) },
-    h("span", { class: "chip" }, icon("list", 18)),
-    h("span", { class: "grow" }, h("div", { class: "t", text: l.name }), h("div", { class: "sub", text: l.open + " to do" + (l.done ? " · " + l.done + " done" : "") })), icon("chev", 18)))));
-  const missing = ["Shopping", "To-do"].filter(n => !all.some(l => l.name === n));
-  if (missing.length) out.push(h("div", { class: "quick", style: "margin:4px 0 14px" }, missing.map(n => h("button", { class: "pill", type: "button", onclick: () => newList(n) }, icon("plus", 16), n))));
+  // One card like the settings list: each list with a small progress bar and its count; new lists at the bottom.
+  const bar = l => { const t = (l.open || 0) + (l.done || 0); return h("span", { class: "lbar" }, h("i", { style: "width:" + (t ? Math.round(100 * (l.done || 0) / t) : 0) + "%" })); };
+  const row = l => h("button", { class: "setrow", type: "button", onclick: ev => openList(l.id, l.name, ev.currentTarget) },
+    h("span", { class: "setic" }, icon("list", 20)),
+    h("span", { class: "grow" }, h("b", { text: l.name }), bar(l)),
+    h("span", { class: "lcount", text: l.open ? String(l.open) : "✓" }), icon("chev", 18));
+  const missing = ["Shopping", "To-do"].filter(n => !all.some(l => l.name.toLowerCase() === n.toLowerCase()));
+  const addRow = (label, fn) => h("button", { class: "setrow ladd", type: "button", onclick: fn }, h("span", { class: "setic" }, icon("plus", 20)), h("span", { class: "grow" }, h("b", { text: label })));
+  if (!all.length) out.push(h("div", { class: "lempty" }, h("span", { class: "setic big" }, icon("list", 28)), h("b", { text: "No lists yet" }), h("span", { class: "sub", text: "Or ask: “add milk to my shopping list”." })));
+  out.push(h("div", { class: "group" }, all.map(row), missing.map(n => addRow(n, () => newList(n))), addRow("New list", () => newList())));
   settle(body, out);
 }
 async function newList(name) {
@@ -1676,49 +1802,72 @@ async function shareList(id, name) {
     const text = await r.text();
     if (NA && NA.shareText) NA.shareText(name, text);
     else if (navigator.share) await navigator.share({ title: name, text });
-    else { await navigator.clipboard.writeText(text); alert("Copied to the clipboard."); }
-  } catch (e) { if (!(e && e.name === "AbortError")) alert("Could not share the list."); }
+    else { await navigator.clipboard.writeText(text); toast("Copied."); }
+  } catch (e) { if (!(e && e.name === "AbortError")) toast("Could not share the list.", true); }
 }
-function openList(id, name) {
+// "2 milk", "milk x2", "milk ×2": the number goes into How many.
+function splitQty(t) {
+  let m = t.match(/^(\d+)\s+(.+)$/); if (m) return [m[2], m[1]];
+  m = t.match(/^(.+?)\s*[x×]\s*(\d+)$/i); if (m) return [m[1], m[2]];
+  return [t, null];
+}
+// One list. Taps change the screen at once (the server is told in the background), so nothing flickers.
+function openList(id, name, from) {
   openSub(name || "List", async b => {
-    const add = h("input", { type: "text", placeholder: "Add an item", "aria-label": "Add an item", enterkeyhint: "done" });
-    const qty = h("input", { type: "text", placeholder: "How many", "aria-label": "Quantity (optional)", style: "max-width:110px" });
-    const items = h("div", {});
-    let cur = null;
-    const draw = async () => {
-      const x = await api("GET", "/v1/lists/" + id);
-      if (x.error) { b.replaceChildren(h("div", { class: "card" }, h("div", { class: "empty", text: "This list is gone." }))); return; }
-      cur = x.list; $("subTitle").textContent = cur.name;
-      const row = it => h("div", { class: "item" + (it.done ? " off" : "") },
-        h("button", { class: "iconbtn", type: "button", "aria-label": (it.done ? "Untick " : "Tick ") + it.text, "aria-pressed": String(!!it.done), onclick: async () => {
-          await api("PATCH", "/v1/lists/" + id + "/items/" + it.id, { done: !it.done }); hap(it.done ? "tick" : "success"); draw(); } }, icon(it.done ? "check" : "box", 22)),
-        h("span", { class: "grow", style: it.done ? "opacity:.55;text-decoration:line-through" : "" }, h("div", { class: "t", text: it.text }),
-          (it.quantity || it.due || it.note) ? h("div", { class: "sub", text: [it.quantity, it.due ? "by " + dayName(it.due.slice(0, 10)) : "", it.note].filter(Boolean).join(" · ") }) : null),
-        h("button", { class: "iconbtn", type: "button", "aria-label": "Remove " + it.text, onclick: async () => { await api("DELETE", "/v1/lists/" + id + "/items/" + it.id); hap("tick"); draw(); } }, icon("x", 18)));
-      const open = x.items.filter(i => !i.done), done = x.items.filter(i => i.done);
-      items.replaceChildren(
-        h("div", { class: "card" }, open.length ? open.map(row) : h("div", { class: "empty", text: done.length ? "All done." : "Nothing on this list yet." })),
-        done.length ? h("div", { class: "row", style: "justify-content:space-between;align-items:center" }, h("div", { class: "sect", text: "Done (" + done.length + ")" }),
-          h("button", { class: "link", type: "button", onclick: async () => { await api("POST", "/v1/lists/" + id + "/clear"); hap("success"); draw(); } }, "Clear done")) : null,
-        done.length ? h("div", { class: "card" }, done.map(row)) : null);
+    let cur = null, items = [], showDone = false;
+    const add = h("input", { type: "text", placeholder: "Add an item", "aria-label": "Add an item", enterkeyhint: "done", autocapitalize: "sentences" });
+    const head = h("div", {}), openBox = h("div", {}), doneBox = h("div", {});
+    const sync = async () => { const x = await api("GET", "/v1/lists/" + id).catch(() => null); if (!x || x.error) return x; cur = x.list; items = x.items; $("subTitle").textContent = cur.name; return x; };
+    const draw = () => {
+      const open = items.filter(i => !i.done), done = items.filter(i => i.done), total = items.length;
+      settle(head, [total ? h("div", { class: "lprog" }, h("span", { class: "sub", text: done.length + " of " + total + " done" }), h("span", { class: "lbar wide" }, h("i", { style: "width:" + Math.round(100 * done.length / total) + "%" }))) : null]);
+      settle(openBox, [h("div", { class: "card list" }, open.length ? open.map(row) : h("div", { class: "empty", style: "padding:14px 0", text: done.length ? "All done. ✨" : "Nothing here yet. Add the first item above." }))]);
+      settle(doneBox, done.length ? [
+        h("div", { class: "lhead" }, h("button", { class: "link", type: "button", "aria-expanded": String(showDone), onclick: () => { showDone = !showDone; draw(); } },
+          h("span", { class: "lchev" + (showDone ? " open" : "") }, icon("chev", 16)), "Done (" + done.length + ")"),
+          h("button", { class: "link", type: "button", onclick: async () => { items = items.filter(i => !i.done); draw(); hap("success"); await api("POST", "/v1/lists/" + id + "/clear").catch(() => {}); } }, "Clear")),
+        showDone ? h("div", { class: "card list" }, done.map(row)) : null] : []);
     };
+    const tick = async it => {
+      it.done = !it.done; hap(it.done ? "success" : "tick");
+      // Ticking: the circle fills and the text crosses out where it is, then the row moves to Done.
+      const el = b.querySelector('.litem[data-id="' + CSS.escape(it.id) + '"]');
+      if (it.done && el && !calm()) { el.classList.add("done", "ticking"); setTimeout(draw, 420); } else draw();
+      const r = await api("PATCH", "/v1/lists/" + id + "/items/" + it.id, { done: it.done }).catch(() => null);
+      if (!r || r.error) { it.done = !it.done; draw(); toast("Couldn't save that. Try again.", true); }
+    };
+    const remove = async it => {
+      items = items.filter(i => i !== it); hap("tick"); draw();
+      const r = await api("DELETE", "/v1/lists/" + id + "/items/" + it.id).catch(() => null);
+      if (!r || r.error) { await sync(); draw(); toast("Couldn't remove that.", true); }
+    };
+    const row = it => h("div", { class: "litem" + (it.done ? " done" : ""), "data-id": it.id },
+      h("button", { class: "lcheck", type: "button", role: "checkbox", "aria-checked": String(!!it.done), "aria-label": it.text, onclick: () => tick(it) }, icon("tick", 16)),
+      h("button", { class: "grow ltext", type: "button", onclick: () => tick(it) }, h("span", { class: "t", text: it.text }),
+        (it.quantity || it.due || it.note) ? h("span", { class: "sub", text: [it.quantity ? "×" + it.quantity : "", it.due ? "by " + dayName(it.due.slice(0, 10)) : "", it.note].filter(Boolean).join(" · ") }) : null),
+      h("button", { class: "iconbtn lx", type: "button", "aria-label": "Remove " + it.text, onclick: () => remove(it) }, icon("x", 16)));
     const put = async () => {
-      const text = add.value.trim(); if (!text) return add.focus();
-      const x = await api("POST", "/v1/lists/" + id + "/items", { text, quantity: qty.value.trim() || null });
-      if (x.error) return alert(x.error.message);
-      hap("success"); add.value = ""; qty.value = ""; add.focus(); draw();
+      const raw = add.value.trim(); if (!raw) return add.focus();
+      const [text, quantity] = splitQty(raw);
+      const temp = { id: "new-" + Date.now(), text, quantity, done: false }; items.push(temp); add.value = ""; add.focus(); hap("success"); draw();
+      const x = await api("POST", "/v1/lists/" + id + "/items", { text, quantity }).catch(() => null);
+      if (!x || x.error) { items = items.filter(i => i !== temp); draw(); toast((x && x.error && x.error.message) || "Couldn't add that.", true); return; }
+      await sync(); draw();
     };
     add.onkeydown = e => { if (e.key === "Enter") put(); };
-    b.append(h("div", { class: "card" }, h("div", { class: "row", style: "gap:8px;align-items:center" }, h("span", { class: "grow" }, add), qty,
-      h("button", { class: "pill solid", type: "button", onclick: put }, "Add"))), items,
-      h("div", { class: "row", style: "margin:6px 0 14px;gap:8px;flex-wrap:wrap" },
-        h("button", { class: "pill solid", type: "button", onclick: () => shareList(id, cur ? cur.name : name) }, icon("share", 16), "Share"),
-        h("button", { class: "pill", type: "button", onclick: async () => { const n = (prompt("New name", cur ? cur.name : "") || "").trim(); if (!n) return;
-          const x = await api("PATCH", "/v1/lists/" + id, { name: n }); if (x.error) return alert(x.error.message); draw(); } }, "Rename"),
-        h("button", { class: "pill bad", type: "button", onclick: async () => { if (!confirm("Delete the list " + (cur ? cur.name : "") + " and everything on it?")) return;
-          await api("DELETE", "/v1/lists/" + id); hap("success"); closeSubSoft(); } }, "Delete list")));
-    await draw();
-  });
+    const plus = h("button", { class: "ladd-btn", type: "button", "aria-label": "Add", onclick: put }, icon("plus", 20));
+    b.append(h("div", { class: "laddbar" }, add, plus), head, openBox, doneBox,
+      h("div", { class: "sect", text: "List" }),
+      h("div", { class: "card" },
+        h("button", { class: "linkrow", type: "button", onclick: () => shareList(id, cur ? cur.name : name) }, "Share"),
+        h("button", { class: "linkrow", type: "button", onclick: async () => { const n = (prompt("New name", cur ? cur.name : "") || "").trim(); if (!n) return;
+          const x = await api("PATCH", "/v1/lists/" + id, { name: n }); if (x.error) return toast(x.error.message, true); await sync(); draw(); } }, "Rename"),
+        h("button", { class: "linkrow bad", type: "button", onclick: async () => { if (!confirm("Delete " + (cur ? cur.name : "this list") + " and everything on it?")) return;
+          await api("DELETE", "/v1/lists/" + id); hap("success"); closeSubSoft(); if (view === "plan") renderPlan(); } }, "Delete list")));
+    const x = await sync();
+    if (!x || x.error) { b.replaceChildren(h("div", { class: "card" }, h("div", { class: "empty", text: "This list is gone." }))); return; }
+    draw();
+  }, from);
 }
 
 /* alarms: big times, an on/off switch each, quick naps, tap one to change it */
@@ -2582,7 +2731,7 @@ function showPerms() {
   const finish = () => { localStorage.setItem("permsDone", "1"); window.__permsRefresh = null; leaveConnect(); };
   const cont = h("button", { class: "pill solid", type: "button", onclick: finish });
   window.__permsRefresh = draw; draw();
-  connectPage([h("h1", { text: "Allow permissions for AssistX to run" }), h("p", { class: "sub", text: "AssistX runs in the background on your phone. Tap Allow on each one. You can change them later in Settings, Set up AssistX." }), list],
+  connectPage([h("h1", { text: "Allow permissions for AssistX to run" }), h("p", { class: "sub", text: "AssistX runs in the background on your phone. Tap Allow on each one. You can change them later in Settings, General, Setup steps." }), list],
     [footLink("Skip for now", finish), cont], 4);
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden && window.__permsRefresh) window.__permsRefresh(); });

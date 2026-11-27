@@ -472,6 +472,28 @@ html[data-resolved=dark] .laddbar{border:1px solid var(--line)}
 .litem.ticking{animation:tickout .42s var(--emph-out) .2s forwards}
 @keyframes checkpop{40%{transform:scale(1.18)}}
 @keyframes tickout{to{opacity:0;transform:translateX(12px)}}
+/* alarms */
+.anext .anext-in{font-size:34px;font-weight:600;letter-spacing:-.02em;line-height:1.15;margin:2px 0;font-variant-numeric:tabular-nums}
+.anext .anext-in.mute{color:var(--mute)}
+.aring .cardhead{display:flex;align-items:center;gap:10px;margin-bottom:12px;color:var(--bad)}.aring .cardhead b{color:var(--text);font-size:18px}
+@media (prefers-reduced-motion:no-preference){.aring .cardhead svg{animation:aring 1s var(--emph) infinite}}
+@keyframes aring{0%,60%,100%{transform:none}10%,30%{transform:rotate(-14deg)}20%,40%{transform:rotate(14deg)}}
+.afix{margin-bottom:12px}.afix .setic{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent)}
+.arow{display:flex;align-items:center;gap:14px;padding:12px 16px;position:relative;cursor:pointer}
+.arow+.arow::before,.alarms .ladd::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:var(--line)}
+.alarms .ladd:first-child::before{display:none}
+.arow .grow{flex:1;min-width:0}
+.atm{font-size:32px;font-weight:600;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums;transition:opacity .2s}
+.asub{color:var(--mute);font-size:14px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .2s}
+.arow.off .atm,.arow.off .asub{opacity:.4}
+.arem{gap:10px}.arem-main{display:flex;align-items:center;gap:14px;background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;min-width:0}
+.atime{text-align:center;padding-bottom:14px}.ahint{min-height:1.3em}
+.adays{display:flex;justify-content:space-between;gap:4px}
+.adays button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--field);font-weight:600;font-size:14px;color:var(--text);padding:0;transition:background-color .2s var(--emph),color .2s,border-color .2s,transform .3s var(--spring)}
+.adays button.on{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
+.adays button:active{transform:scale(.9)}
+.aseg button{white-space:nowrap;padding:8px 4px}
+html[data-resolved=dark] .group .setrow{border:0}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 #updbar{flex:none;background:var(--ink);color:var(--on-ink);padding:max(8px,env(safe-area-inset-top)) 14px 8px;font-size:14px;z-index:40}
 #updbar .ubrow{display:flex;align-items:center;gap:8px}
@@ -1870,92 +1892,165 @@ function openList(id, name, from) {
   }, from);
 }
 
-/* alarms: big times, an on/off switch each, quick naps, tap one to change it */
+/* alarms: the next one up top, one tidy card of alarms with a switch each, quick naps, tap one to change it */
 const alarmAt = j => { const a = (j.schedule && j.schedule.at) || ""; return a.length > 5 ? a.slice(11, 16) : a || (j.next_run_local || "").slice(11, 16); };
 const repeats = j => !!(j.schedule && j.schedule.every);
+// When an alarm at "HH:MM" on these days (none = once) rings next, from now.
+function nextRing(at, days) {
+  const [hh, mm] = (at || "07:00").split(":").map(Number), now = new Date();
+  for (let d = 0; d < 8; d++) {
+    const c = new Date(now.getFullYear(), now.getMonth(), now.getDate() + d, hh, mm);
+    if (c > now && (!days || !days.size || days.has(c.getDay()))) return c;
+  }
+  return null;
+}
+const ringText = c => c ? "Rings in " + untilText(c - Date.now()) + " · " + dayName(ymd(c)) : "";
 async function planAlarms(body, gen) {
   const [jobs, ringing] = await Promise.all([api("GET", "/v1/jobs"), api("GET", "/v1/alarms/ringing")]);
   if (gen !== planGen) return;
   const out = [];
-  if ((ringing.items || []).length) out.push(h("div", { class: "card ringing" }, ringing.items.map(r => h("div", { class: "item" }, h("span", { class: "grow" }, h("div", { class: "t", text: "Ringing: " + r.text })),
-    h("button", { class: "pill", type: "button", onclick: async () => { await api("POST", "/v1/alarms/snooze", { id: r.ring_id }); syncPhone(); renderPlan(); } }, "Snooze"),
-    h("button", { class: "pill solid", type: "button", onclick: async () => { await api("POST", "/v1/alarms/dismiss", { id: r.ring_id }); renderPlan(); } }, "Stop")))));
+  // Ringing now: big and first.
+  for (const r of ringing.items || []) out.push(h("div", { class: "card ringing aring" },
+    h("div", { class: "cardhead" }, icon("bell", 22), h("b", { class: "grow", text: r.text || "Alarm" }), h("span", { class: "sub", text: "Ringing" })),
+    h("div", { class: "row" },
+      h("button", { class: "pill big-btn", type: "button", onclick: async () => { await api("POST", "/v1/alarms/snooze", { id: r.ring_id }); hap("tick"); syncPhone(); toast("Snoozed."); renderPlan(); } }, "Snooze"),
+      h("button", { class: "pill solid big-btn", type: "button", onclick: async () => { await api("POST", "/v1/alarms/dismiss", { id: r.ring_id }); hap("success"); renderPlan(); } }, "Stop"))));
+  // Phone settings that stop alarms from working: one row each, with Fix.
   let st = {}; try { st = NA && NA.alarmStatus ? JSON.parse(NA.alarmStatus()) : {}; } catch (e) { st = {}; }
-  const fix = [["exact", "Exact alarms are off, so alarms may be late."], ["fullscreen", "Alarms cannot light up the screen."], ["notifications", "Notifications are off, so nothing can show."]].filter(([k]) => st[k] === false);
-  if (fix.length) out.push(h("div", { class: "card" }, fix.map(([k, t]) => h("div", { class: "item" }, h("span", { class: "grow" }, h("div", { class: "t", text: t })), h("button", { class: "pill solid", type: "button", onclick: () => NA.openAlarmSettings(k) }, "Fix")))));
+  const fix = [["exact", "Alarms may be late", "Exact alarms are off."], ["fullscreen", "Can't light up the screen", "Full-screen alarms are off."], ["notifications", "Nothing can show", "Notifications are off."]].filter(([k]) => st[k] === false);
+  if (fix.length) out.push(h("div", { class: "group afix" }, fix.map(([k, t, d]) => h("button", { class: "setrow", type: "button", onclick: () => NA.openAlarmSettings(k) },
+    h("span", { class: "setic" }, icon("shield", 20)), h("span", { class: "grow" }, h("b", { text: t }), h("small", { text: d })), h("span", { class: "pill solid", text: "Fix" })))));
+
   const all = (jobs.items || []).filter(j => j.kind === "alarm").sort((a, b) => alarmAt(a).localeCompare(alarmAt(b)));
   const soon = all.filter(j => j.status === "active" && j.next_run).sort((a, b) => new Date(a.next_run) - new Date(b.next_run))[0];
-  out.push(h("div", { class: "card" }, h("div", { class: "sub", text: soon ? "Next alarm in " + untilText(new Date(soon.next_run) - Date.now()) : "No alarm is on." }),
-    h("div", { class: "sect", style: "margin:12px 0 8px", text: "Quick alarm" }),
-    h("div", { class: "quick" }, [[10, "10 min"], [20, "Nap 20 min"], [30, "30 min"], [60, "1 hour"]].map(([m, t]) => h("button", { class: "pill", type: "button", onclick: async () => {
-      const x = await api("POST", "/v1/jobs", { kind: "alarm", time: hm(new Date(Date.now() + m * 60000)), label: m === 20 ? "Nap" : "Alarm" });
-      if (x.error) return alert(x.error.message); hap("success"); syncPhone(); renderPlan(); } }, t)))));
-  out.push(h("div", { class: "sect", text: "Alarms" }));
-  if (!all.length) out.push(h("div", { class: "card" }, h("div", { class: "empty", text: "No alarms yet. Tap + to add one." })));
-  for (const j of all) {
-    const on = j.status === "active";
-    const [sw, swEl] = switchEl("Alarm " + alarmAt(j) + " on", on);
+  // Up top: when the next one rings, then quick alarms.
+  const quick = h("div", { class: "quick" }, [[10, "10 min"], [20, "Nap 20 min"], [30, "30 min"], [60, "1 hour"]].map(([m, t]) => h("button", { class: "pill", type: "button", onclick: async ev => {
+    const bt = ev.currentTarget, at = hm(new Date(Date.now() + m * 60000)); bt.classList.add("loading");
+    const x = await api("POST", "/v1/jobs", { kind: "alarm", time: at, label: m === 20 ? "Nap" : "Alarm" }).catch(() => null);
+    bt.classList.remove("loading");
+    if (!x || x.error) return toast((x && x.error && x.error.message) || "Couldn't set that alarm.", true);
+    hap("success"); syncPhone(); toast("Alarm set for " + at + "."); renderPlan(); } }, t)));
+  out.push(h("div", { class: "card anext" }, soon
+    ? [h("div", { class: "sub", text: "Next alarm" }), h("div", { class: "anext-in", text: "in " + untilText(new Date(soon.next_run) - Date.now()) }),
+       h("div", { class: "sub", text: dayName((soon.next_run_local || "").slice(0, 10)) + " at " + alarmAt(soon) + (soon.text ? " · " + soon.text : "") })]
+    : [h("div", { class: "sub", text: "Next alarm" }), h("div", { class: "anext-in mute", text: all.length ? "All off" : "None set" }),
+       h("div", { class: "sub", text: "Tap + or ask: “wake me at 7”." })],
+    h("div", { class: "sect", style: "margin:14px 0 8px", text: "Quick alarm" }), quick));
+
+  // Every alarm in one card. The switch changes at once; the server is told in the background.
+  const row = j => {
+    const on = j.status === "active", t = alarmAt(j);
+    const sub = h("div", { class: "asub", text: [j.text, dayText(j.schedule)].filter(Boolean).join(" · ") });
+    const [sw, swEl] = switchEl("Alarm " + t + " on", on);
+    const el = h("div", { class: "arow" + (on ? "" : " off"), role: "button", tabindex: "0", onclick: ev => editAlarm(j, ev.currentTarget), onkeydown: ev => { if (ev.key === "Enter") editAlarm(j, ev.currentTarget); } },
+      h("span", { class: "grow" }, h("div", { class: "atm", text: t }), sub), swEl);
     sw.onclick = e => e.stopPropagation();
     sw.onchange = async () => {
+      const want = sw.checked; el.classList.toggle("off", !want); hap("click");
       let x;
-      if (sw.checked && !repeats(j)) { // a one-time alarm that was off: set it again for the next time that clock time comes round
-        await api("DELETE", "/v1/jobs/" + j.id); x = await api("POST", "/v1/jobs", { kind: "alarm", time: alarmAt(j), label: j.text, sound: j.sound || "default" });
-      } else x = await api("POST", "/v1/jobs/" + j.id + (sw.checked ? "/resume" : "/pause"));
-      if (x && x.error) alert(x.error.message); hap("click"); syncPhone(); renderPlan();
+      try {
+        if (want && !repeats(j)) { // a one-time alarm that was off: set it again for the next time that clock time comes round
+          await api("DELETE", "/v1/jobs/" + j.id); x = await api("POST", "/v1/jobs", { kind: "alarm", time: t, label: j.text, sound: j.sound || "default" });
+        } else x = await api("POST", "/v1/jobs/" + j.id + (want ? "/resume" : "/pause"));
+      } catch (e) { x = null; }
+      if (!x || x.error) { sw.checked = !want; el.classList.toggle("off", want); toast("Couldn't change that alarm.", true); return; }
+      syncPhone(); if (want) toast(ringText(nextRing(t, j.schedule && j.schedule.every === "days" ? new Set(j.schedule.days) : null)) || "Alarm on."); renderPlan();
     };
-    out.push(h("div", { class: "card alarm" + (on ? "" : " off"), role: "button", tabindex: "0", onclick: () => editAlarm(j) },
-      h("span", { class: "grow" }, h("div", { class: "tm", text: alarmAt(j) }),
-        h("div", { class: "sub", text: [j.text, dayText(j.schedule), on && j.next_run ? "in " + untilText(new Date(j.next_run) - Date.now()) : on ? "" : "off"].filter(Boolean).join(" · ") })), swEl));
-  }
+    return el;
+  };
+  out.push(h("div", { class: "sect", text: "Alarms" }));
+  out.push(h("div", { class: "group alarms" }, all.map(row),
+    h("button", { class: "setrow ladd", type: "button", onclick: ev => editAlarm(null, ev.currentTarget) }, h("span", { class: "setic" }, icon("plus", 20)), h("span", { class: "grow" }, h("b", { text: "New alarm" })))));
+
+  // Reminders set to ring like an alarm.
   const rings = (jobs.items || []).filter(j => j.kind !== "alarm" && j.ring && j.status === "active");
-  if (rings.length) out.push(h("div", { class: "sect", text: "Reminders that ring" }), h("div", { class: "card" }, rings.map(j => h("div", { class: "item" },
-    h("span", { class: "chip" }, icon(j.event_id ? "calendar" : "bell", 18)),
-    h("span", { class: "grow" }, h("div", { class: "t", text: j.text }), h("div", { class: "sub", text: (j.next_run ? when(j.next_run) : "") + (j.event_id ? " · from an event" : "") })),
-    j.event_id ? h("button", { class: "pill", type: "button", onclick: () => editEvent(j.event_id) }, "Event") : h("button", { class: "pill bad", type: "button", onclick: async () => { await api("DELETE", "/v1/jobs/" + j.id); syncPhone(); renderPlan(); } }, "Delete")))));
-  out.push(h("button", { class: "setrow", type: "button", style: "margin-top:12px", onclick: () => openSub("Sounds", subSounds) }, icon("bell", 24), h("span", { class: "grow" }, h("b", { text: "Sounds" }), h("small", { text: "Built-in sounds and your own" })), icon("chev", 20)));
+  if (rings.length) out.push(h("div", { class: "sect", text: "Reminders that ring" }), h("div", { class: "group" }, rings.map(j => {
+    const go = j.event_id ? () => editEvent(j.event_id) : () => openSub("Automation", subAutomation);
+    return h("div", { class: "setrow arem" },
+      h("button", { class: "grow arem-main", type: "button", onclick: go }, h("span", { class: "setic" }, icon(j.event_id ? "calendar" : "bell", 20)),
+        h("span", { class: "grow" }, h("b", { text: j.text }), h("small", { text: (j.next_run ? when(j.next_run) : "") + (j.event_id ? " · from an event" : "") }))),
+      j.event_id ? icon("chev", 18) : h("button", { class: "iconbtn lx", type: "button", "aria-label": "Delete " + j.text, onclick: async () => {
+        const x = await api("DELETE", "/v1/jobs/" + j.id).catch(() => null); if (!x || x.error) return toast("Couldn't delete that.", true);
+        hap("tick"); syncPhone(); toast("Reminder deleted."); renderPlan(); } }, icon("x", 16)));
+  })));
+  out.push(h("div", { class: "gap" }), h("div", { class: "group" }, h("button", { class: "setrow", type: "button", onclick: ev => openSub("Sounds", subSounds, ev.currentTarget) },
+    h("span", { class: "setic" }, icon("bell", 20)), h("span", { class: "grow" }, h("b", { text: "Sounds" }), h("small", { text: "Built-in sounds and your own" })), icon("chev", 18))));
   settle(body, out);
 }
-function editAlarm(j) {
+// Round day buttons, Sunday first. Calls back on every change.
+function dayCircles(sel, changed) {
+  const box = h("div", { class: "adays", role: "group", "aria-label": "Repeat on" });
+  const draw = () => box.replaceChildren(...DAYS.map((n, i) => h("button", { type: "button", class: sel.has(i) ? "on" : "", "aria-pressed": String(sel.has(i)), "aria-label": n, text: n[0],
+    onclick: () => { sel.has(i) ? sel.delete(i) : sel.add(i); hap("tick"); draw(); changed(); } })));
+  draw(); return Object.assign(box, { redraw: draw });
+}
+function editAlarm(j, from) {
   openSub(j ? "Edit alarm" : "New alarm", async b => {
     const time = h("input", { type: "time", class: "bigtime", value: j ? alarmAt(j) : "07:00", "aria-label": "Time" });
-    const label = h("input", { type: "text", placeholder: "Label, like Wake up", "aria-label": "Label", value: j ? j.text : "" });
+    const label = h("input", { type: "text", placeholder: "Wake up", "aria-label": "Label", value: j ? j.text : "", autocapitalize: "sentences" });
     const sel = new Set(j && j.schedule && j.schedule.every === "days" ? j.schedule.days : j && j.schedule && j.schedule.every === "day" ? [0, 1, 2, 3, 4, 5, 6] : []);
-    let picker = dayPicker(sel);
-    const preset = (name, days) => h("button", { class: "pill", type: "button", onclick: () => { sel.clear(); days.forEach(d => sel.add(d)); const np = dayPicker(sel); picker.replaceWith(np); picker = np; } }, name);
-    const snd = await soundSelect(j ? j.sound : "default");
-    const save = async () => {
-      const days = sel.size ? [...sel].sort() : null, lab = label.value.trim() || "Alarm";
-      let x;
-      if (!j) x = await api("POST", "/v1/jobs", { kind: "alarm", time: time.value, label: lab, sound: snd.value, days });
-      else if (j.status !== "active" || (repeats(j) && !days)) { // paused, or repeating turned into once: make it again
-        await api("DELETE", "/v1/jobs/" + j.id); x = await api("POST", "/v1/jobs", { kind: "alarm", time: time.value, label: lab, sound: snd.value, days });
-      } else x = await api("PATCH", "/v1/jobs/" + j.id, { time: time.value, label: lab, sound: snd.value, days });
-      if (x.error) return alert(x.error.message); hap("success"); syncPhone(); closeSubSoft();
+    const hint = h("div", { class: "sub ahint" });
+    const PRESETS = [["Once", []], ["Weekdays", [1, 2, 3, 4, 5]], ["Weekends", [0, 6]], ["Every day", [0, 1, 2, 3, 4, 5, 6]]];
+    const seg = h("div", { class: "seg aseg", role: "group", "aria-label": "Repeat" });
+    const update = () => {
+      const key = [...sel].sort().join();
+      for (const bt of seg.children) bt.setAttribute("aria-pressed", String(bt.dataset.k === key));
+      hint.textContent = ringText(nextRing(time.value, sel));
     };
-    b.append(h("div", { class: "card", style: "text-align:center" }, time),
-      h("div", { class: "card" }, h("label", { class: "field" }, h("span", { text: "Label" }), label),
-        h("div", { class: "field" }, h("span", { text: "Repeat (none = once)" }), picker, h("div", { class: "row", style: "margin-top:8px" }, preset("Weekdays", [1, 2, 3, 4, 5]), preset("Weekends", [0, 6]), preset("Every day", [0, 1, 2, 3, 4, 5, 6]), preset("Once", []))),
+    const circles = dayCircles(sel, update);
+    PRESETS.forEach(([n, d]) => seg.append(h("button", { type: "button", "data-k": d.join(), text: n, onclick: () => { sel.clear(); d.forEach(x => sel.add(x)); hap("tick"); circles.redraw(); update(); } })));
+    time.oninput = update; update();
+    const snd = await soundSelect(j ? j.sound : "default");
+    const save = async ev => {
+      const bt = ev.currentTarget, days = sel.size ? [...sel].sort() : null, lab = label.value.trim() || "Alarm", body = { kind: "alarm", time: time.value, label: lab, sound: snd.value, days };
+      if (!time.value) return toast("Pick a time first.", true);
+      bt.classList.add("loading");
+      let x;
+      try {
+        if (!j) x = await api("POST", "/v1/jobs", body);
+        else if (j.status !== "active" || (repeats(j) && !days)) { // paused, or repeating turned into once: make it again
+          await api("DELETE", "/v1/jobs/" + j.id); x = await api("POST", "/v1/jobs", body);
+        } else x = await api("PATCH", "/v1/jobs/" + j.id, { time: time.value, label: lab, sound: snd.value, days });
+      } catch (e) { x = null; }
+      bt.classList.remove("loading");
+      if (!x || x.error) return toast((x && x.error && x.error.message) || "Couldn't save the alarm.", true);
+      hap("success"); syncPhone(); toast(ringText(nextRing(time.value, sel)) || "Saved."); closeSubSoft(); if (view === "plan") renderPlan();
+    };
+    b.append(h("div", { class: "card atime" }, time, hint),
+      h("div", { class: "sect", text: "Repeat" }), h("div", { class: "card" }, circles, h("div", { style: "height:12px" }), seg),
+      h("div", { class: "sect", text: "Details" }), h("div", { class: "card" }, h("label", { class: "field" }, h("span", { text: "Label" }), label),
         h("label", { class: "field" }, h("span", { text: "Sound" }), snd)),
-      h("div", { class: "row" }, h("button", { class: "pill solid big-btn", type: "button", onclick: save }, j ? "Save" : "Set alarm"),
-        j ? h("button", { class: "pill bad", type: "button", onclick: async () => { await api("DELETE", "/v1/jobs/" + j.id); hap("success"); syncPhone(); closeSubSoft(); } }, "Delete") : null));
-  });
+      h("div", { class: "row", style: "margin-top:14px" }, h("button", { class: "pill solid big-btn", type: "button", onclick: save }, j ? "Save" : "Set alarm")),
+      j ? h("div", { class: "card", style: "margin-top:14px" },
+        h("button", { class: "linkrow bad", type: "button", onclick: async () => {
+          const x = await api("DELETE", "/v1/jobs/" + j.id).catch(() => null); if (!x || x.error) return toast("Couldn't delete the alarm.", true);
+          hap("success"); syncPhone(); toast("Alarm deleted."); closeSubSoft(); if (view === "plan") renderPlan(); } }, "Delete alarm")) : null);
+  }, from);
 }
 // Sounds: built in, plus your own files.
 async function subSounds(b) {
   const sounds = await api("GET", "/v1/sounds");
   const file = h("input", { type: "file", accept: "audio/*", "aria-label": "Sound file" });
   const name = h("input", { type: "text", placeholder: "Name, like my-tune", "aria-label": "Sound name" });
-  b.append(h("div", { class: "card" },
-    (sounds.items || []).map(s => h("div", { class: "item" }, h("span", { class: "grow" }, h("div", { class: "t", text: s.name }), h("div", { class: "sub", text: s.builtin ? "Built in" : "Yours · " + Math.round((s.bytes || 0) / 1024) + " KB" })),
-      s.builtin ? null : h("button", { class: "pill bad", type: "button", onclick: async () => { if (!confirm("Delete the sound " + s.name + "?")) return; await api("DELETE", "/v1/sounds/" + s.name); subRebuild(); } }, "Delete")))),
+  const items = sounds.items || [], mine = items.filter(s => !s.builtin), built = items.filter(s => s.builtin);
+  const row = s => h("div", { class: "setrow" }, h("span", { class: "setic" }, icon("bell", 20)),
+    h("span", { class: "grow" }, h("b", { text: s.name }), h("small", { text: s.builtin ? "Built in" : Math.round((s.bytes || 0) / 1024) + " KB" })),
+    s.builtin ? null : h("button", { class: "iconbtn lx", type: "button", "aria-label": "Delete " + s.name, onclick: async () => {
+      if (!confirm("Delete the sound " + s.name + "?")) return;
+      const x = await api("DELETE", "/v1/sounds/" + s.name).catch(() => null); if (!x || x.error) return toast("Couldn't delete it.", true);
+      hap("tick"); toast("Sound deleted."); subRebuild(); } }, icon("x", 16)));
+  if (mine.length) b.append(h("div", { class: "sect", text: "Yours" }), h("div", { class: "group" }, mine.map(row)));
+  b.append(h("div", { class: "sect", text: "Built in" }), h("div", { class: "group" }, built.map(row)),
     h("div", { class: "sect", text: "Add your own" }), h("div", { class: "card" },
     h("label", { class: "field" }, h("span", { text: "mp3, ogg, wav or m4a, up to 3 MB" }), file), h("label", { class: "field" }, h("span", { text: "Name" }), name),
-    h("button", { class: "pill solid", type: "button", onclick: async () => {
-      const f = file.files && file.files[0]; if (!f) return alert("Pick a sound file first.");
+    h("button", { class: "pill solid big-btn", type: "button", style: "width:100%", onclick: async ev => {
+      const f = file.files && file.files[0]; if (!f) return toast("Pick a sound file first.", true);
+      const bt = ev.currentTarget; bt.classList.add("loading");
       const n = (name.value.trim() || f.name.replace(/\.[^.]+$/, "")).toLowerCase().replace(/[^a-z0-9_-]+/g, "-").slice(0, 40);
-      const r = await fetch(cfg.base + "/v1/sounds/" + encodeURIComponent(n), { method: "PUT", headers: { Authorization: "Bearer " + cfg.tok, "Content-Type": f.type || "application/octet-stream" }, body: await f.arrayBuffer() });
-      const x = await r.json().catch(() => ({})); if (!r.ok) return alert((x.error && x.error.message) || "Upload failed (" + r.status + ")");
-      hap("success"); syncPhone(); subRebuild(); } }, "Upload sound")));
+      const r = await fetch(cfg.base + "/v1/sounds/" + encodeURIComponent(n), { method: "PUT", headers: { Authorization: "Bearer " + cfg.tok, "Content-Type": f.type || "application/octet-stream" }, body: await f.arrayBuffer() }).catch(() => null);
+      bt.classList.remove("loading");
+      const x = r ? await r.json().catch(() => ({})) : {}; if (!r || !r.ok) return toast((x.error && x.error.message) || "Upload failed" + (r ? " (" + r.status + ")" : "."), true);
+      hap("success"); syncPhone(); toast("Sound added."); subRebuild(); } }, "Upload sound")));
 }
 
 /* ---------- location ---------- */

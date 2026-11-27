@@ -300,16 +300,17 @@ function showSac(msg) {
 function showLogin(msg) {
   session = "";
   const user = input("text", "admin", { autocomplete: "username" }), pass = input("password", "Admin password", { autocomplete: "current-password" });
+  const otp = input("text", "6 digits, if you set up codes", { autocomplete: "one-time-code", inputmode: "numeric" });
   const err = h("p", { class: "err", role: "alert", text: msg || "" });
   const go = h("button", { class: "btn primary wide", type: "button", text: "Sign in" });
   go.onclick = () => run(go, async () => {
     err.textContent = "";
-    const x = await api("POST", "/v1/server/admin/login", { username: user.value.trim().toLowerCase(), password: pass.value });
+    const x = await api("POST", "/v1/server/admin/login", { username: user.value.trim().toLowerCase(), password: pass.value, code: otp.value.trim() });
     if (!x.ok) { err.textContent = x.status === 401 ? cap(why(x)) + "." : why(x); shake(pass); return; }
     start(x.data);
   });
-  pass.onkeydown = e => { if (e.key === "Enter") go.click(); };
-  authPage(2, [h("h1", { text: "Admin login" }), h("p", { class: "lead", text: "Now the admin's own username and password." }), field("Username", user), field("Password", pass), go, err,
+  pass.onkeydown = otp.onkeydown = e => { if (e.key === "Enter") go.click(); };
+  authPage(2, [h("h1", { text: "Admin login" }), h("p", { class: "lead", text: "Now the admin's own username and password." }), field("Username", user), field("Password", pass), field("Code from your authenticator app", otp), go, err,
     h("button", { class: "back", type: "button", text: "← Use a different code", onclick: () => showSac() })]);
   user.focus();
 }
@@ -442,6 +443,46 @@ function vActivity(v) {
     b.append(actRow(l));
   }
 }
+// Sign-in codes from an authenticator app (security review #20): start, scan or type the secret, confirm a code.
+function codesCard() {
+  const body = h("div", { class: "card-b" }, h("p", { class: "mute small", style: "margin:0", text: "Checking\u2026" }));
+  const err = h("p", { class: "err", role: "alert" });
+  const draw = async () => {
+    const st = await api("GET", "/v1/server/admin/status");
+    const on = st.ok && st.data.code;
+    if (on) {
+      const pw = input("password", "Admin password", { autocomplete: "current-password" });
+      const off = h("button", { class: "btn", type: "button", text: "Turn codes off" });
+      off.onclick = () => run(off, async () => {
+        const x = await api("POST", "/v1/server/admin/totp", { action: "off", password: pw.value });
+        if (!x.ok) { err.textContent = cap(why(x)) + "."; shake(pw); return; }
+        toast("Sign-in codes are off."); draw();
+      });
+      body.replaceChildren(h("p", { class: "mute small", style: "margin:0 0 14px", text: "On. Signing in needs the admin password and a code from your authenticator app." }), field("Admin password", pw), off, err);
+      return;
+    }
+    const start = h("button", { class: "btn primary", type: "button", text: "Set up codes" });
+    start.onclick = () => run(start, async () => {
+      const x = await api("POST", "/v1/server/admin/totp", { action: "start" });
+      if (!x.ok) { err.textContent = cap(why(x)) + "."; return; }
+      const code = input("text", "6 digits", { autocomplete: "one-time-code", inputmode: "numeric" });
+      const ok = h("button", { class: "btn primary", type: "button", text: "Turn on" });
+      ok.onclick = () => run(ok, async () => {
+        const y = await api("POST", "/v1/server/admin/totp", { action: "confirm", code: code.value.trim() });
+        if (!y.ok) { err.textContent = cap(why(y)) + "."; shake(code); return; }
+        toast("Sign-in codes are on."); draw();
+      });
+      body.replaceChildren(
+        h("p", { class: "mute small", style: "margin:0 0 10px", text: "Add this key to your authenticator app (type it in, or open the link on the phone), then enter the code it shows." }),
+        h("pre", { class: "input mono", style: "height:auto;padding:12px;margin:0 0 10px;white-space:pre-wrap;word-break:break-all;font-size:12.5px", text: x.data.secret }),
+        h("pre", { class: "input mono", style: "height:auto;padding:12px;margin:0 0 14px;white-space:pre-wrap;word-break:break-all;font-size:11.5px", text: x.data.uri }),
+        field("Code", code), ok, err);
+    });
+    body.replaceChildren(h("p", { class: "mute small", style: "margin:0 0 14px", text: "Off. Ask for a 6-digit code from an authenticator app as well as the password. Lost the app? Reset the login from the server's shell." }), start, err);
+  };
+  draw();
+  return h("div", { class: "card" }, h("div", { class: "card-h" }, h("h2", { text: "Sign-in codes" })), body);
+}
 function vSettings(v) {
   v.append(topBar("Settings"));
   const old = input("password", "Current password", { autocomplete: "current-password" }), p1 = input("password", "At least 12 characters", { autocomplete: "new-password" }), p2 = input("password", "Type it again", { autocomplete: "new-password" });
@@ -457,6 +498,7 @@ function vSettings(v) {
     h("div", { class: "card" }, h("div", { class: "card-h" }, h("h2", { text: "Admin password" })), h("div", { class: "card-b" },
       h("p", { class: "mute small", style: "margin:0 0 16px", text: "Signed in as " + (adminName || "admin") + ". Changing the password signs out every other admin page." }),
       field("Current password", old), field("New password", p1), field("Again", p2), go, err)),
+    codesCard(),
     h("div", { class: "card" }, h("div", { class: "card-h" }, h("h2", { text: "Server Access Code" })), h("div", { class: "card-b" },
       h("p", { class: "mute small", style: "margin:0", text: "Everyone who signs in to this server needs the Server Access Code, so it does not open this page by itself. To change it, run this on the server and type the new code (25+ characters):" }),
       h("pre", { class: "input mono", style: "height:auto;padding:12px;margin:12px 0 0;white-space:pre-wrap;font-size:12.5px", text: "AGENT_DATA_DIR=data ./agent-core server-password" }))),

@@ -45,6 +45,7 @@ pub fn router(hub: H) -> Router {
         .route("/v1/server/admin/setup", post(admin_setup))
         .route("/v1/server/admin/login", post(admin_login))
         .route("/v1/server/admin/logout", post(admin_logout))
+        .route("/v1/server/admin/totp", post(admin_totp))
         .route("/v1/server/admin/password", post(admin_password))
         .route("/admin", get(admin_page))
         .fallback(dispatch)
@@ -286,13 +287,16 @@ async fn admin_log(State(h): State<H>, req: Request) -> Response {
     admin(h, req, move |h, _| Ok(json!({ "items": h.admin_log(limit) }))).await
 }
 async fn admin_status(State(h): State<H>, req: Request) -> Response {
-    serve(h, req, |h, _| Ok(json!({ "admin": h.admin_exists() }))).await
+    serve(h, req, |h, _| Ok(json!({ "admin": h.admin_exists(), "code": h.admin_totp_on() }))).await
+}
+async fn admin_totp(State(h): State<H>, req: Request) -> Response {
+    admin(h, req, |h, b| h.admin_totp(s(&b, "action"), s(&b, "code"), s(&b, "password")).map_err(invalid)).await
 }
 async fn admin_setup(State(h): State<H>, req: Request) -> Response {
     serve(h, req, |h, b| h.admin_setup(s(&b, "setup_code"), s(&b, "username"), s(&b, "password")).map_err(|e| (StatusCode::UNAUTHORIZED, e))).await
 }
 async fn admin_login(State(h): State<H>, req: Request) -> Response {
-    serve(h, req, |h, b| h.admin_login(s(&b, "username"), s(&b, "password")).map_err(|e| (StatusCode::UNAUTHORIZED, e))).await
+    serve(h, req, |h, b| h.admin_login_code(s(&b, "username"), s(&b, "password"), s(&b, "code")).map_err(|e| (StatusCode::UNAUTHORIZED, e))).await
 }
 async fn admin_logout(State(h): State<H>, req: Request) -> Response {
     let t = req.headers().get("x-admin-session").and_then(|h| h.to_str().ok()).unwrap_or("").to_string();

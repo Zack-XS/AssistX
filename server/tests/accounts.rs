@@ -511,3 +511,30 @@ async fn security_review_fixes_hold() {
     let (_, reps) = t.call("GET", "/v1/reports", Some(&tok), None).await;
     assert_eq!(reps["items"][0]["id"], "rep_old", "the old report moved into the database");
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_admin_login_can_ask_for_an_authenticator_code() {
+    // Security review #20.
+    let t = T::new("totp");
+    let (c, v) = t.srv("/v1/server/admin/totp", json!({ "action": "start" })).await;
+    assert_eq!(c, StatusCode::OK, "{v}");
+    let secret = v["secret"].as_str().unwrap().to_string();
+    assert!(v["uri"].as_str().unwrap().starts_with("otpauth://totp/"));
+    let now = || std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
+    let code = |step: i64| agent_core::totp::code_at(&agent_core::totp::decode(&secret).unwrap(), step);
+    let (c, _) = t.srv("/v1/server/admin/totp", json!({ "action": "confirm", "code": "000000" })).await;
+    assert_ne!(c, StatusCode::OK, "a wrong code does not turn it on");
+    let s0 = now() / 30;
+    let (c, v) = t.srv("/v1/server/admin/totp", json!({ "action": "confirm", "code": code(s0) })).await;
+    assert_eq!(c, StatusCode::OK, "{v}");
+    let (_, st) = t.call("GET", "/v1/server/admin/status", Some(&t.server), None).await;
+    assert_eq!(st["code"], true);
+    let login = |code: String| t.call("POST", "/v1/server/admin/login", Some(&t.server), Some(json!({ "username": "boss", "password": "the boss password", "code": code })));
+    assert_eq!(login(String::new()).await.0, StatusCode::UNAUTHORIZED, "the password alone is not enough");
+    assert_eq!(login(code(s0)).await.0, StatusCode::UNAUTHORIZED, "the code used to switch it on is spent");
+    assert_eq!(login(code(s0 + 1)).await.0, StatusCode::OK, "the next code works");
+    assert_eq!(login(code(s0 + 1)).await.0, StatusCode::UNAUTHORIZED, "a code works once");
+    // The server's own shell can always reset the login, codes included.
+    Hub::set_admin_password(&t.dir, "boss", "the boss password").unwrap();
+    assert_eq!(login(String::new()).await.0, StatusCode::OK);
+}

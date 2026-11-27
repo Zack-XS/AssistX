@@ -28,6 +28,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
+import android.util.Base64
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.EditText
@@ -143,7 +144,7 @@ class MainActivity : Activity() {
                 if (path != "/" && path != "/index.html") {
                     return WebResourceResponse("text/plain", "utf-8", 404, "Not found", emptyMap(), "".byteInputStream())
                 }
-                return WebResourceResponse("text/html", "utf-8", 200, "OK", mapOf("Cache-Control" to "no-store"), assets.open("index.html"))
+                return WebResourceResponse("text/html", "utf-8", 200, "OK", mapOf("Cache-Control" to "no-store", "Content-Security-Policy" to pageCsp), page.byteInputStream())
             }
 
             override fun onPageFinished(view: WebView, url: String) {
@@ -775,6 +776,20 @@ class MainActivity : Activity() {
         i.getStringExtra("token")?.let { e.putString("tok", Vault.seal(it)); any = true }
         e.apply()
         return any
+    }
+
+    /** The page, read once. */
+    private val page: String by lazy { assets.open("index.html").bufferedReader().use { it.readText() } }
+
+    /**
+     * Only the page's own script may run, named by its SHA-256 (security review #23). The page can read the token
+     * through [Bridge.getConfig], so a slipped-in script must never run. Everything else (the server's address,
+     * pictures, sounds) stays open, since the server address is the user's own choice.
+     */
+    private val pageCsp: String by lazy {
+        val script = page.substringAfter("<script>", "").substringBefore("</script>")
+        val hash = Base64.encodeToString(java.security.MessageDigest.getInstance("SHA-256").digest(script.toByteArray()), Base64.NO_WRAP)
+        "default-src * data: blob:; script-src 'sha256-$hash'; style-src * 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'"
     }
 
     /** What the page may ask the app to do. Only the page from HOST can reach it (see shouldOverrideUrlLoading). */

@@ -3000,8 +3000,18 @@ async function hello(base) {
     const r = await fetch(base + "/v1/health", { cache: "no-store", signal: ctl.signal }); clearTimeout(t);
     const j = await r.json(); return r.ok && (j.name === "AssistX" || "accounts" in j || "model" in j) ? j : null; } catch (e) { return null; }
 }
+// Plain http only inside a private network (home Wi-Fi, Tailscale, this phone). Anywhere else it would show the
+// passphrase and tokens to the network, so only https is allowed there (security review #6).
+function privateHost(base) {
+  let h; try { h = new URL(base).hostname.replace(/^\[|\]$/g, "").toLowerCase(); } catch (e) { return false; }
+  if (h === "localhost" || h.endsWith(".local") || h.endsWith(".ts.net") || !h.includes(".") && !h.includes(":")) return true;
+  const m = h.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
+  if (m) { const a = +m[1], b = +m[2]; return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127); }
+  return h === "::1" || /^f[cd]/.test(h) || h.startsWith("fe80");
+}
 async function useServer(base, err, el) {
   err.textContent = "";
+  if (/^http:/i.test(base) && !privateHost(base)) return fail(err, el, "That address is on the open internet. Use https:// there, or reach the server through Tailscale.");
   const j = await hello(base);
   if (!j) return fail(err, el, "No AssistX server answered at that address.");
   cfg.base = base; health = j; sessionStorage.setItem("base", base); showSac();

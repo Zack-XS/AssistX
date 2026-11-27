@@ -3,6 +3,7 @@ package app.assistant
 import android.app.Notification
 import android.content.ComponentName
 import android.content.Context
+import android.util.Log
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -42,6 +43,8 @@ class NotifyListener : NotificationListenerService() {
             Detect.match(label, title, text, kinds)?.let { item -> io.execute { Detect.send(this, item) } }
         }
         if (sbn.packageName !in watched(this)) return
+        // A sign-in code or login message never leaves the phone, even from a watched app (security review #17).
+        if (Detect.isSecret("$title\n$text")) { Log.i("Notify", "skipped a code or sign-in message from ${sbn.packageName}"); return }
         val body = JSONObject().put("app", sbn.packageName).put("app_name", label).put("title", title.take(200)).put("text", text.take(2000)).toString()
         io.execute {
             Alarms.http(this, "POST", "/v1/automations/notify", body)

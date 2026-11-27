@@ -207,6 +207,7 @@ impl App {
         // Plain files left by older versions (security review #3, #4): move them into the database, then delete them.
         memory::remove_plain_copies(&app.db, &app.cfg.data_dir);
         reports::move_into_db(&app);
+        eval::move_into_db(&app);
         // Which model wrote each reply (shown under a message on the page).
         let _ = app.db.lock().execute("ALTER TABLE messages ADD COLUMN model TEXT", []);
         scheduler::migrate(&app.db);

@@ -286,13 +286,34 @@ pub fn keep_light_warm(app: &App) {
     });
 }
 
+/// "Never send to the cloud" (security review #7, #25): `local_only` in the account's model settings, or
+/// `AGENT_LOCAL_ONLY=1` for the whole server. Checked here, where every model call gets its adapter, so no mode,
+/// chat setting, job setting or `use_bigger_model` can get around it.
+pub fn local_only(app: &App) -> bool {
+    std::env::var("AGENT_LOCAL_ONLY").is_ok_and(|v| v == "1") || settings(app)["local_only"] == true
+}
+
+/// The profile a call may really use: a cloud one is swapped for the local default while `local_only` is on.
+pub fn allowed_profile(app: &App, id: &str) -> String {
+    match get(app, id) {
+        Some(p) if !p.local && local_only(app) => {
+            let local = builtins(app).into_iter().find(|l| l.local && l.id == "local").or_else(|| builtins(app).into_iter().find(|l| l.local));
+            let to = local.map(|l| l.id).unwrap_or_else(|| "local".into());
+            eprintln!("security: local only is on; a call for cloud model '{id}' uses '{to}' instead");
+            to
+        }
+        _ => id.to_string(),
+    }
+}
+
 impl Router {
     /// The adapter for a profile. Tests and demos (`mock`) always get the one mock model.
     pub fn adapter(&self, app: &App, id: &str) -> Result<Arc<dyn Adapter>, String> {
         if app.cfg.model.kind == "mock" {
             return Ok(app.model.clone());
         }
-        let p = get(app, id).ok_or_else(|| format!("no model profile '{id}'"))?;
+        let id = allowed_profile(app, id);
+        let p = get(app, &id).ok_or_else(|| format!("no model profile '{id}'"))?;
         let k = key(app, &p);
         if !p.local && !p.key_optional && k.is_none() {
             return Err(format!("{} has no key yet. Add the secret {} in Settings, Intelligence.", p.label, p.key_secret.as_deref().unwrap_or("?")));
@@ -328,7 +349,7 @@ pub fn describe(app: &App) -> Value {
     let can_add: Vec<Value> = catalog(app, true).into_iter().filter(|p| ADDABLE.contains(&p.id.as_str()) && !shown.contains(&p.id))
         .map(|p| json!({ "id": p.id, "label": p.label, "key_secret": p.key_secret, "key_optional": p.key_optional })).collect();
     let tasks: Vec<Value> = TASKS.iter().map(|(id, label)| json!({ "id": id, "label": label, "model": s["tasks"][id] })).collect();
-    json!({ "mode": s["mode"], "cloud": s["cloud"], "cloud_upgrade": s["cloud_upgrade"], "keep_light_loaded": s["keep_light_loaded"] != false, "profiles": list, "can_add": can_add,
+    json!({ "mode": s["mode"], "cloud": s["cloud"], "cloud_upgrade": s["cloud_upgrade"], "local_only": local_only(app), "keep_light_loaded": s["keep_light_loaded"] != false, "profiles": list, "can_add": can_add,
         "modes": MODES.iter().map(|(id, label)| json!({ "id": id, "label": label })).collect::<Vec<_>>(),
         "tasks": tasks, "plugin_models": s["tasks"].as_object().map(|o| o.iter().filter(|(k, _)| k.starts_with("plugin:"))
             .map(|(k, v)| (k.trim_start_matches("plugin:").to_string(), v.clone())).collect::<serde_json::Map<_, _>>()).unwrap_or_default() })
@@ -392,6 +413,9 @@ pub fn update(app: &App, b: &Value) -> Result<Value, String> {
     }
     if let Some(k) = b["keep_light_loaded"].as_bool() {
         s["keep_light_loaded"] = json!(k);
+    }
+    if let Some(k) = b["local_only"].as_bool() {
+        s["local_only"] = json!(k);
     }
     if let Some(o) = b["set"].as_object() {
         for (id, v) in o {

@@ -491,12 +491,17 @@ async fn security_review_fixes_hold() {
     std::fs::write(acct.join("memory/People/x.md"), "secret").unwrap();
     std::fs::create_dir_all(acct.join("reports")).unwrap();
     std::fs::write(acct.join("reports/rep_old.json"), json!({ "id": "rep_old", "created": "2026-01-01T00:00:00Z", "auto": false, "thread": {} }).to_string()).unwrap();
+    std::fs::create_dir_all(acct.join("evals")).unwrap();
+    std::fs::write(acct.join("evals/2026-01-01-0000.json"), json!({ "id": "2026-01-01-0000", "started": "x" }).to_string()).unwrap();
     assert!(t.hub.lock(&id));
     let (c, v) = t.srv("/v1/server/login", json!({ "username": "dana", "passphrase": "dana's second passphrase" })).await;
     assert_eq!(c, StatusCode::OK, "{v}");
     let tok = v["token"].as_str().unwrap().to_string();
     assert!(!acct.join("memory").exists(), "no plain memory folder");
     assert!(!acct.join("reports").exists(), "no plain reports folder");
+    assert!(!acct.join("evals").exists(), "no plain model-test folder");
+    let (_, runs) = t.call("GET", "/v1/evals", Some(&tok), None).await;
+    assert_eq!(runs["items"][0]["id"], "2026-01-01-0000", "the old run moved into the database");
     let (_, reps) = t.call("GET", "/v1/reports", Some(&tok), None).await;
     assert_eq!(reps["items"][0]["id"], "rep_old", "the old report moved into the database");
 }

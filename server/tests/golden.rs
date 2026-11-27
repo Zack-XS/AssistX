@@ -3894,3 +3894,15 @@ fn phone_signals_are_kept_and_brief_and_travel_settings_check_their_input() {
     let e = agent_core::travel::travel_time(&s.app, &json!({ "to": "Gym" })).unwrap_err();
     assert!(e.contains("do not know where"), "{e}");
 }
+
+#[test]
+fn local_only_keeps_every_call_off_the_cloud() {
+    // Security review #7, #25: with "never send to the cloud" on, a cloud profile is swapped for the local default.
+    let s = start("localonly", json!([]));
+    agent_core::store::secret_set(&s.app, "NIM_API_KEY", "nvapi-test");
+    assert_eq!(agent_core::models::allowed_profile(&s.app, "nim"), "nim", "off: the cloud may be used");
+    let (_, v) = s.call("PATCH", "/v1/models", Some(json!({ "local_only": true })));
+    assert_eq!(v["local_only"], true, "{v}");
+    assert_eq!(agent_core::models::allowed_profile(&s.app, "nim"), "local");
+    assert_eq!(agent_core::models::allowed_profile(&s.app, "local-light"), "local-light", "local ones are untouched");
+}

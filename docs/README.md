@@ -112,7 +112,7 @@ How to work on AssistX: setup, code rules, tests and the change flow.
 - [Code style](contributing/code-style.md): The hard rules for code in this project.
 - [Testing](contributing/testing.md): Golden tests, model tests, the smoke test and the test sets we need.
 - [Change flow](contributing/pr-flow.md): How a change goes in, and pull request etiquette.
-- [Branches](contributing/branches.md): main, beta and production: what each is for, what runs, and how a change moves up.
+- [Branches](contributing/branches.md): one branch, production: what runs on it and how a change gets there.
 
 ## [Roadmap](roadmap/README.md)
 

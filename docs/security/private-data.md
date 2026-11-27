@@ -52,7 +52,7 @@ Exit 0 means clean. Exit 1 lists each finding as `path:line: kind: value`.
 It also runs:
 
 - **Before each commit**, once you turn on the repo hooks: `git config core.hooksPath .githooks`
-- **In CI** on every pull request and every push to `main`, `beta` and `production` ([Branches](../contributing/branches.md)).
+- **In CI** on every pull request and every push to `production` ([Branches](../contributing/branches.md)).
 
 The tool's own tests: `cargo test -j1 --manifest-path tools/private-data-check/Cargo.toml`.
 

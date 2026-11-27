@@ -7,14 +7,14 @@ order: 5
 # Change flow
 
 1. Read the page for the part you change. The design wins: if code and docs disagree, fix the code, or change the doc on purpose in the same change.
-2. Branch from `main`: `feat/...`, `fix/...`, `docs/...` or `chore/...` ([Branches](branches.md)).
+2. Branch from `production`: `feat/...`, `fix/...`, `docs/...` or `chore/...` ([Branches](branches.md)).
 3. Make the smallest change that works. Keep the hard rules ([Code style](code-style.md)).
 4. Add a test ([Testing](testing.md)) and logs ([Logging](../quality/logging.md)).
 5. Run `cargo test -j1` for the server. For the page, check it still calls `NativeApp.pageReady()` and keeps the page contract ([App structure](../android/app-structure.md)).
 6. Run the private data check ([Private data](../security/private-data.md)).
 7. Check the safety rules ([Safety rules](../security/safety-rules.md)).
 8. Update the docs pages you touched, and [Done](../roadmap/done.md) or [Next](../roadmap/next.md).
-9. Open a pull request into `main`. Follow the etiquette below.
+9. Open a pull request into `production`. Follow the etiquette below.
 10. Once it reaches `production`, deploy with `assistantx-deploy` and ship the app with `assistantx-app-release` ([Deploy](../architecture/deploy.md), [Updates and release](../android/updates-and-release.md)).
 
 Security problems go to [Reporting](../security/reporting.md), not public issues or PRs.
@@ -60,7 +60,7 @@ Commands you ran and what you saw. Screenshots for any screen change (light and 
 
 - All checks green. Don't ask people to review a red PR.
 - Read your own diff top to bottom first.
-- Rebase on `main` if it is behind. Keep history clean: squash "fix typo" commits.
+- Rebase on `production` if it is behind. Keep history clean: squash "fix typo" commits.
 - Mark it Draft until it is ready.
 
 ### Reviewing
@@ -82,14 +82,14 @@ Commands you ran and what you saw. Screenshots for any screen change (light and 
 ### Merging
 
 - Needs one approval and green checks. Changes to the Safety Gate, auth, sandbox, proxy or crypto (`server/src/gate.rs`, `auth.rs`, `sandbox.rs`, `proxy.rs`, `vault.rs`, `db.rs`) need the owner's approval.
-- Squash merge into `main`. The PR title becomes the commit message, so keep it clean.
+- Squash merge into `production`. The PR title becomes the commit message, so keep it clean.
 - Delete the branch after merge.
 
 ### Never
 
 - Never commit private data, tests included ([Private data](../security/private-data.md)).
 - Never skip or turn off a check to get a merge through.
-- Never merge your own PR into `beta` or `production` without the owner.
+- Never merge your own PR into `production` without the owner.
 - Never push secrets "for a minute". Pushed is leaked.
 
 ### For AI agents

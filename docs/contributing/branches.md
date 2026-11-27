@@ -1,24 +1,22 @@
 ---
 title: Branches
-description: main, beta and production: what each is for, what runs, and how a change moves up.
+description: One branch, production: what runs on it and how a change gets there.
 order: 6
 ---
 
 # Branches
 
-A change moves up through three branches:
+There is one shared branch, `production`. Every change gets there through a pull request:
 
 ```
-feature branch --PR--> main --PR--> beta --PR--> production
+feature branch --PR--> production
 ```
 
 | Branch | What it is | What runs | Who merges |
 |---|---|---|---|
-| `main` | Daily work. Every PR goes here first. | Checks | Any reviewer |
-| `beta` | Next release, for testers. | Checks | Owner |
 | `production` | What users run. | Checks, then the release | Owner only |
 
-**Checks** (`.github/workflows/checks.yml`):
+**Checks** (`.github/workflows/checks.yml`) run on every PR and every push to `production`:
 
 - private data check ([Private data](../security/private-data.md))
 - server: `cargo test -j1`
@@ -34,19 +32,17 @@ The Android build and server deploy still run from the Mac with `assistantx-app-
 
 ## Rules
 
-- Never push straight to `main`, `beta` or `production`. Open a PR.
-- Never force-push a shared branch.
-- Feature branch names: `feat/...`, `fix/...`, `docs/...`, `chore/...`.
-- `beta` only takes PRs from `main`. `production` only takes PRs from `beta`.
-- A hot fix goes to `main` first, then moves up like any change. If it can't wait, branch `fix/...` from `production`, merge it there, then merge it back to `beta` and `main` the same day.
+- Never push straight to `production`. Open a PR.
+- Never force-push `production`.
+- Feature branch names: `feat/...`, `fix/...`, `docs/...`, `chore/...`. Branch from `production`.
 - A red check blocks the merge. Fix it; never skip it.
 
-## Promote a release
+## Ship a change
 
-1. On `main`, all checks green. Open a PR `main` -> `beta`. Title: `Beta: <date>`.
-2. Testers use the beta build. Fix bugs on `main` and promote again.
-3. When beta is good, open a PR `beta` -> `production`. Title: `Release: <date>`. The body lists what users will see.
-4. The owner merges. The release workflow writes the changelog and tags it.
-5. From the `production` checkout, run `assistantx-deploy` and `assistantx-app-release`.
+1. Branch from `production`, make the change, open a PR into `production`.
+2. All checks green. The owner merges. The release workflow writes the changelog and tags it.
+3. From the `production` checkout, run `assistantx-deploy` and `assistantx-app-release`.
 
 Roll back: revert the merge on `production`, then deploy and re-publish the last good APK.
+
+`main` and `beta` were removed on 2026-11-26; `production` is the only long-lived branch.

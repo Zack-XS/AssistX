@@ -55,7 +55,7 @@ One public page for AssistX, for users and helpers. It is built by the Rust docs
 - **About:** what AssistX is, why use it, why help. Short version of the repo `README.md`.
 - **Docs:** links into the docs site, with search.
 - **Downloads:** the newest Android APK and its changelog, from the `production` releases.
-- **Recent pushes:** the last commits and releases on `main`, `beta` and `production`.
+- **Recent pushes:** the last commits and releases on `production`.
 - **Contributors:** everyone who has helped, with their GitHub picture and name.
 - **Info:** the roadmap picture, the rules, and how to report a security problem.
 

@@ -1952,7 +1952,7 @@ const hm = d => String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinute
 const dayName = day => { const t = ymd(new Date()), tm = ymd(new Date(Date.now() + 86400000));
   return day === t ? "Today" : day === tm ? "Tomorrow" : new Date(day + "T12:00").toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" }); };
 const untilText = ms => { const m = Math.max(1, Math.round(ms / 60000)), hh = Math.floor(m / 60), mm = m % 60;
-  return hh >= 24 ? Math.round(hh / 24) + " days" : (hh ? hh + " h " : "") + (mm || !hh ? mm + " min" : ""); };
+  return hh >= 24 ? (Math.round(hh / 24) === 1 ? "1 day" : Math.round(hh / 24) + " days") : (hh ? hh + " h " : "") + (mm || !hh ? mm + " min" : ""); };
 let planTab = ["alarm", "list"].includes(localStorage.getItem("planTab")) ? localStorage.getItem("planTab") : "cal", planGen = 0;
 let calMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1), calSel = ymd(new Date());
 for (const bt of $("planSeg").children) bt.onclick = () => setPlanTab(bt.dataset.p);

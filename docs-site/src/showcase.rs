@@ -222,10 +222,6 @@ fn icons_showcase(icons: &HashMap<String, String>) -> String {
 
 fn components_showcase(icons: &HashMap<String, String>) -> String {
     let send = icons.get("send").map(|s| s.as_str()).unwrap_or("");
-    let mic = icons.get("mic").map(|s| s.as_str()).unwrap_or("");
-    let check = icons.get("check").map(|s| s.as_str()).unwrap_or("");
-    let plus = icons.get("plus").map(|s| s.as_str()).unwrap_or("");
-    let _ = plus;
     let mut s = open("Live: components");
     s.push_str("<h3>Buttons</h3><div class=\"demo-row\">");
     s.push_str(r#"<button class="btn primary">Primary</button>"#);
@@ -254,17 +250,9 @@ fn components_showcase(icons: &HashMap<String, String>) -> String {
     s.push_str(r##"<button class="btn secondary" data-demo="toast" data-target="#demo-toast">Show toast</button>"##);
     s.push_str(r#"<div class="toast" id="demo-toast">Saved to memory</div>"#);
 
-    // A full mock app screen: chat bubbles, a tool step, an approval card,
-    // the composer and the bottom tab bar -- all from the real tokens.
-    s.push_str("<h3>Mock app screen</h3>");
-    s.push_str(r#"<p class="demo-label">Every part together in one phone frame. Tap a tab to switch; send shows the toast.</p>"#);
-    s.push_str(&format!(
-        r##"<div class="phone phone-chat"><div class="ph-header"><span class="ph-title">Chat</span></div><div class="ph-body chat-body"><div class="bubbles"><div class="bubble bot">Want me to set a reminder for the meeting?</div><div class="turn"><span class="icon">{check}</span> calendar.read &middot; Team sync 10:00</div><div class="apr"><div class="apr-q">Set a reminder 30 min before Team sync?</div><div class="apr-btns"><button class="btn primary" type="button">Yes</button><button class="btn secondary" type="button">No</button></div></div><div class="bubble me">Yes</div><div class="bubble bot">Done. I'll nudge you at 09:30.</div></div></div><div class="composer"><button class="iconbtn" type="button" aria-label="Voice"><span class="icon">{mic}</span></button><label class="skip" for="demo-msg">Message</label><textarea id="demo-msg" rows="1" placeholder="Message" aria-label="Message"></textarea><button class="btn icon primary" type="button" data-demo="toast" data-target="#demo-toast" aria-label="Send"><span class="icon">{send}</span></button></div>{nav}</div>"##,
-        check = check,
-        mic = mic,
-        send = send,
-        nav = nav_html(icons, "message-circle")
-    ));
+    // The real chat screen, light and dark, so the parts above can be seen in place.
+    s.push_str("<h3>In the app</h3>");
+    s.push_str(r#"<div class="phone-row"><figure class="real-shot"><img src="../assets/screens/light/chat.png" alt="Assistant screen, light" width="390" height="844" loading="lazy"><figcaption class="cap">Light</figcaption></figure><figure class="real-shot"><img src="../assets/screens/dark/chat.png" alt="Assistant screen, dark" width="390" height="844" loading="lazy"><figcaption class="cap">Dark</figcaption></figure></div>"#);
 
     s.push_str("</section>");
     s
@@ -274,56 +262,16 @@ fn components_showcase(icons: &HashMap<String, String>) -> String {
 
 const ALERT_SVG: &str = r#"<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>"#;
 
-fn ic<'a>(icons: &'a HashMap<String, String>, name: &str) -> &'a str {
-    icons.get(name).map(|s| s.as_str()).unwrap_or("")
-}
-
-/// The floating bottom tab bar. `active` is the icon name of the pressed tab.
-/// Tapping a tab toggles its `aria-pressed` via `data-demo="demo-tab"`.
-fn nav_html(icons: &HashMap<String, String>, active: &str) -> String {
-    let tabs: &[(&str, &str)] = &[
-        ("home", "Today"),
-        ("calendar", "Plan"),
-        ("message-circle", "Chat"),
-        ("settings", "You"),
-    ];
-    let mut s = String::from(r#"<nav class="ph-nav">"#);
-    for (icon, label) in tabs {
-        let pressed = if *icon == active { "true" } else { "false" };
-        s.push_str(&format!(
-            r#"<button class="demo-tab" type="button" aria-pressed="{pressed}"><span class="icon">{}</span><span>{label}</span></button>"#,
-            ic(icons, icon)
-        ));
-    }
-    s.push_str("</nav>");
-    s
-}
-
-/// A phone-frame mockup of the Today screen, in one forced theme.
-fn phone_frame(icons: &HashMap<String, String>, theme: &str) -> String {
-    let bell = ic(icons, "bell");
-    let cap = if theme == "light" { "Light" } else { "Dark" };
-    let cards = r#"<div class="card ph-card"><h3>Team sync</h3><p class="demo-label">10:00 · in 12 min</p></div><div class="card ph-card needs"><span class="ph-dot"></span><div><h3>Needs you</h3><p class="demo-label">1 approval waiting</p></div></div><div class="card ph-card"><h3>Morning brief</h3><p class="demo-label">3 things, 1 notice</p></div>"#;
-    let nav = nav_html(icons, "home");
+/// Screens page: real screenshots of the app, light and dark side by side.
+/// Design pages sit one folder deep, so the path goes up one level.
+fn screens_showcase(_icons: &HashMap<String, String>) -> String {
+    let shot = |theme: &str, cap: &str| {
+        format!(r#"<figure class="real-shot"><img src="../assets/screens/{theme}/home.png" alt="Home screen, {cap}" width="390" height="844" loading="lazy"><figcaption class="cap">{cap}</figcaption></figure>"#)
+    };
     format!(
-        r#"<figure class="demo-frame {theme}"><figcaption class="cap">{cap}</figcaption><div class="phone"><div class="ph-header"><span class="ph-title">Today</span><button class="iconbtn" type="button" aria-label="Notices"><span class="icon">{bell}</span></button></div><div class="ph-body">{cards}</div>{nav}</div></figure>"#,
-        theme = theme,
-        cap = cap,
-        bell = bell,
-        cards = cards,
-        nav = nav,
-    )
-}
-
-/// Screens page: the real layout (header, content cards, bottom nav) shown in
-/// both light and dark, each frame forced to its theme.
-fn screens_showcase(icons: &HashMap<String, String>) -> String {
-    let light = phone_frame(icons, "light");
-    let dark = phone_frame(icons, "dark");
-    format!(
-        r#"<section class="showcase"><h2 class="show-title">Live: screens, light and dark</h2><p class="demo-label">A real layout in a phone frame: header, content cards and the bottom tab bar. Tap a tab.</p><div class="phone-row">{light}{dark}</div><p class="demo-label">Each frame is forced to its own theme, so you see both at once on any site theme.</p></section>"#,
-        light = light,
-        dark = dark,
+        r#"<section class="showcase"><h2 class="show-title">The Home screen, light and dark</h2><div class="phone-row">{}{}</div><p class="demo-label">Screenshots of the app page, taken with sample data.</p></section>"#,
+        shot("light", "Light"),
+        shot("dark", "Dark"),
     )
 }
 

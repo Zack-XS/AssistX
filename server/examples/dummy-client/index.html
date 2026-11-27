@@ -871,14 +871,14 @@ $("bell").onclick = () => openSub("Needs your attention", subInsights);
 /* ---------- SETTINGS ---------- */
 const goPlan = what => Object.assign(() => window.__open(what), { go: true });
 // Settings, in groups. Each group is one card; rows are split by thin lines.
-const GROUPS = [["", ["Set up AssistX", "General", "Voice"]], ["Assistant", ["Intelligence", "Memory", "Mind map", "Automation", "Recipes", "Integrations"]],
+const GROUPS = [["", ["General", "Voice"]], ["Assistant", ["Intelligence", "Memory", "Mind map", "Automation", "Recipes", "Integrations"]],
   ["Your day", ["Morning", "Noticing"]], ["Phone", ["Location", "Health", "Computers", "Privacy"]], ["", ["Developer"]]];
 // Developer settings stay hidden until turned on (tap Version 7 times in General, like Android).
 const devOn = () => localStorage.getItem("devMode") === "1";
 // Old shortcuts to Plan and the technical pages live elsewhere now; they stay searchable here.
-const HIDDEN = new Set(["Alarms", "Calendar", "Lists", "Status", "Devices"]);
+const HIDDEN = new Set(["Setup steps", "Alarms", "Calendar", "Lists", "Status", "Devices"]);
 const SECTIONS = [
-  ["check", "Set up AssistX", "A checklist: permissions, battery, Home", subSetup],
+  ["check", "Setup steps", "In General: permissions, battery, Home", subSetup],
   ["sliders", "General", "Appearance, connection, and more", subGeneral],
   ["bolt", "Status", "Is everything working?", subStatus],
   ["mic", "Voice", "Dictation and speech", subVoice],
@@ -905,15 +905,14 @@ async function powerCard() {
   let on = true; try { on = (await api("GET", "/v1/power")).on !== false; } catch (e) {}
   return h("div", { class: "card", id: "powercard" },
     toggle("AssistX is " + (on ? "on" : "off"), on ? "Off stops everything." : "Everything is stopped. Phone alarms still ring.", on, async v => {
-      if (!v && !confirm("Turn AssistX off completely?\n\nNothing will think or run, and reminders and reports will not fire until you turn it on.")) { renderSettings(); return; }
+      if (!v && !confirm("Turn AssistX off completely?\n\nNothing will think or run, and reminders and reports will not fire until you turn it on.")) { if (subRebuild) subRebuild(); return; }
       const r = await api("PUT", "/v1/power", { on: v });
       if (r.error) alert(r.error.message);
-      hap("success"); renderSettings(); if (view === "home") renderHome();
+      hap("success"); if (subRebuild && $("subTitle").textContent === "General") subRebuild(); if (view === "home") renderHome();
     }));
 }
 function renderSettings() {
   const q = $("q").value.toLowerCase();
-  powerCard().then(c => { const old = $("powercard"); if (old) old.remove(); $("setBody").prepend(c); });
   // Searching shows the one-line description too; the plain list is titles only.
   const row = ([ic, t, d, f]) => h("button", { class: "setrow", type: "button", onclick: ev => f.go ? f() : openSub(t, f, ev.currentTarget) },
     h("span", { class: "setic" }, icon(ic, 20)), h("span", { class: "grow" }, h("b", { text: t }), q ? h("small", { text: d }) : null), icon("chev", 18));
@@ -984,6 +983,10 @@ function toggle(label, hint, on, change) {
 }
 function subGeneral(b) { subGeneralMain(b); appUpdates(b); }
 function subGeneralMain(b) {
+  const slot = h("div", { class: "card", id: "powercard" }, h("div", { class: "sub", text: "Checking\u2026" }));
+  b.append(slot); powerCard().then(c => slot.replaceWith(c));
+  b.append(h("div", { class: "group", style: "margin-top:12px" }, h("button", { class: "setrow", type: "button", onclick: ev => openSub("Setup steps", subSetup, ev.currentTarget) },
+    h("span", { class: "setic" }, icon("check", 20)), h("span", { class: "grow" }, h("b", { text: "Setup steps" }), h("small", { text: "Permissions, battery, Home" })), icon("chev", 18))));
   const pick = localStorage.getItem("theme") || "system";
   b.append(h("div", { class: "sect", text: "Appearance" }), h("div", { class: "seg", role: "group", "aria-label": "Theme" },
     ["light", "dark", "system"].map(t => h("button", { type: "button", "aria-pressed": String(pick === t), text: t[0].toUpperCase() + t.slice(1), onclick: () => { localStorage.setItem("theme", t); applyThemeSplit(); } }))));
@@ -1387,7 +1390,7 @@ async function subStatus(b) {
     row("Tool sandbox", String(o.sandbox || "?"), o.sandbox === "unavailable"),
     row("Server time", String(o.timezone || ""))));
   b.append(h("div", { class: "row", style: "margin-top:12px" }, h("button", { class: "pill", type: "button", onclick: () => subRebuild() }, "Check again"),
-    h("button", { class: "pill", type: "button", onclick: () => openSub("Set up AssistX", subSetup) }, "Setup checklist")));
+    h("button", { class: "pill", type: "button", onclick: () => openSub("Setup steps", subSetup) }, "Setup steps")));
 }
 
 /* ---------- first-run checklist ---------- */
@@ -1404,7 +1407,7 @@ async function setupItems(light) {
   const localReady = models && (models.profiles || []).some(p => p.local && p.ready);
   const L = [];
   L.push({ id: "server", label: "Connected to your server", hint: "The phone can reach it.", ok: !!(models && !models.error), fix: () => openSub("General", subGeneral), fixText: "Connection" });
-  L.push({ id: "power", label: "AssistX is switched on", hint: "The master switch in Settings.", ok: !power || power.on !== false, fix: async () => { await api("PUT", "/v1/power", { on: true }); }, fixText: "Turn on" });
+  L.push({ id: "power", label: "AssistX is switched on", hint: "The switch in Settings, General.", ok: !power || power.on !== false, fix: async () => { await api("PUT", "/v1/power", { on: true }); }, fixText: "Turn on" });
   L.push({ id: "models", label: "A model is ready", hint: status && !status.ok ? "Open Status to see what is down." : "A model on your server answers.", ok: !!localReady && (!status || status.ok), fix: () => openSub("Status", subStatus), fixText: "Status" });
   if (nat) {
     L.push({ id: "notifications", label: "Notifications allowed", hint: whyOf("notifications"), ok: !!st.notifications, fix: need("notifications"), fixText: "Allow" });
@@ -1434,7 +1437,7 @@ async function setupCard() {
   if (done === L.length) return null;
   return h("div", { class: "card" }, h("div", { class: "cardhead" }, icon("check", 24), h("h3", { class: "grow", text: "Finish setting up" }), h("span", { class: "sub", text: done + " of " + L.length })),
     h("p", { class: "sub", style: "margin:0 0 8px", text: L.filter(i => !i.done && !i.optional).length ? "A few things need a tap so everything works properly." : "Only optional things are left." }),
-    h("button", { class: "pill solid", type: "button", onclick: () => openSub("Set up AssistX", subSetup) }, "Open checklist"));
+    h("button", { class: "pill solid", type: "button", onclick: () => openSub("Setup steps", subSetup) }, "Open setup steps"));
 }
 async function subSetup(b) {
   b.append(skel());
@@ -1453,7 +1456,7 @@ async function subSetup(b) {
   b.append(h("div", { class: "row", style: "margin-top:12px" }, h("button", { class: "pill", type: "button", onclick: () => subRebuild() }, "Check again"),
     h("button", { class: "pill", type: "button", onclick: () => openSub("Status", subStatus) }, "Status")));
 }
-window.__setupChanged = () => { if (window.__permsRefresh) window.__permsRefresh(); if (!$("subpage").hidden && $("subTitle").textContent === "Set up AssistX" && subRebuild) subRebuild(); };
+window.__setupChanged = () => { if (window.__permsRefresh) window.__permsRefresh(); if (!$("subpage").hidden && $("subTitle").textContent === "Setup steps" && subRebuild) subRebuild(); };
 
 /* ---------- alarms and sounds ---------- */
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -2552,7 +2555,7 @@ function showPerms() {
   const finish = () => { localStorage.setItem("permsDone", "1"); window.__permsRefresh = null; leaveConnect(); };
   const cont = h("button", { class: "pill solid", type: "button", onclick: finish });
   window.__permsRefresh = draw; draw();
-  connectPage([h("h1", { text: "Allow permissions for AssistX to run" }), h("p", { class: "sub", text: "AssistX runs in the background on your phone. Tap Allow on each one. You can change them later in Settings, Set up AssistX." }), list],
+  connectPage([h("h1", { text: "Allow permissions for AssistX to run" }), h("p", { class: "sub", text: "AssistX runs in the background on your phone. Tap Allow on each one. You can change them later in Settings, General, Setup steps." }), list],
     [footLink("Skip for now", finish), cont], 4);
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden && window.__permsRefresh) window.__permsRefresh(); });

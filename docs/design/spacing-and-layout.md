@@ -29,10 +29,10 @@ The page uses these values (Nov 2026 spacing pass):
 | `space-1` | 2 | Hairline gaps (segmented control) |
 | `space-2` | 4 | Icon to label inside a chip |
 | `space-3` | 6 | Gap between chips, menu items |
-| `space-4` | 8 | Gap inside a row, between bubbles of one speaker |
-| `space-5` | 12 | Gap between rows and cards |
-| `space-6` | 16 | Card padding, screen side margin on phones |
-| `space-7` | 20 | Gap between bubbles of different speakers |
+| `space-4` | 8 | Label to its input, between chips |
+| `space-5` | 12 | Gap inside a row, between tiles |
+| `space-6` | 16 | Gap between cards, row padding, between chat bubbles |
+| `space-7` | 20 | Card padding, screen side margin on phones |
 | `space-8` | 24 | Screen side margin on wide screens |
 | `space-9` | 32 | Between sections |
 | `space-10` | 48 | Big empty states |
@@ -57,7 +57,7 @@ Large, soft corners. Inner corners are smaller than outer ones (outer = inner + 
 |---|---|---|
 | `touch-min` | 44 (48 on Android) | Smallest tap area, even if the drawn thing is smaller |
 | `control-h` | 40 | Buttons and inputs in compact density |
-| `row-h` | 52 | One-line list row |
+| `row-h` | 52 | One-line list row (settings rows: 64) |
 | `read-max` | 680 | Widest reading column |
 
 ## Breakpoints

@@ -21,6 +21,22 @@ order: 1
 
 Also built since: phone capture, location, computers, models, audit, the mind, accounts. See the [Architecture](../architecture/README.md) pages; each opens with its status.
 
+## App page (Nov 2026)
+
+What changed in the page (`server/examples/dummy-client/index.html`, copied into the app). Details: [Screens](../design/screens.md), [Components](../design/components.md), [Motion](../design/motion.md).
+
+| What | Done |
+|---|---|
+| Theme switch | No edges of the other colour |
+| Flicker | Home, Plan and closing pages no longer flicker (`settle()`) |
+| Settings search | Finds pages by what is on them, plugins and small typos |
+| Lists | One grouped card, one add box, instant ticks, foldable Done |
+| Alarms | Next-alarm card, one list, instant switches, round day buttons, toasts |
+| Mind map | A real mind map in the monochrome theme |
+| Simpler settings | Intelligence, Privacy, Health, Memory; Morning page removed; Noticing only in developer mode |
+| Spacing | More room on every screen ([Spacing](../design/spacing-and-layout.md)) |
+| Branches | `production` is the only branch ([Branches](../contributing/branches.md)) |
+
 ## The planned build order
 
 Safety comes in with the first risky tool, not at the end.

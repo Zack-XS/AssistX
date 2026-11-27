@@ -22,7 +22,7 @@ States: press scales to 0.98 (`dur-instant`). Disabled is 40% opacity. Focus sho
 
 ## Cards (`.card`)
 
-`card` fill, `radius-xl`, `space-6` padding, `shadow` (edge `line` in dark). A card holds one topic: next event, weather, a brief. Tapping the card opens it; small actions go on the right.
+`card` fill, `radius-xl`, `space-7` padding (20 top and bottom, 22 sides), `shadow` (edge `line` in dark). A card holds one topic: next event, weather, a brief. Tapping the card opens it; small actions go on the right.
 
 ## Chat bubbles (`.me`, `.bot`)
 
@@ -34,7 +34,7 @@ States: press scales to 0.98 (`dur-instant`). Disabled is 40% opacity. Focus sho
 | Corners | `radius-lg`, small tail corner bottom-right | `radius-lg`, tail bottom-left |
 | Max width | 82% | 88% (full width for tables and code) |
 
-- Bubbles of one speaker sit `space-4` apart; a change of speaker adds `space-7`.
+- Bubbles sit `space-6` (16) apart, 12 × 16 inside.
 - Tool steps (`.turn`) fold into a quiet one-line box with mono text. Open to see steps.
 - Message actions (copy, retry) show on hover or long-press, in `mute`.
 
@@ -45,7 +45,7 @@ The assistant asks for a yes. `card` with `line` edge, a short title, what will 
 ## Lists (`.item`, `.setrow`)
 
 - Row: `row-h` tall, icon `icon-md`, title `type-headline`, second line `type-small` in `mute`, chevron or value on the right.
-- Grouped rows sit in one card with `line` dividers. Setting rows may be single cards.
+- Grouped rows sit in one card (`.group`) with `line` dividers. Settings, Lists, Alarms and Sounds all use it. An "add" row ("New list", "New alarm") is the last row. In dark mode rows inside a group have no border of their own.
 - Swipe left for the main row action (delete, done), with a button for the same action.
 
 ## Sheets
@@ -93,6 +93,14 @@ One name per part. Code uses the class; docs and talk use the same name.
 | bubble | `.me`, `.bot` | Chat messages | streaming, done, failed | `#log` is `role=log aria-live=polite` |
 | composer | `#composer` | Write and send | idle, sending, live, offline | textarea has `aria-label` |
 | banner | `#net`, `#updbar` | One line about the whole app | info, warn, bad | `role=status` |
+| group | `.group` | One card of rows with thin lines between (Settings, Lists, Alarms, Sounds) | — | rows are `button`s |
+| list row | `.litem` + round check | One item in a list | open, ticking, done | check is a `button` with the item name |
+| add box | `.laddbar` | One field with a round + to add an item | normal, focus | input has `aria-label` |
+| alarm row | `.arow` | One alarm: big time, label, days, switch | on, off, ringing | switch is a real checkbox |
+| tiles | `.hgrid` + `.htile` | Up to three numbers side by side (Health today) | — | each tile reads label and value |
+| tag | `.tag` | A small round label ("Not sure", picked places) | normal, removable | remove button has `aria-label` |
+| toast | `.toast`, `.toast.bad` in `#toasts` | A short note after an action | in, out | `#toasts` is `aria-live=polite` |
+| skeleton | `.card.skel` | A card still loading | shimmer | `aria-busy=true` |
 
 - One `pill solid` per view: the main action.
 - A danger action is `pill bad`. It asks first, or gives undo after.
@@ -102,6 +110,7 @@ One name per part. Code uses the class; docs and talk use the same name.
 ## Gaps
 
 - No sheets: the page uses full subpages and native dialogs.
-- No toast; the update bar uses a blue fallback colour, not a token.
+- Toasts sit above the tab bar for about 3 s with no Undo yet. They replace pop-up alerts in alarms, sounds and lists.
+- The update bar uses a blue fallback colour, not a token.
 - Approval cards, ringing card and voice card each style buttons their own way. The ringing card buttons (`RingActivity.kt`) and voice card buttons (`AssistActivity.kt`) do not use these tokens.
 - Swipe actions on rows are missing.
